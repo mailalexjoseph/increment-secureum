@@ -5,7 +5,7 @@ import '@nomiclabs/hardhat-ethers';
 import 'hardhat-gas-reporter';
 import '@typechain/hardhat';
 import 'solidity-coverage';
-import {node_url, accounts} from './utils/network';
+import {node_url, accounts} from './helpers/network';
 
 // While waiting for hardhat PR: https://github.com/nomiclabs/hardhat/pull/1542
 if (process.env.HARDHAT_FORK) {
@@ -13,8 +13,27 @@ if (process.env.HARDHAT_FORK) {
 }
 
 const config: HardhatUserConfig = {
+  defaultNetwork: 'hardhat',
   solidity: {
-    version: '0.7.6',
+    compilers: [
+      {
+        version: '0.8.4',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: '0.6.12',
+        settings: {},
+      },
+      {
+        version: '0.7.6',
+        settings: {},
+      },
+    ],
   },
   namedAccounts: {
     deployer: 0,
@@ -64,8 +83,15 @@ const config: HardhatUserConfig = {
       accounts: accounts('goerli'),
     },
   },
+  etherscan: {
+    // Your API key for Etherscan
+    // Obtain one at https://etherscan.io/
+    apiKey: process.env.ETHERSCAN_API,
+  },
   paths: {
-    sources: 'src',
+    artifacts: 'artifacts',
+    sources: 'contracts',
+    tests: 'test',
   },
   gasReporter: {
     currency: 'USD',
