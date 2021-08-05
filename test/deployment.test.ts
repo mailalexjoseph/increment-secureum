@@ -1,10 +1,12 @@
+import env = require('hardhat');
 import {BigNumber} from 'ethers';
 import {expect} from 'chai';
 import {utils} from 'ethers';
 import {
-  getForexOracleAddress,
+  getChainlinkForexAggregator,
   getReserveOracleAddress,
 } from '../helpers/contract-getters';
+import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 import {setup} from './helpers/setup';
 
 describe('Increment App: Deployment', function () {
@@ -38,15 +40,21 @@ describe('Increment App: Deployment', function () {
       expect(expectTotalAssetReserve).to.be.equal(realizedTotalAssetReserve);
     });
 
-    it('Should initialize oracles', async function () {
+    it('Should initialize forex oracle', async function () {
       const {deployer} = await setup();
 
       expect(await deployer.perpetual.getQuoteAssetOracle()).to.be.equal(
-        getForexOracleAddress('JPY_USD')
+        getChainlinkForexAggregator('JPY_USD', getEthereumNetworkFromHRE(env))
       );
+    });
+    it('Should initialize reserve assets oracle', async function () {
+      const {deployer} = await setup();
+
       expect(
         await deployer.perpetual.getAssetOracle(deployer.usdc.address)
-      ).to.be.equal(getReserveOracleAddress('USDC'));
+      ).to.be.equal(
+        getReserveOracleAddress('USDC', getEthereumNetworkFromHRE(env))
+      );
     });
     it('Should set reserve asset', async function () {
       const {deployer} = await setup();

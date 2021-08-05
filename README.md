@@ -1,3 +1,6 @@
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![CI](https://github.com/Increment-Finance/perpetual-protocol-v0/workflows/CI/badge.svg)
+
 # Boilerplate for ethereum solidity smart contract development
 
 ## INSTALL

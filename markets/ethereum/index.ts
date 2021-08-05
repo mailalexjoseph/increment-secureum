@@ -33,7 +33,7 @@ const chainlinkReserveAggregator = {
     USDC: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    USDC: '0x986b5e1e1755e3c2440e960477f25201b0a8bbd4',
+    USDC: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
   },
   [eEthereumNetwork.kovan]: {
     USDC: '0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838',

@@ -1,21 +1,15 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 
-import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
-import {getConstructorArgsByNetwork} from '../helpers/contracts-deployments';
-import {eEthereumNetwork} from '../helpers/types';
+import {getConstructorArgs} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
-  const {deploy} = hre.deployments;
-
   const {deployer} = await hre.getNamedAccounts();
 
   console.log(`Current network is ${hre.network.name.toString()}`);
-  const network: eEthereumNetwork = getEthereumNetworkFromHRE(hre);
+  const constructorArgs = getConstructorArgs(hre);
 
-  const constructorArgs = getConstructorArgsByNetwork(network);
-
-  await deploy('Perpetual', {
+  await hre.deployments.deploy('Perpetual', {
     from: deployer,
     args: constructorArgs,
     log: true,

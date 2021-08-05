@@ -1,5 +1,7 @@
 import {BigNumber} from 'ethers';
 
+export {BigNumber} from 'ethers';
+
 export interface SymbolMap<T> {
   [symbol: string]: T;
 }
@@ -112,3 +114,17 @@ export interface iVAMMConfig {
   QuoteAssetReserve: BigNumber;
   BaseAssetReserve: BigNumber;
 }
+
+export type PerpetualConstructorArguments = [
+  BigNumber,
+  BigNumber,
+  tEthereumAddress,
+  tEthereumAddress
+];
+
+export type SetReserveTokenArguments = [
+  tEthereumAddress,
+  tEthereumAddress,
+  boolean,
+  tEthereumAddress
+];

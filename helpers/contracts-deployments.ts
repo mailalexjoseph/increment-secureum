@@ -1,28 +1,54 @@
-import {eEthereumNetwork, tEthereumAddress} from '../helpers/types';
-import {PerpConfig} from '../markets/ethereum';
-import {BigNumber} from 'ethers';
+import {
+  eEthereumNetwork,
+  PerpetualConstructorArguments,
+  SetReserveTokenArguments,
+} from '../helpers/types';
+import {
+  getReserveAddress,
+  getReserveOracleAddress,
+  getChainlinkForexAggregator,
+  getQuoteAssetReserve,
+  getBaseAssetReserve,
+  getLendingPoolAddressProvider,
+} from '../helpers/contract-getters';
+import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 
-type ConstructorArguments = [
-  BigNumber,
-  BigNumber,
-  tEthereumAddress,
-  tEthereumAddress
-];
-export function getConstructorArgsByNetwork(
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+
+export function getConstructorArgs(
+  hre: HardhatRuntimeEnvironment
+): PerpetualConstructorArguments {
+  return _getConstructorArgsByNetwork(getEthereumNetworkFromHRE(hre));
+}
+
+function _getConstructorArgsByNetwork(
   network: eEthereumNetwork
-): ConstructorArguments {
-  const quoteAssetReserve = PerpConfig.VAMMConfig.QuoteAssetReserve;
-  const baseAssetReserve = PerpConfig.VAMMConfig.BaseAssetReserve;
-  const quoteAssetOracle = PerpConfig.ChainlinkForexAggregator[network].JPY_USD;
-  const lendingPoolAddressProvider =
-    PerpConfig.Integrations[network].lendingPoolAddressProvider;
+): PerpetualConstructorArguments {
+  const constructorArgs: PerpetualConstructorArguments = [
+    getQuoteAssetReserve(),
+    getBaseAssetReserve(),
+    getChainlinkForexAggregator('JPY_USD', network),
+    getLendingPoolAddressProvider(network),
+  ];
+  //console.log('PerpetualConstructorArguments are', constructorArgs);
+  return constructorArgs;
+}
 
-  const constructorArgs: ConstructorArguments = [
-    quoteAssetReserve,
-    baseAssetReserve,
-    quoteAssetOracle,
-    lendingPoolAddressProvider,
+function _getInitArgsByNetwork(
+  network: eEthereumNetwork
+): SetReserveTokenArguments {
+  const setReserveTokenArgs: SetReserveTokenArguments = [
+    getReserveAddress('USDC', network),
+    getReserveOracleAddress('USDC', network),
+    false,
+    getReserveAddress('USDC', network),
   ];
   //console.log('ConstructorArguments are', constructorArgs);
-  return constructorArgs;
+  return setReserveTokenArgs;
+}
+
+export function getInitArgs(
+  hre: HardhatRuntimeEnvironment
+): SetReserveTokenArguments {
+  return _getInitArgsByNetwork(getEthereumNetworkFromHRE(hre));
 }

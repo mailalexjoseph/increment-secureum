@@ -62,6 +62,7 @@
     "compile": "hardhat compile",
     "void:deploy": "hardhat deploy",
     "test": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_COMPILE=true mocha --bail --recursive test",
+    "dtest": "yarn fork:test mainnet",
     "gas": "cross-env REPORT_GAS=true hardhat test",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true hardhat coverage",
     "dev": "hardhat node --watch --export contractsInfo.json",

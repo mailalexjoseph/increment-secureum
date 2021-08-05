@@ -42,13 +42,12 @@ export async function impersonateAccountsHardhat(
   }
 }
 
-export function getEnumFromString<E>(
-  Enum: any,
+export function getEthereumNetworkFromString(
   String: string,
   defaultString: string
-): E {
-  if (Object.values(Enum).some((col: any) => col === String)) {
-    return <any>String;
+): eEthereumNetwork {
+  if (Object.values(eEthereumNetwork).some((col: string) => col === String)) {
+    return <eEthereumNetwork>String;
   } else {
     try {
       throw new Error(
@@ -57,7 +56,7 @@ export function getEnumFromString<E>(
     } catch (e) {
       console.log(e);
     }
-    return <any>defaultString;
+    return <eEthereumNetwork>defaultString;
   }
 }
 
@@ -66,8 +65,7 @@ export function getEthereumNetworkFromHRE(
 ): eEthereumNetwork {
   const networkString: string = hre.network.name;
 
-  const networkEnum: eEthereumNetwork = getEnumFromString<eEthereumNetwork>(
-    eEthereumNetwork,
+  const networkEnum: eEthereumNetwork = getEthereumNetworkFromString(
     networkString,
     'main'
   );

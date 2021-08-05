@@ -1,7 +1,12 @@
 import {PerpConfig} from '../markets/ethereum';
-import {eEthereumNetwork, tEthereumAddress} from './types';
+import {
+  eEthereumNetwork,
+  tEthereumAddress,
+  BigNumber,
+  iVAMMConfig,
+} from './types';
 
-export function getForexOracleAddress(
+export function getChainlinkForexAggregator(
   pair: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
@@ -22,4 +27,22 @@ export function getReserveOracleAddress(
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
   return PerpConfig.ChainlinkReserveAggregator[network][reserveAssetName];
+}
+
+export function getQuoteAssetReserve(): BigNumber {
+  return PerpConfig.VAMMConfig.QuoteAssetReserve;
+}
+
+export function getBaseAssetReserve(): BigNumber {
+  return PerpConfig.VAMMConfig.BaseAssetReserve;
+}
+
+export function getLendingPoolAddressProvider(
+  network: eEthereumNetwork = eEthereumNetwork.main
+): tEthereumAddress {
+  return PerpConfig.Integrations[network].lendingPoolAddressProvider;
+}
+
+export function getVAMMConfig(): iVAMMConfig {
+  return PerpConfig.VAMMConfig;
 }
