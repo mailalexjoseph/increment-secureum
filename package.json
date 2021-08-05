@@ -19,7 +19,7 @@
   "devDependencies": {
     "@aave/protocol-v2": "^1.0.1",
     "@chainlink/contracts": "^0.2.1",
-    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@0.3.0-beta.10",
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
     "@openzeppelin/contracts": "^4.2.0",
     "@typechain/ethers-v5": "^7.0.1",
@@ -37,7 +37,7 @@
     "dotenv-expand": "^5.1.0",
     "eslint": "^7.28.0",
     "eslint-config-prettier": "^8.3.0",
-    "ethers": "^5.3.1",
+    "ethers": "^5.4.4",
     "fs-extra": "^10.0.0",
     "hardhat": "^2.3.3",
     "hardhat-deploy": "^0.8.7",
@@ -74,5 +74,6 @@
     "fork:dev": "node ./_scripts.js fork:dev",
     "fork:node": "node ./_scripts.js fork:node",
     "fork:test": "node ./_scripts.js fork:test"
-  }
+  },
+  "dependencies": {}
 }

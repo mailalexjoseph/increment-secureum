@@ -1,12 +1,12 @@
 import {Signer} from 'ethers';
-
 import {
   ethers,
   deployments,
   getUnnamedAccounts,
   getNamedAccounts,
 } from 'hardhat';
-import {setupUser, setupUsers} from './utils/setupUsers';
+import {getReserveAddress} from '../../helpers/contract-getters';
+import {setupUser, setupUsers, logDeployments} from '../../helpers/misc-utils';
 
 import {Perpetual, MintableERC20, AToken} from '../../typechain';
 
@@ -32,13 +32,18 @@ const testEnv: TestEnv = {
 
 export const setup = deployments.createFixture(async () => {
   // get contracts
-  await deployments.fixture('Perpetual');
-  testEnv.perpetual = await ethers.getContract('Perpetual');
-  const contracts = {
-    perpetual: testEnv.perpetual,
-  };
+  //console.log('We are before running fixtures');
+  await deployments.fixture(['Perpetual', 'InitiateReserves']);
+  await logDeployments();
 
   const {deployer} = await getNamedAccounts();
+
+  const contracts = {
+    perpetual: <Perpetual>await ethers.getContract('Perpetual', deployer),
+    usdc: <MintableERC20>(
+      await ethers.getContractAt('MintableERC20', getReserveAddress('USDC'))
+    ),
+  };
 
   const users = await setupUsers(await getUnnamedAccounts(), contracts);
 

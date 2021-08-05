@@ -14,31 +14,6 @@ if (process.env.HARDHAT_FORK) {
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
-  solidity: {
-    compilers: [
-      {
-        version: '0.8.4',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
-      {
-        version: '0.6.12',
-        settings: {},
-      },
-      {
-        version: '0.7.6',
-        settings: {},
-      },
-    ],
-  },
-  namedAccounts: {
-    deployer: 0,
-    simpleERC20Beneficiary: 1,
-  },
   networks: {
     hardhat: {
       // process.env.HARDHAT_FORK will specify the network that the fork is made from.
@@ -82,6 +57,31 @@ const config: HardhatUserConfig = {
       url: node_url('goerli'),
       accounts: accounts('goerli'),
     },
+  },
+  solidity: {
+    compilers: [
+      {
+        version: '0.8.4',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: '0.6.12',
+        settings: {},
+      },
+      {
+        version: '0.7.6',
+        settings: {},
+      },
+    ],
+  },
+  namedAccounts: {
+    deployer: 0,
+    simpleERC20Beneficiary: 1,
   },
   etherscan: {
     // Your API key for Etherscan

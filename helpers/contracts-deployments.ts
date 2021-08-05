@@ -2,19 +2,27 @@ import {eEthereumNetwork, tEthereumAddress} from '../helpers/types';
 import {PerpConfig} from '../markets/ethereum';
 import {BigNumber} from 'ethers';
 
-type args = [BigNumber, BigNumber, tEthereumAddress, tEthereumAddress];
-export function getNetworkParameters(network: eEthereumNetwork): args {
+type ConstructorArguments = [
+  BigNumber,
+  BigNumber,
+  tEthereumAddress,
+  tEthereumAddress
+];
+export function getConstructorArgsByNetwork(
+  network: eEthereumNetwork
+): ConstructorArguments {
   const quoteAssetReserve = PerpConfig.VAMMConfig.QuoteAssetReserve;
   const baseAssetReserve = PerpConfig.VAMMConfig.BaseAssetReserve;
   const quoteAssetOracle = PerpConfig.ChainlinkForexAggregator[network].JPY_USD;
-
   const lendingPoolAddressProvider =
     PerpConfig.Integrations[network].lendingPoolAddressProvider;
-  const constructorArgs: args = [
+
+  const constructorArgs: ConstructorArguments = [
     quoteAssetReserve,
     baseAssetReserve,
     quoteAssetOracle,
     lendingPoolAddressProvider,
   ];
-  return constructorArgs as args;
+  //console.log('ConstructorArguments are', constructorArgs);
+  return constructorArgs;
 }

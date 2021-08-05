@@ -33,7 +33,7 @@ const chainlinkReserveAggregator = {
     USDC: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    USDC: ZERO_ADDRESS,
+    USDC: '0x986b5e1e1755e3c2440e960477f25201b0a8bbd4',
   },
   [eEthereumNetwork.kovan]: {
     USDC: '0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838',
@@ -52,7 +52,7 @@ const chainlinkForexAggregator = {
     JPY_USD: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    JPY_USD: ZERO_ADDRESS,
+    JPY_USD: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
   },
   [eEthereumNetwork.kovan]: {
     JPY_USD: '0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838',
@@ -71,7 +71,7 @@ const integrations = {
     lendingPoolAddressProvider: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    lendingPoolAddressProvider: ZERO_ADDRESS,
+    lendingPoolAddressProvider: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
   },
   [eEthereumNetwork.kovan]: {
     lendingPoolAddressProvider: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
@@ -92,11 +92,11 @@ export const PerpConfig: IPerpetualConfiguration = {
     USDC: strategyUSDC,
   },
   ReserveAssets: {
-    [eEthereumNetwork.hardhat]: {
-      USDC: ZERO_ADDRESS,
-    },
     [eEthereumNetwork.coverage]: {
       USDC: ZERO_ADDRESS,
+    },
+    [eEthereumNetwork.hardhat]: {
+      USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     },
     [eEthereumNetwork.kovan]: {
       USDC: '0xe22da380ee6B445bb8273C81944ADEB6E8450422',

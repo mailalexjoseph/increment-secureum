@@ -1,8 +1,10 @@
 import {BigNumber} from 'ethers';
-
 import {expect} from 'chai';
 import {utils} from 'ethers';
-
+import {
+  getForexOracleAddress,
+  getReserveOracleAddress,
+} from '../helpers/contract-getters';
 import {setup} from './helpers/setup';
 
 describe('Increment App: Deployment', function () {
@@ -19,7 +21,7 @@ describe('Increment App: Deployment', function () {
 
       // check pool price
       const normalizationConstantEther = utils.parseUnits('1', 18);
-      const expectPrice: BigNumber = data.BaseAssetReserve.mul(
+      const expectPrice = data.BaseAssetReserve.mul(
         normalizationConstantEther
       ).div(data.QuoteAssetReserve);
       expect(pool.price).to.be.equal(expectPrice);
@@ -35,25 +37,25 @@ describe('Increment App: Deployment', function () {
       );
       expect(expectTotalAssetReserve).to.be.equal(realizedTotalAssetReserve);
     });
-    /*
+
     it('Should initialize oracles', async function () {
-      const {deployer, perpetual} = await setup();
+      const {deployer} = await setup();
+
+      expect(await deployer.perpetual.getQuoteAssetOracle()).to.be.equal(
+        getForexOracleAddress('JPY_USD')
+      );
       expect(
-        await perpetual.connect(deployer).getQuoteAssetOracle()
-      ).to.be.equal(jpy_oracle.address);
-      expect(
-        await perpetual.connect(deployer).getAssetOracle(usdc.address)
-      ).to.be.equal(usdc_oracle.address);
+        await deployer.perpetual.getAssetOracle(deployer.usdc.address)
+      ).to.be.equal(getReserveOracleAddress('USDC'));
     });
     it('Should set reserve asset', async function () {
-      const {deployer, perpetual} = await setup();
-      const tokens = await perpetual.getReserveAssets();
-      expect(tokens[0]).to.be.equal(usdc.address);
+      const {deployer} = await setup();
+      const tokens = await deployer.perpetual.getReserveAssets();
+      expect(tokens[0]).to.be.equal(deployer.usdc.address);
     });
     it('Should give deployer role to deployer address', async function () {
-      const {deployer, perpetual} = await setup();
-      expect(await perpetual.owner()).to.be.equal(deployer.address);
+      const {deployer} = await setup();
+      expect(await deployer.perpetual.owner()).to.be.equal(deployer.address);
     });
-    */
   });
 });

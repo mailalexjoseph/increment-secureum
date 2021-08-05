@@ -1,13 +1,37 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {eEthereumNetwork} from '../helpers/types';
+import {deployments} from 'hardhat';
 
-export const impersonateAccountsHardhat = async (
+import {Contract} from 'ethers';
+import {ethers} from 'hardhat';
+
+export async function setupUsers<T extends {[contractName: string]: Contract}>(
+  addresses: string[],
+  contracts: T
+): Promise<({address: string} & T)[]> {
+  const users: ({address: string} & T)[] = [];
+  for (const address of addresses) {
+    users.push(await setupUser(address, contracts));
+  }
+  return users;
+}
+
+export async function setupUser<T extends {[contractName: string]: Contract}>(
+  address: string,
+  contracts: T
+): Promise<{address: string} & T> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const user: any = {address};
+  for (const key of Object.keys(contracts)) {
+    user[key] = contracts[key].connect(await ethers.getSigner(address));
+  }
+  return user as {address: string} & T;
+}
+
+export async function impersonateAccountsHardhat(
   accounts: string[],
   hre: HardhatRuntimeEnvironment
-) => {
-  if (process.env.TENDERLY === 'true') {
-    return;
-  }
+): Promise<void> {
   // eslint-disable-next-line no-restricted-syntax
   for (const account of accounts) {
     // eslint-disable-next-line no-await-in-loop
@@ -16,12 +40,49 @@ export const impersonateAccountsHardhat = async (
       params: [account],
     });
   }
-};
+}
 
-export const getEthereumNetworkFromHRE = (hre: HardhatRuntimeEnvironment) => {
-  const currentNetworkName: string = hre.network.name;
-  const currentNetworkNameTypeCasted: eEthereumNetwork = (<any>(
-    eEthereumNetwork
-  ))[currentNetworkName];
-  return currentNetworkNameTypeCasted;
-};
+export function getEnumFromString<E>(
+  Enum: any,
+  String: string,
+  defaultString: string
+): E {
+  if (Object.values(Enum).some((col: any) => col === String)) {
+    return <any>String;
+  } else {
+    try {
+      throw new Error(
+        `Network ${String} not found in eEthereumNetwork. Mainnet assumed`
+      );
+    } catch (e) {
+      console.log(e);
+    }
+    return <any>defaultString;
+  }
+}
+
+export function getEthereumNetworkFromHRE(
+  hre: HardhatRuntimeEnvironment
+): eEthereumNetwork {
+  const networkString: string = hre.network.name;
+
+  const networkEnum: eEthereumNetwork = getEnumFromString<eEthereumNetwork>(
+    eEthereumNetwork,
+    networkString,
+    'main'
+  );
+  return networkEnum;
+}
+
+export async function logDeployments(): Promise<void> {
+  const allDeployments = await deployments.all();
+
+  for (const [contractName, contractData] of Object.entries(allDeployments)) {
+    console.log(`${contractName} is deployed to ${contractData.address}`);
+  }
+
+  /*console.log('Accounts are', {
+    namedAccounts: await getNamedAccounts(),
+    unnamedAccounts: await getUnnamedAccounts(),
+  });*/
+}
