@@ -1,5 +1,10 @@
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
-![CI](https://github.com/Increment-Finance/perpetual-protocol-v0/workflows/CI/badge.svg)
+
+[![Formatting and Linting](https://github.com/Increment-Finance/increment-protocol/actions/workflows/lint.yml/badge.svg)](https://github.com/Increment-Finance/increment-protocol/actions/workflows/lint.yml)
+
+[![Slither](https://github.com/Increment-Finance/increment-protocol/actions/workflows/slither.yml/badge.svg)](https://github.com/Increment-Finance/increment-protocol/actions/workflows/slither.yml)
+
+[![Unit tests](https://github.com/Increment-Finance/increment-protocol/actions/workflows/tests.yml/badge.svg)](https://github.com/Increment-Finance/increment-protocol/actions/workflows/tests.yml)
 
 # Boilerplate for ethereum solidity smart contract development
 

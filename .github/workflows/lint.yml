@@ -1,5 +1,9 @@
-name: CI
-on: push
+name: Formatting and Linting
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -27,12 +31,6 @@ jobs:
 
       - name: Installing dependencies
         run: yarn install --frozen-lockfile
-
-      - name: Linting
-        run: yarn lint
-
-      - name: Formatting
-        run: yarn format
 
       - name: Running tests
         run: yarn test
