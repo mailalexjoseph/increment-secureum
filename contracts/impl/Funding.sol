@@ -68,7 +68,7 @@ contract Funding is Getter {
 
         // go from latest date to earliest
         while (timeStamp >= earliestDate) {
-            if (roundId == 0) {
+            if (roundId <= 0) {
                 return price;
             }
             // get id of price call before
@@ -122,7 +122,7 @@ contract Funding is Getter {
         uint256 priceIndex = getChainlinkTWAP(28800); // every 8 hours: 60x60x8=28800
         uint256 pricePerpetual = getPoolTWAP(28800);
 
-        SignedMath.Int memory funding;
+        SignedMath.Int memory funding = SignedMath.Int({value: 0, isPositive: false});
         if (priceIndex >= pricePerpetual) {
             funding.isPositive = true;
             funding.value = ((priceIndex - pricePerpetual) * decimals) / (priceIndex * 24);

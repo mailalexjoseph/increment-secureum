@@ -123,7 +123,8 @@ contract Getter is Storage {
         uint256 boughtAmount = getLongBalance(account) + getShortBalance(account);
         uint256 simplifiedSellAmount = (boughtAmount * pool.price) / 10**18;
 
-        PerpetualTypes.Int memory unrealizedPnL;
+        PerpetualTypes.Int memory unrealizedPnL = PerpetualTypes.Int({value: 0, isPositive: false});
+
         if (simplifiedSellAmount >= notionalAmount) {
             unrealizedPnL.isPositive = true;
             unrealizedPnL.value = simplifiedSellAmount - notionalAmount;
@@ -163,7 +164,7 @@ contract Getter is Storage {
         //console.log("Margin is", margin);
         //console.log("unrealizedPnL is", unrealizedPnL);
         //console.log("notionalValue is", notionalValue);
-        uint256 marginRatio;
+        uint256 marginRatio = 0;
         if (notionalValue > 0) {
             if (unrealizedPnL.isPositive) {
                 marginRatio = ((margin + unrealizedPnL.value) * 10**18) / notionalValue;
