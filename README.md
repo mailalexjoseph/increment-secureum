@@ -19,7 +19,27 @@ yarn
 ```bash
 yarn test
 ```
+## COVERAGE
 
+```bash
+yarn test
+```
+
+## LINT
+
+```bash
+yarn lint
+```
+
+## FORMAT
+
+```bash
+yarn format
+```
+
+
+***************************************************************************************************************+
+## OTHER
 ## SCRIPTS
 
 Here is the list of npm scripts you can execute:
