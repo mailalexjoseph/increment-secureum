@@ -6,6 +6,8 @@ export interface SymbolMap<T> {
   [symbol: string]: T;
 }
 
+export type reserveAssetName = 'USDC' | 'DAI';
+
 export type eNetwork = eEthereumNetwork | ePolygonNetwork | eXDaiNetwork;
 
 export enum eEthereumNetwork {
