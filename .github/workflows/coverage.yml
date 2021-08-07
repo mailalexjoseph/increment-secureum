@@ -33,4 +33,4 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Running tests
-        run: yarn coverage
+        run: yarn coverage && cat coverage/lcov.info | coveralls
