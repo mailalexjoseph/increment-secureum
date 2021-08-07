@@ -28,13 +28,13 @@ yarn test
 ## LINT
 
 ```bash
-yarn lint
+yarn lint(:fix)
 ```
 
 ## FORMAT
 
 ```bash
-yarn format
+yarn format(:fix)
 ```
 
 
