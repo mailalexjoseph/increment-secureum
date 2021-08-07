@@ -1,7 +1,8 @@
 cache/
 artifacts/
 
-coverage*
+coverage/
+coverage.json
 typechain/
 
 .vscode/*
