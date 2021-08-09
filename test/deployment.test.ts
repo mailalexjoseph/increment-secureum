@@ -12,27 +12,28 @@ import {setup} from './helpers/setup';
 describe('Increment App: Deployment', function () {
   describe('Deployment', function () {
     it('Should initialize vAMM pool', async function () {
-      const {deployer, data} = await setup();
+      const {deployer, vAMMconfig} = await setup();
 
       const pool = await deployer.perpetual.getPoolInfo();
 
       // correct reserve tokens
 
-      expect(pool.vQuote).to.be.equal(data.QuoteAssetReserve);
-      expect(pool.vBase).to.be.equal(data.BaseAssetReserve);
+      expect(pool.vQuote).to.be.equal(vAMMconfig.QuoteAssetReserve);
+      expect(pool.vBase).to.be.equal(vAMMconfig.BaseAssetReserve);
 
       // check pool price
       const normalizationConstantEther = utils.parseUnits('1', 18);
-      const expectPrice = data.BaseAssetReserve.mul(
+      const expectPrice = vAMMconfig.BaseAssetReserve.mul(
         normalizationConstantEther
-      ).div(data.QuoteAssetReserve);
+      ).div(vAMMconfig.QuoteAssetReserve);
       expect(pool.price).to.be.equal(expectPrice);
 
       // check pool constant
       const normalizationConstant = utils.parseUnits('1', 38); /// adjust by big number to avoid overflow error from chai library
-      const expectTotalAssetReserve: BigNumber = data.QuoteAssetReserve.mul(
-        data.BaseAssetReserve
-      ).div(normalizationConstant);
+      const expectTotalAssetReserve: BigNumber =
+        vAMMconfig.QuoteAssetReserve.mul(vAMMconfig.BaseAssetReserve).div(
+          normalizationConstant
+        );
 
       const realizedTotalAssetReserve: BigNumber = pool.totalAssetReserve.div(
         normalizationConstant

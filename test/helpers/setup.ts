@@ -25,20 +25,32 @@ export interface TestEnv {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deployer: any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bob: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  alice: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: any[];
   perpetual: Perpetual;
   usdc: ERC20;
-  data: iVAMMConfig;
+  vAMMconfig: iVAMMConfig;
 }
 
 const testEnv: TestEnv = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deployer: {} as any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  user: {} as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  bob: {} as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  alice: {} as any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: [] as any[],
   perpetual: {} as Perpetual,
   usdc: {} as ERC20,
-  data: {} as iVAMMConfig,
+  vAMMconfig: {} as iVAMMConfig,
 } as TestEnv;
 
 const getContracts = async (deployerAccount: string) => {
@@ -67,13 +79,18 @@ async function stealFunds(
   whale.token.transfer(newHolder, balance);
 }
 
-export const funding = deployments.createFixture(async () => {
-  const {deployer} = await getNamedAccounts();
-  const {usdc} = await getContracts(deployer);
-  const fullAmount = await convertToCurrencyDecimals(usdc, '10000');
-  await stealFunds(usdc, deployer, fullAmount, env);
-
+async function fundAcount(account: string): Promise<BigNumber> {
+  const {usdc} = await getContracts(account);
+  const fullAmount = await convertToCurrencyDecimals(usdc, '100');
+  await stealFunds(usdc, account, fullAmount, env);
   return fullAmount;
+}
+
+export const funding = deployments.createFixture(async () => {
+  const {bob, alice, user} = await getNamedAccounts();
+  await fundAcount(bob);
+  await fundAcount(alice);
+  return await fundAcount(user);
 });
 
 export const setup = deployments.createFixture(async () => {
@@ -82,15 +99,19 @@ export const setup = deployments.createFixture(async () => {
   await deployments.fixture(['Perpetual', 'InitiateReserves']);
   await logDeployments();
 
-  const {deployer} = await getNamedAccounts();
+  const {deployer, bob, alice, user} = await getNamedAccounts();
 
   const contracts = await getContracts(deployer);
+
   // fill container
   testEnv.deployer = await setupUser(deployer, contracts);
+  testEnv.user = await setupUser(user, contracts);
+  testEnv.bob = await setupUser(bob, contracts);
+  testEnv.alice = await setupUser(alice, contracts);
   testEnv.users = await setupUsers(await getUnnamedAccounts(), contracts);
   testEnv.perpetual = contracts.perpetual;
   testEnv.usdc = contracts.usdc;
-  testEnv.data = getVAMMConfig();
+  testEnv.vAMMconfig = getVAMMConfig();
 
   return testEnv;
 });

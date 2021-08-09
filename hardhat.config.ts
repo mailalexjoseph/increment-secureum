@@ -80,8 +80,18 @@ const config: HardhatUserConfig = {
     ],
   },
   namedAccounts: {
-    deployer: 0,
-    simpleERC20Beneficiary: 1,
+    deployer: {
+      default: 0,
+    },
+    user: {
+      default: 1,
+    },
+    bob: {
+      default: 2,
+    },
+    alice: {
+      default: 3,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

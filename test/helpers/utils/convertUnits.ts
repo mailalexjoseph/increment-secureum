@@ -1,8 +1,12 @@
 import {utils} from 'ethers';
+import {BigNumber} from '../../../helpers/types';
+import {ERC20} from '../../../typechain';
+import {convertToCurrencyUnits} from '../../../helpers/contracts-helpers';
 
-const convertUSDCtoEther = (number: string) => {
-  const numString = utils.formatUnits(number, 6);
+export async function bigNumberToEther(
+  number: BigNumber,
+  token: ERC20
+): Promise<BigNumber> {
+  const numString: string = await convertToCurrencyUnits(token, number);
   return utils.parseEther(numString);
-};
-
-module.exports = {convertUSDCtoEther};
+}
