@@ -1,25 +1,19 @@
-/*
+import {utils} from 'ethers';
+import {ERC20} from '../typechain';
+import {BigNumber} from './types';
 
-import {Contract, Signer, ethers} from 'ethers';
-
-import {tEthereumAddress} from './types';
-//import {getIErc20Detailed} from './contracts-getters';
-
-export const convertToCurrencyDecimals = async (
-  tokenAddress: tEthereumAddress,
+export async function convertToCurrencyDecimals(
+  token: ERC20,
   amount: string
-) => {
-  const token = await getIErc20Detailed(tokenAddress);
-  let decimals = (await token.decimals()).toString();
-  return ethers.utils.parseUnits(amount, decimals);
-};
+): Promise<BigNumber> {
+  const decimals = (await token.decimals()).toString();
+  return utils.parseUnits(amount, decimals);
+}
 
-export const convertToCurrencyUnits = async (
-  tokenAddress: string,
-  amount: string
-) => {
-  const token = await getIErc20Detailed(tokenAddress);
-  let decimals = await token.decimals();
-  return ethers.utils.formatUnits(amount, decimals);
-};
-*/
+export async function convertToCurrencyUnits(
+  token: ERC20,
+  amount: BigNumber
+): Promise<string> {
+  const decimals = await token.decimals();
+  return utils.formatUnits(amount, decimals);
+}

@@ -1,77 +1,76 @@
-import env = require('hardhat');
-import {BigNumber} from 'ethers';
 import {expect} from 'chai';
-import {utils} from 'ethers';
+import {setup, funding} from './helpers/setup';
 import {
-  getChainlinkForexAggregator,
-  getReserveOracleAddress,
-} from '../helpers/contract-getters';
-import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
-import {setup} from './helpers/setup';
+  convertToCurrencyDecimals,
+  convertToCurrencyUnits,
+} from '../helpers/contracts-helpers';
+import {utils, BigNumber} from 'ethers';
 
 describe('Increment App: Reserve', function () {
   describe('Can deposit and withdraw USDC', function () {
     it('Should give allowance to contracts.perpetual contract', async function () {
-      const {deployer, perpetual, data} = await setup();
+      const {deployer, perpetual, usdc} = await setup();
+      const depositAmount = await funding();
 
-      await deployer.usdc.approve(perpetual.address, data.depositAmount);
-      const allowance = await contracts.usdc.allowance(
-        owner.address,
-        contracts.perpetual.address
+      // should have enough balance to deposit
+      expect(await deployer.usdc.balanceOf(deployer.address)).to.be.equal(
+        depositAmount
       );
-      expect(allowance).to.be.equal(data.depositAmount);
+
+      // should succesfully approve
+      await deployer.usdc.approve(perpetual.address, depositAmount);
+      const allowance = await usdc.allowance(
+        deployer.address,
+        perpetual.address
+      );
+      expect(allowance).to.be.equal(depositAmount);
     });
-    /*
+
     it('Should deposit USDC', async function () {
-      await contracts.usdc
-        .connect(owner)
-        .approve(contracts.perpetual.address, data.depositAmount);
-      const allowance = await contracts.usdc.allowance(
-        owner.address,
-        contracts.perpetual.address
-      );
-      expect(allowance).to.be.equal(data.depositAmount);
-      await expect(
-        contracts.perpetual.deposit(data.depositAmount, contracts.usdc.address)
-      )
-        .to.emit(contracts.perpetual, 'Deposit')
-        .withArgs(data.depositAmount, owner.address, contracts.usdc.address);
+      const {deployer, perpetual, usdc} = await setup();
+      const depositAmount = await funding();
+
+      await deployer.usdc.approve(perpetual.address, depositAmount);
+
+      // should fire up deposit event
+      await expect(deployer.perpetual.deposit(depositAmount, usdc.address))
+        .to.emit(perpetual, 'Deposit')
+        .withArgs(depositAmount, deployer.address, usdc.address);
+
+      // should notice deposited amount in asset value / portfolio value
       expect(
-        await contracts.perpetual.getAssetValue(
-          owner.address,
-          contracts.usdc.address
+        utils.formatEther(
+          await perpetual.getAssetValue(deployer.address, usdc.address)
         )
-      ).to.be.equal(convertUSDCtoEther(data.depositAmount));
+      ).to.be.equal(await convertToCurrencyUnits(usdc, depositAmount));
+
       expect(
-        await contracts.perpetual.getPortfolioValue(owner.address)
-      ).to.be.equal(convertUSDCtoEther(data.depositAmount));
+        utils.formatEther(await perpetual.getPortfolioValue(deployer.address))
+      ).to.be.equal(await convertToCurrencyUnits(usdc, depositAmount));
     });
     it('Should withdraw USDC', async function () {
-      await contracts.usdc
-        .connect(owner)
-        .approve(contracts.perpetual.address, data.depositAmount);
-      await contracts.perpetual.deposit(
-        data.depositAmount,
-        contracts.usdc.address
-      );
+      const {deployer, perpetual, usdc} = await setup();
+      const depositAmount = await funding();
 
-      await expect(
-        contracts.perpetual.withdraw(
-          convertUSDCtoEther(data.depositAmount),
-          contracts.usdc.address
-        )
-      )
-        .to.emit(contracts.perpetual, 'Withdraw')
-        .withArgs(
-          convertUSDCtoEther(data.depositAmount),
-          owner.address,
-          contracts.usdc.address
+      await deployer.usdc.approve(perpetual.address, depositAmount);
+      await deployer.perpetual.deposit(depositAmount, usdc.address);
+
+      // withdrawable amount is equal to amount deposited
+      const deployerBalance: BigNumber =
+        await deployer.perpetual.getReserveBalance(
+          deployer.address,
+          usdc.address
         );
+      const deposited = await convertToCurrencyUnits(usdc, depositAmount);
+      expect(utils.formatEther(deployerBalance)).to.be.equal(deposited);
 
-      expect(await contracts.usdc.balanceOf(owner.address)).to.be.equal(
-        data.supply
-      );
+      // should fire up withdrawal event
+      await expect(perpetual.withdraw(deployerBalance, usdc.address))
+        .to.emit(perpetual, 'Withdraw')
+        .withArgs(utils.parseEther(deposited), deployer.address, usdc.address);
+
+      // balance should be same as before withdrawal
+      expect(await usdc.balanceOf(deployer.address)).to.be.equal(depositAmount);
     });
-    */
   });
 });

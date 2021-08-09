@@ -12,13 +12,11 @@ import {
   logDeployments,
   impersonateAccountsHardhat,
 } from '../../helpers/misc-utils';
-import {
-  eEthereumNetwork,
-  BigNumber,
-  tEthereumAddress,
-} from '../../helpers/types';
+import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
+import {BigNumber, tEthereumAddress} from '../../helpers/types';
+
 import env = require('hardhat');
-import {Perpetual, MintableERC20, ERC20} from '../../typechain';
+import {Perpetual, ERC20} from '../../typechain';
 import {getWhale} from './utils';
 import {iVAMMConfig} from '../../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -29,7 +27,7 @@ export interface TestEnv {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: any[];
   perpetual: Perpetual;
-  usdc: MintableERC20;
+  usdc: ERC20;
   data: iVAMMConfig;
 }
 
@@ -39,7 +37,7 @@ const testEnv: TestEnv = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: [] as any[],
   perpetual: {} as Perpetual,
-  usdc: {} as MintableERC20,
+  usdc: {} as ERC20,
   data: {} as iVAMMConfig,
 } as TestEnv;
 
@@ -48,30 +46,36 @@ const getContracts = async (deployerAccount: string) => {
     perpetual: <Perpetual>(
       await ethers.getContract('Perpetual', deployerAccount)
     ),
-    usdc: <MintableERC20>(
+    usdc: <ERC20>(
       await ethers.getContractAt(
-        'MintableERC20',
+        'ERC20',
         getReserveAddress('USDC', getEthereumNetworkFromHRE(env))
       )
     ),
   };
 };
 
-export async function getFunds(
-  tokenName: string,
+async function stealFunds(
+  token: ERC20,
   newHolder: tEthereumAddress,
   balance: BigNumber,
   hre: HardhatRuntimeEnvironment
 ): Promise<void> {
-  const token: ERC20 = await ethers.getContractAt(
-    'MintableERC20',
-    getReserveAddress('USDC', getEthereumNetworkFromHRE(env))
-  );
   const whaleAddress = await getWhale(token, balance);
   await impersonateAccountsHardhat([whaleAddress], hre);
   const whale = await setupUser(whaleAddress, {token: token});
   whale.token.transfer(newHolder, balance);
 }
+
+export const funding = deployments.createFixture(async () => {
+  const {deployer} = await getNamedAccounts();
+  const {usdc} = await getContracts(deployer);
+  const fullAmount = await convertToCurrencyDecimals(usdc, '10000');
+  await stealFunds(usdc, deployer, fullAmount, env);
+
+  return fullAmount;
+});
+
 export const setup = deployments.createFixture(async () => {
   // get contracts
   //console.log('We are before running fixtures');

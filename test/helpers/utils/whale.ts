@@ -1,4 +1,3 @@
-import {ethers} from 'hardhat';
 import {
   eEthereumNetwork,
   BigNumber,
@@ -6,7 +5,10 @@ import {
   SymbolMap,
   tEthereumAddress,
 } from '../../../helpers/types';
-import {getEthereumNetworkFromHRE} from '../../../helpers/misc-utils';
+import {
+  getEthereumNetworkFromHRE,
+  getEthereumNetworkFromString,
+} from '../../../helpers/misc-utils';
 
 import env = require('hardhat');
 
@@ -48,18 +50,25 @@ export async function getWhale(
   token: ERC20,
   balance: BigNumber
 ): Promise<string> {
-  const tokenName: string = await token.name();
-  const whales: string[] =
-    whalesList[getEthereumNetworkFromHRE(env)][tokenName];
+  const tokenName: string = await token.symbol();
+  try {
+    const whales: string[] =
+      whalesList[getEthereumNetworkFromString('main')][tokenName];
 
-  for (let i = 0; i < whales.length; i++) {
-    const whaleBalance: BigNumber = await token.balanceOf(whales[i]);
-    if (whaleBalance >= balance) {
-      return whales[i];
+    for (let i = 0; i < whales.length; i++) {
+      const whaleBalance: BigNumber = await token.balanceOf(whales[i]);
+      if (whaleBalance >= balance) {
+        return whales[i];
+      }
     }
-  }
-  throw new Error(
-    `All whales for token ${tokenName.toString()},
+    throw new Error(
+      `All whales for token ${tokenName.toString()},
      in network ${env.network.name} are out of funds.`
-  );
+    );
+  } catch {
+    throw new Error(
+      `No whales for token ${tokenName.toString()},
+     in network ${env.network.name} found.`
+    );
+  }
 }
