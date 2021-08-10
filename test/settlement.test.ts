@@ -1,6 +1,5 @@
 import {expect} from 'chai';
 import {setup, funding} from './helpers/setup';
-import {convertToCurrencyUnits} from '../helpers/contracts-helpers';
 import {utils, BigNumber} from 'ethers';
 import {Perpetual, ERC20} from '../typechain';
 
@@ -57,7 +56,7 @@ describe('Increment App: Settlement', function () {
 
       await deployer.perpetual.updateFundingRate();
 
-      const fundingRate = await perpetual.getFundingRate();
+      /*const fundingRate = await perpetual.getFundingRate();
 
       await user.perpetual.RedeemShortQuote(usdc.address);
 
@@ -67,7 +66,7 @@ describe('Increment App: Settlement', function () {
       );
 
       const total = usdcBalanceAfter.add(fundingRate.value);
-      //expect(total).to.be.equal(utils.parseEther('100')); //
+      expect(total).to.be.equal(utils.parseEther('100')); */
     });
   });
 });

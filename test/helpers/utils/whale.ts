@@ -5,10 +5,7 @@ import {
   SymbolMap,
   tEthereumAddress,
 } from '../../../helpers/types';
-import {
-  getEthereumNetworkFromHRE,
-  getEthereumNetworkFromString,
-} from '../../../helpers/misc-utils';
+import {getEthereumNetworkFromString} from '../../../helpers/misc-utils';
 
 import env = require('hardhat');
 

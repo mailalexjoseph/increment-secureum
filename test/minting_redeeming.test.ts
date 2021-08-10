@@ -61,7 +61,7 @@ describe('Increment App: Minting / Redeeming', function () {
       //  await perpetual.getUserMarginRatio(user.address)
       //).to.be.equal(utils.parseEther("0.2")); // 100/500
 
-      const longBalance = await perpetual.getLongBalance(user.address);
+      //const longBalance = await perpetual.getLongBalance(user.address);
       await user.perpetual.RedeemLongQuote(usdc.address);
     });
 
@@ -71,12 +71,13 @@ describe('Increment App: Minting / Redeeming', function () {
       //  await perpetual.getUserMarginRatio(user.address)
       //).to.be.equal(utils.parseEther("0.2")); // 100/500
 
-      const shortBalanceBefore = await perpetual.getShortBalance(user.address);
+      /*const shortBalanceBefore = await perpetual.getShortBalance(user.address);
       await user.perpetual.RedeemShortQuote(usdc.address);
 
       const shortBalanceAfter = await user.perpetual.getLongBalance(
         user.address
       );
+      */
       //console.log("shortBalanceAfter is", shortBalanceAfter.toString());
     });
   });

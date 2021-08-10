@@ -1,6 +1,5 @@
 import {expect} from 'chai';
 import {setup, funding} from './helpers/setup';
-import {bigNumberToEther} from './helpers/utils';
 import {utils, BigNumber} from 'ethers';
 import {Perpetual, ERC20} from '../typechain';
 

@@ -1,7 +1,7 @@
 import {expect} from 'chai';
-import {setup, funding} from './helpers/setup';
-import {utils, BigNumber} from 'ethers';
-import {Perpetual, ERC20} from '../typechain';
+import {setup} from './helpers/setup';
+import {utils} from 'ethers';
+import {Perpetual} from '../typechain';
 import {iVAMMConfig} from '../helpers/types';
 
 describe('Increment App: Funding rate', function () {
