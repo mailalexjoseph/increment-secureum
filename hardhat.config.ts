@@ -1,10 +1,12 @@
 import 'dotenv/config';
-import {HardhatUserConfig} from 'hardhat/types';
 import 'hardhat-deploy';
-import '@nomiclabs/hardhat-ethers';
 import 'hardhat-gas-reporter';
 import '@typechain/hardhat';
+import '@nomiclabs/hardhat-ethers';
+import '@nomiclabs/hardhat-waffle';
 import 'solidity-coverage';
+import 'hardhat-gas-reporter';
+import {HardhatUserConfig} from 'hardhat/types';
 import {node_url, accounts} from './helpers/network';
 
 // While waiting for hardhat PR: https://github.com/nomiclabs/hardhat/pull/1542
@@ -70,11 +72,11 @@ const config: HardhatUserConfig = {
         },
       },
       {
-        version: '0.6.12',
+        version: '0.7.6',
         settings: {},
       },
       {
-        version: '0.7.6',
+        version: '0.6.12',
         settings: {},
       },
     ],
@@ -109,6 +111,7 @@ const config: HardhatUserConfig = {
     enabled: process.env.REPORT_GAS ? true : false,
     coinmarketcap: process.env.COINMARKETCAP_API_KEY,
     maxMethodDiff: 10,
+    remoteContracts: [],
   },
   typechain: {
     outDir: 'typechain',
