@@ -100,12 +100,7 @@ export interface IPerpetualConfiguration {
   MarketId: string;
   ReserveAssets: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
   ReservesConfig: iMultiPoolsAssets<IReserveParams>;
-  ChainlinkReserveAggregator: iEthereumParamsPerNetwork<
-    SymbolMap<tEthereumAddress>
-  >;
-  ChainlinkForexAggregator: iEthereumParamsPerNetwork<
-    SymbolMap<tEthereumAddress>
-  >;
+  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
   VAMMConfig: iVAMMConfig;
   Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }

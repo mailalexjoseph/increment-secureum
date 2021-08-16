@@ -10,9 +10,9 @@ export function getChainlinkForexAggregator(
   pair: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  //console.log("Aggregator is", PerpConfig.ChainlinkForexAggregator[network]);
-  //console.log("Pair is", PerpConfig.ChainlinkForexAggregator[network][pair]);
-  return PerpConfig.ChainlinkForexAggregator[network][pair];
+  //console.log("Aggregator is", PerpConfig.ChainlinkOracles[network]);
+  //console.log("Pair is", PerpConfig.ChainlinkOracles[network][pair]);
+  return PerpConfig.ChainlinkOracles[network][pair];
 }
 
 export function getReserveAddress(
@@ -26,7 +26,7 @@ export function getReserveOracleAddress(
   reserveAssetName: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return PerpConfig.ChainlinkReserveAggregator[network][reserveAssetName];
+  return PerpConfig.ChainlinkOracles[network][reserveAssetName];
 }
 
 export function getQuoteAssetReserve(): BigNumber {
@@ -41,6 +41,12 @@ export function getLendingPoolAddressProvider(
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
   return PerpConfig.Integrations[network].lendingPoolAddressProvider;
+}
+
+export function getFeedRegistry(
+  network: eEthereumNetwork = eEthereumNetwork.main
+): tEthereumAddress {
+  return PerpConfig.ChainlinkOracles[network].FEED_REGISTRY;
 }
 
 export function getVAMMConfig(): iVAMMConfig {
