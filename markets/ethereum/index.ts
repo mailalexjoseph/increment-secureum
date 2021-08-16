@@ -25,40 +25,29 @@ const strategyUSDC: IReserveParams = {
 };
 
 // ----------------
-// Chainlink Reserve Oracles
+// Chainlink Oracles
 // ----------------
 
-const chainlinkReserveAggregator = {
+const chainlinkOracles = {
   [eEthereumNetwork.coverage]: {
     USDC: ZERO_ADDRESS,
+    JPY_USD: ZERO_ADDRESS,
+    FEED_REGISTRY: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
     USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
+    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
+    FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
   },
   [eEthereumNetwork.kovan]: {
     USDC: '0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60',
+    JPY_USD: '0xD627B1eF3AC23F1d3e576FA6206126F3c1Bd0942',
+    FEED_REGISTRY: '0xAa7F6f7f507457a1EE157fE97F6c7DB2BEec5cD0',
   },
   [eEthereumNetwork.main]: {
     USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
-  },
-};
-
-// ----------------
-// Chainlink Forex Oracles
-// ----------------
-
-const chainlinkForexAggregator = {
-  [eEthereumNetwork.coverage]: {
-    JPY_USD: ZERO_ADDRESS,
-  },
-  [eEthereumNetwork.hardhat]: {
     JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
-  },
-  [eEthereumNetwork.kovan]: {
-    JPY_USD: '0xD627B1eF3AC23F1d3e576FA6206126F3c1Bd0942',
-  },
-  [eEthereumNetwork.main]: {
-    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
+    FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
   },
 };
 
@@ -105,8 +94,7 @@ export const PerpConfig: IPerpetualConfiguration = {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     },
   },
-  ChainlinkReserveAggregator: chainlinkReserveAggregator,
-  ChainlinkForexAggregator: chainlinkForexAggregator,
+  ChainlinkOracles: chainlinkOracles,
   Integrations: integrations,
 };
 
