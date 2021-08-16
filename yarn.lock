@@ -5946,6 +5946,11 @@ pify@^4.0.1:
   resolved "https://registry.yarnpkg.com/pify/-/pify-4.0.1.tgz#4b2cd25c50d598735c50292224fd8c6df41e3231"
   integrity sha512-uB80kBFb/tfd68bVleG9T5GGsGPjJrLAUpR5PZIrhBnIaRTQRjqdJSsIKkOP6OAIFbj7GOrcudc5pNjZ+geV2g==
 
+prb-math@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/prb-math/-/prb-math-2.2.0.tgz#9cbe103924e790a08e9e0005dac34c041f82523e"
+  integrity sha512-lDcHpG8i4prKxKmc4Wn4OkwbIOArLKx5mAWOgWSCYfacINePp2NsVckw6k9IGkjYKJPJZJYEUjv/sRU3SJhJkw==
+
 prelude-ls@^1.2.1:
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/prelude-ls/-/prelude-ls-1.2.1.tgz#debc6489d7a6e6b0e7611888cec880337d316396"
