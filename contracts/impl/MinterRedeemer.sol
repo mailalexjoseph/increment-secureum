@@ -25,7 +25,7 @@ contract MinterRedeemer is Settlement, vAMM {
 
     /************************* events *************************/
 
-    event buyQuoteLong(uint256 notional, address indexed user, uint256 QuoteLong);
+    event buyQuoteLong(uint256 notional, address indexed user, uint256 quoteLong);
 
     event buyQuoteShort(uint256 notional, address indexed user, uint256 QuoteShort);
 
@@ -59,42 +59,42 @@ contract MinterRedeemer is Settlement, vAMM {
     /// @param _amount Amount of Quote tokens to be bought
     /// @dev No checks are done if bought amount exceeds allowance
     function MintLongQuote(uint256 _amount) public returns (uint256) {
-        require(balances[msg.sender].QuoteShort == 0, "User can not go long w/ an open short position");
-        require(balances[msg.sender].QuoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
+        require(balances[msg.sender].quoteShort == 0, "User can not go long w/ an open short position");
+        require(balances[msg.sender].quoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
         require(_leverageIsFine(msg.sender, _amount), "Leverage factor is too high");
 
-        uint256 QuoteLongBought = _mintVBase(_amount);
+        uint256 quoteLongBought = _mintVBase(_amount);
 
         balances[msg.sender].usdNotional += _amount;
-        balances[msg.sender].QuoteLong += QuoteLongBought;
+        balances[msg.sender].quoteLong += quoteLongBought;
 
-        emit buyQuoteLong(_amount, msg.sender, QuoteLongBought);
+        emit buyQuoteLong(_amount, msg.sender, quoteLongBought);
 
         index[msg.sender] = global_index;
-        return QuoteLongBought;
+        return quoteLongBought;
     }
 
     /// @notice Redeems long Quote derivatives
     /// @param _redeemAsset Assets used to settle account
     /// @dev The value of the redeemed tokens is not calculated from price oracles
     function RedeemLongQuote(address _redeemAsset) public returns (uint256) {
-        uint256 _amount = balances[msg.sender].QuoteLong;
+        uint256 _amount = balances[msg.sender].quoteLong;
         //console.log("Amount to be redeemed", _amount);
-        //console.log("Amount currently held", balances[msg.sender].QuoteLong);
+        //console.log("Amount currently held", balances[msg.sender].quoteLong);
         require(_amount > 0, "Should redeem amount larger than 0");
-        require(balances[msg.sender].QuoteLong >= _amount, "USDC balances are too low");
-        balances[msg.sender].QuoteLong = 0;
+        require(balances[msg.sender].quoteLong >= _amount, "USDC balances are too low");
+        balances[msg.sender].quoteLong = 0;
 
         uint256 QuoteLongSold = _mintVQuote(_amount);
-        uint256 QuoteLongBought = balances[msg.sender].usdNotional;
-        //console.log("QuoteLongBought is", QuoteLongBought);
-        //console.log("QuoteLongSold is", QuoteLongSold);
+        uint256 quoteLongBought = balances[msg.sender].usdNotional;
+        //console.log("quoteLongBought is", quoteLongBought);
+        //console.log("QuoteLongSolglobal_indexd is", QuoteLongSold);
 
-        if (QuoteLongSold >= QuoteLongBought) {
-            uint256 dollarAmountOwed = (QuoteLongSold - QuoteLongBought);
+        if (QuoteLongSold >= quoteLongBought) {
+            uint256 dollarAmountOwed = (QuoteLongSold - quoteLongBought);
             balances[msg.sender].userReserve[_redeemAsset] += _convertDollarToAssets(dollarAmountOwed, _redeemAsset);
-        } else if (QuoteLongSold < QuoteLongBought) {
-            uint256 dollarAmountPayed = QuoteLongBought - QuoteLongSold;
+        } else if (QuoteLongSold < quoteLongBought) {
+            uint256 dollarAmountPayed = quoteLongBought - QuoteLongSold;
             balances[msg.sender].userReserve[_redeemAsset] -= _convertDollarToAssets(dollarAmountPayed, _redeemAsset);
         }
         settleAccount(msg.sender, _redeemAsset);
@@ -115,13 +115,13 @@ contract MinterRedeemer is Settlement, vAMM {
     /// @param _amount Amount of Quote tokens to be bought
     /// @dev No checks are done if bought amount exceeds allowance
     function MintShortQuote(uint256 _amount) public returns (uint256) {
-        require(balances[msg.sender].QuoteLong == 0, "User can not go long w/ an open short position");
-        require(balances[msg.sender].QuoteShort == 0, "User can not go long w/ an open short position"); // since index would be recalculated
+        require(balances[msg.sender].quoteLong == 0, "User can not go long w/ an open short position");
+        require(balances[msg.sender].quoteShort == 0, "User can not go long w/ an open short position"); // since index would be recalculated
         require(_leverageIsFine(msg.sender, _amount), "Leverage factor is too high");
         uint256 QuoteShortBought = _burnVBase(_amount);
 
         balances[msg.sender].usdNotional += _amount;
-        balances[msg.sender].QuoteShort += QuoteShortBought;
+        balances[msg.sender].quoteShort += QuoteShortBought;
         //console.log("QuoteShortBought is", QuoteShortBought);
         emit buyQuoteShort(_amount, msg.sender, QuoteShortBought);
         index[msg.sender] = global_index;
@@ -132,11 +132,11 @@ contract MinterRedeemer is Settlement, vAMM {
     /// @param _redeemAsset Assets used to settle account
     /// @dev The value of the redeemed tokens is not calculated from price oracles
     function RedeemShortQuote(address _redeemAsset) public returns (uint256) {
-        uint256 _amount = balances[msg.sender].QuoteShort;
+        uint256 _amount = balances[msg.sender].quoteShort;
         require(_amount > 0, "Should redeem amount larger than 0");
-        require(balances[msg.sender].QuoteShort >= _amount, "USDC balances are too low");
+        require(balances[msg.sender].quoteShort >= _amount, "USDC balances are too low");
 
-        balances[msg.sender].QuoteShort -= _amount;
+        balances[msg.sender].quoteShort -= _amount;
 
         uint256 QuoteShortSold = _burnVQuote(_amount);
         uint256 QuoteShortBought = balances[msg.sender].usdNotional;

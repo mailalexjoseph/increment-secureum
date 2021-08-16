@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {ILendingPoolAddressesProvider} from "../interfaces/InterfaceAave/lendingPool/ILendingPoolAddressesProvider.sol";
+import {ILendingPoolAddressesProvider} from "../interfaces/Aave/lendingPool/ILendingPoolAddressesProvider.sol";
 import {Storage} from "./Storage.sol";
 
 /// @notice Initiates address of chainlink price oracles

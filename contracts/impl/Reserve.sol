@@ -5,8 +5,8 @@ import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IER
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import {IAToken} from "../interfaces/InterfaceAave/iaToken/IAToken.sol";
-import {ILendingPool} from "../interfaces/InterfaceAave/lendingPool/ILendingPool.sol";
+import {IAToken} from "../interfaces/Aave/iaToken/IAToken.sol";
+import {ILendingPool} from "../interfaces/Aave/lendingPool/ILendingPool.sol";
 import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
 import {Getter} from "./Getter.sol";
 

@@ -5,7 +5,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 
 import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
 import {Storage} from "./Storage.sol";
-import {ILendingPool} from "../interfaces/InterfaceAave/lendingPool/ILendingPool.sol";
+import {ILendingPool} from "../interfaces/Aave/lendingPool/ILendingPool.sol";
 
 import "hardhat/console.sol";
 
@@ -73,13 +73,13 @@ contract Getter is Storage {
     /// @notice Returns user long balance
     /// @param account user address
     function getLongBalance(address account) public view returns (uint256) {
-        return balances[account].QuoteLong;
+        return balances[account].quoteLong;
     }
 
     /// @notice Returns user short balance
     /// @param account user address
     function getShortBalance(address account) public view returns (uint256) {
-        return balances[account].QuoteShort;
+        return balances[account].quoteShort;
     }
 
     /// @notice Returns user USD notional

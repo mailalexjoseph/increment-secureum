@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import {IPerpetual} from "../IPerpetual.sol";
+import {IPerpetual} from "../interfaces/Perpetual/IPerpetual.sol";
 import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title A perpetual contract w/ aTokens as collateral

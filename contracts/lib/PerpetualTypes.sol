@@ -6,8 +6,8 @@ pragma solidity 0.8.4;
 library PerpetualTypes {
     struct UserPosition {
         mapping(address => uint256) userReserve;
-        uint256 QuoteLong;
-        uint256 QuoteShort;
+        uint256 quoteLong;
+        uint256 quoteShort;
         uint256 usdNotional;
     }
 

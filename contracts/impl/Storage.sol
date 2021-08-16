@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
-import {ILendingPoolAddressesProvider} from "../interfaces/InterfaceAave/lendingPool/ILendingPoolAddressesProvider.sol";
+import {ILendingPoolAddressesProvider} from "../interfaces/Aave/lendingPool/ILendingPoolAddressesProvider.sol";
 
 import "hardhat/console.sol";
 
