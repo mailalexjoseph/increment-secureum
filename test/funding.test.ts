@@ -1,7 +1,9 @@
 import {expect} from 'chai';
 import {setup} from './helpers/setup';
+import {ethers} from 'hardhat';
 import {utils} from 'ethers';
 import {Perpetual} from '../typechain';
+import {getBlockTime} from '../helpers/contracts-helpers';
 import {iVAMMConfig} from '../helpers/types';
 
 describe('Increment App: Funding rate', function () {
@@ -21,19 +23,7 @@ describe('Increment App: Funding rate', function () {
       ).div(vAMMconfig.QuoteAssetReserve);
       await expect(deployer.perpetual.pushSnapshot())
         .to.emit(deployer.perpetual, 'LogSnapshot')
-        .withArgs(
-          1627998119, // why is the block.number constant and 1627998119 ???3,
-          /*
-          possible solution: contract-helpers/getBlockNumber()
-          "
-          export const getCurrentBlock = async () => {
-          return DRE.ethers.provider.getBlockNumber();
-          "
-        };
-        */
-          expectedPrice,
-          0
-        );
+        .withArgs(await getBlockTime(), expectedPrice, 0);
       const firstSnapshot = await deployer.perpetual.getVAMMsnapshots(0);
       expect(firstSnapshot.price).to.be.equal(expectedPrice);
     });
