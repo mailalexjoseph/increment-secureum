@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
 import {SignedMath} from "../lib/SignedMath.sol";
@@ -12,7 +13,7 @@ import "hardhat/console.sol";
 /// @notice Calculates funding rates (uses Signed Math library of dYdX)
 /// @dev revamp modular structure to minimize state reads
 
-contract Funding is Getter {
+contract Funding is Getter, Ownable {
     using SignedMath for SignedMath.Int;
 
     // events
@@ -111,7 +112,7 @@ contract Funding is Getter {
     }
 
     /****************************** Funding Rate ******************************/
-    function updateFundingRate() public {
+    function updateFundingRate() public onlyOwner {
         SignedMath.Int memory fundingRate = _getFundingRate();
         _setFundingRate(fundingRate);
         emit LogFundingPayment(block.number, fundingRate.value, fundingRate.isPositive);
@@ -160,7 +161,7 @@ contract Funding is Getter {
 
     /****************************** Helper ******************************/
 
-    function pushSnapshot() public {
+    function pushSnapshot() public onlyOwner {
         PerpetualTypes.Price memory newPrice;
         if (prices.length > 0) {
             newPrice = PerpetualTypes.Price({

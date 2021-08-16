@@ -33,13 +33,13 @@ const chainlinkReserveAggregator = {
     USDC: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    USDC: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
+    USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
   },
   [eEthereumNetwork.kovan]: {
-    USDC: '0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838',
+    USDC: '0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60',
   },
   [eEthereumNetwork.main]: {
-    USDC: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
+    USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
   },
 };
 
@@ -52,13 +52,13 @@ const chainlinkForexAggregator = {
     JPY_USD: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    JPY_USD: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
+    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
   },
   [eEthereumNetwork.kovan]: {
-    JPY_USD: '0x64EaC61A2DFda2c3Fa04eED49AA33D021AeC8838',
+    JPY_USD: '0xD627B1eF3AC23F1d3e576FA6206126F3c1Bd0942',
   },
   [eEthereumNetwork.main]: {
-    JPY_USD: '0x986b5E1e1755e3C2440e960477f25201B0a8bbD4',
+    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
   },
 };
 

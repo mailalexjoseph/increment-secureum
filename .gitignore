@@ -20,4 +20,5 @@ contractsInfo.json
 deployments/hardhat
 deployments/localhost
 
-docs/
+_toDo/
+notes.md
