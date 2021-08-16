@@ -140,7 +140,7 @@ contract Funding is Getter, Ownable {
         // load old funding rate
         PerpetualTypes.Index memory currentIndex = global_index;
 
-        if (global_index.blockNumber < block.number) {
+        if (global_index.timeStamp < block.timestamp) {
             // convert to signed int
             SignedMath.Int memory currentIndexInt = SignedMath.Int({
                 value: currentIndex.value,
@@ -154,7 +154,7 @@ contract Funding is Getter, Ownable {
             global_index = PerpetualTypes.Index({
                 value: new_global_index.value,
                 isPositive: new_global_index.isPositive,
-                blockNumber: block.number
+                timeStamp: block.timestamp
             });
         }
     }

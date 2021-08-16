@@ -18,7 +18,7 @@ contract Settlement is Getter {
         PerpetualTypes.Index memory userIndex = index[user];
         PerpetualTypes.Index memory globalIndex = global_index;
 
-        if (userIndex.blockNumber != globalIndex.blockNumber) {
+        if (userIndex.timeStamp != globalIndex.timeStamp) {
             payment = SignedMath.Int({value: globalIndex.value, isPositive: globalIndex.isPositive}).signedSub(
                 SignedMath.Int({value: userIndex.value, isPositive: userIndex.isPositive})
             );

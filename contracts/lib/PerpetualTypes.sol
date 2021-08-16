@@ -12,7 +12,7 @@ library PerpetualTypes {
     }
 
     struct Index {
-        uint256 blockNumber;
+        uint256 timeStamp;
         uint256 value;
         bool isPositive;
     }
