@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
+import {PTypes} from "../lib/PTypes.sol";
 import {SignedMath} from "../lib/SignedMath.sol";
 import {Getter} from "./Getter.sol";
 
@@ -15,8 +15,8 @@ contract Settlement is Getter {
     function settleAccount(address user, address _redeemAsset) public {
         SignedMath.Int memory payment;
 
-        PerpetualTypes.Index memory userIndex = index[user];
-        PerpetualTypes.Index memory globalIndex = global_index;
+        PTypes.Index memory userIndex = index[user];
+        PTypes.Index memory globalIndex = global_index;
 
         if (userIndex.timeStamp != globalIndex.timeStamp) {
             payment = SignedMath.Int({value: globalIndex.value, isPositive: globalIndex.isPositive}).signedSub(

@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 /// @notice Describes all complex types
 
-library PerpetualTypes {
+library PTypes {
     struct UserPosition {
         mapping(address => uint256) userReserve;
         uint256 quoteLong;
@@ -13,13 +13,7 @@ library PerpetualTypes {
 
     struct Index {
         uint256 timeStamp;
-        uint256 value;
-        bool isPositive;
-    }
-
-    struct Int {
-        uint256 value;
-        bool isPositive;
+        int256 value;
     }
 
     struct Pool {

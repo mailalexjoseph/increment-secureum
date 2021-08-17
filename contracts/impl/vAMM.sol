@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
+import {PTypes} from "../lib/PTypes.sol";
 import {Storage} from "./Storage.sol";
 
 import "hardhat/console.sol";

@@ -4,7 +4,7 @@ pragma solidity 0.8.4;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
+import {PTypes} from "../lib/PTypes.sol";
 import {SignedMath} from "../lib/SignedMath.sol";
 import {Getter} from "./Getter.sol";
 
@@ -28,7 +28,7 @@ contract Funding is Getter, Ownable {
         uint256 numTotalPeriod = prices.length;
         //console.log("numTotalPeriod is", numTotalPeriod);
         // get last price
-        PerpetualTypes.Price memory poolPrice = prices[numTotalPeriod - 1];
+        PTypes.Price memory poolPrice = prices[numTotalPeriod - 1];
         //console.log("poolPrice is", poolPrice);
         // derive TWAP
         return calcTWAP(_delta, poolPrice.id, poolPrice.price, poolPrice.time, _getVAMMPriceById);
@@ -107,7 +107,7 @@ contract Funding is Getter, Ownable {
         )
     {
         // get last price
-        PerpetualTypes.Price memory poolPrice = prices[id];
+        PTypes.Price memory poolPrice = prices[id];
         return (poolPrice.id, poolPrice.price, poolPrice.time);
     }
 
@@ -138,7 +138,7 @@ contract Funding is Getter, Ownable {
     // functions
     function _setFundingRate(SignedMath.Int memory fundingRate) internal {
         // load old funding rate
-        PerpetualTypes.Index memory currentIndex = global_index;
+        PTypes.Index memory currentIndex = global_index;
 
         if (global_index.timeStamp < block.timestamp) {
             // convert to signed int
@@ -151,7 +151,7 @@ contract Funding is Getter, Ownable {
             SignedMath.Int memory new_global_index = currentIndexInt.signedAdd(fundingRate);
 
             // update index
-            global_index = PerpetualTypes.Index({
+            global_index = PTypes.Index({
                 value: new_global_index.value,
                 isPositive: new_global_index.isPositive,
                 timeStamp: block.timestamp
@@ -162,15 +162,11 @@ contract Funding is Getter, Ownable {
     /****************************** Helper ******************************/
 
     function pushSnapshot() public onlyOwner {
-        PerpetualTypes.Price memory newPrice;
+        PTypes.Price memory newPrice;
         if (prices.length > 0) {
-            newPrice = PerpetualTypes.Price({
-                price: pool.price,
-                time: block.timestamp,
-                id: prices[prices.length].id + 1
-            });
+            newPrice = PTypes.Price({price: pool.price, time: block.timestamp, id: prices[prices.length].id + 1});
         } else {
-            newPrice = PerpetualTypes.Price({price: pool.price, time: block.timestamp, id: 0});
+            newPrice = PTypes.Price({price: pool.price, time: block.timestamp, id: 0});
         }
         prices.push(newPrice);
         emit LogSnapshot(newPrice.time, newPrice.price, newPrice.id);

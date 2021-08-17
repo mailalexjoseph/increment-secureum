@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
-import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
+import {PTypes} from "../lib/PTypes.sol";
 import {Storage} from "./Storage.sol";
 import {ILendingPool} from "../interfaces/Aave/lendingPool/ILendingPool.sol";
 
@@ -20,7 +20,7 @@ contract Getter is Storage {
 
     /// @notice Returns information about the virtual Automated Market Maker (vAMM)
     /// @return pool struct has properties vEUR, vUSD, totalAssetReserve (x*y=k) and price
-    function getPoolInfo() public view returns (PerpetualTypes.Pool memory) {
+    function getPoolInfo() public view returns (PTypes.Pool memory) {
         return pool;
     }
 
@@ -118,12 +118,12 @@ contract Getter is Storage {
     /// @notice Computes the unrealized PnL
     /// @param account Address of user
     /// @return unrealized PnL
-    function getUnrealizedPnL(address account) public view returns (PerpetualTypes.Int memory) {
+    function getUnrealizedPnL(address account) public view returns (PTypes.Int memory) {
         uint256 notionalAmount = getUserNotional(account);
         uint256 boughtAmount = getLongBalance(account) + getShortBalance(account);
         uint256 simplifiedSellAmount = (boughtAmount * pool.price) / 10**18;
 
-        PerpetualTypes.Int memory unrealizedPnL = PerpetualTypes.Int({value: 0, isPositive: false});
+        PTypes.Int memory unrealizedPnL = PTypes.Int({value: 0, isPositive: false});
 
         if (simplifiedSellAmount >= notionalAmount) {
             unrealizedPnL.isPositive = true;
@@ -158,7 +158,7 @@ contract Getter is Storage {
 
     function _marginRatio(
         uint256 margin,
-        PerpetualTypes.Int memory unrealizedPnL,
+        PTypes.Int memory unrealizedPnL,
         uint256 notionalValue
     ) internal pure returns (uint256) {
         //console.log("Margin is", margin);
@@ -197,11 +197,11 @@ contract Getter is Storage {
     }
 
     /************************* Funding grate *************************/
-    function getVAMMsnapshots(uint256 _id) public view returns (PerpetualTypes.Price memory) {
+    function getVAMMsnapshots(uint256 _id) public view returns (PTypes.Price memory) {
         return prices[_id];
     }
 
-    function getFundingRate() public view returns (PerpetualTypes.Index memory) {
+    function getFundingRate() public view returns (PTypes.Index memory) {
         return global_index;
     }
 }

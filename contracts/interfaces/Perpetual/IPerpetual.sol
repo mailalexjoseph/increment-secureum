@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
-import {PerpetualTypes} from "../../lib/PerpetualTypes.sol";
+import {PTypes} from "../../lib/PTypes.sol";
 
 interface IPerpetual {
     function MintLongQuote(uint256 _amount) external returns (uint256);
@@ -18,7 +18,7 @@ interface IPerpetual {
 
     function _TOKENS_(uint256) external view returns (address);
 
-    function _getFundingRate() external view returns (PerpetualTypes.Index memory);
+    function _getFundingRate() external view returns (PTypes.Index memory);
 
     function allowWithdrawal(
         address account,
@@ -47,13 +47,13 @@ interface IPerpetual {
 
     function getEntryPrice(address account) external view returns (uint256);
 
-    function getFundingRate() external view returns (PerpetualTypes.Index memory);
+    function getFundingRate() external view returns (PTypes.Index memory);
 
     function getLongBalance(address account) external view returns (uint256);
 
     function getPnl(address account) external view returns (uint256);
 
-    function getPoolInfo() external view returns (PerpetualTypes.Pool memory);
+    function getPoolInfo() external view returns (PTypes.Pool memory);
 
     function getPoolPrice() external view returns (uint256);
 
@@ -67,13 +67,13 @@ interface IPerpetual {
 
     function getShortBalance(address account) external view returns (uint256);
 
-    function getUnrealizedPnL(address account) external view returns (PerpetualTypes.Int memory);
+    function getUnrealizedPnL(address account) external view returns (PTypes.Int memory);
 
     function getUserMarginRatio(address account) external view returns (uint256);
 
     function getUserNotional(address account) external view returns (uint256);
 
-    function getVAMMsnapshots(uint256 _id) external view returns (PerpetualTypes.Price memory);
+    function getVAMMsnapshots(uint256 _id) external view returns (PTypes.Price memory);
 
     function global_index()
         external

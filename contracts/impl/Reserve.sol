@@ -7,7 +7,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 
 import {IAToken} from "../interfaces/Aave/iaToken/IAToken.sol";
 import {ILendingPool} from "../interfaces/Aave/lendingPool/ILendingPool.sol";
-import {PerpetualTypes} from "../lib/PerpetualTypes.sol";
+import {PTypes} from "../lib/PTypes.sol";
 import {Getter} from "./Getter.sol";
 
 import "hardhat/console.sol";
