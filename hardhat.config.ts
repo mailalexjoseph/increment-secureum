@@ -5,7 +5,9 @@ import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
 import 'solidity-coverage';
+import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
+import 'hardhat-spdx-license-identifier';
 import {HardhatUserConfig} from 'hardhat/types';
 import {node_url, accounts} from './helpers/network';
 
@@ -120,6 +122,11 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: 0,
   },
+  spdxLicenseIdentifier: {
+    overwrite: true,
+    runOnCompile: true,
+  },
+  docgen: {}, // https://hardhat.org/plugins/hardhat-docgen.html, run with `yarn run hardhat docgen`
 };
 
 export default config;

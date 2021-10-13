@@ -1,6 +1,5 @@
 import {expect} from 'chai';
 import {setup} from './helpers/setup';
-import {ethers} from 'hardhat';
 import {utils} from 'ethers';
 import {Perpetual} from '../typechain';
 import {getBlockTime} from '../helpers/contracts-helpers';

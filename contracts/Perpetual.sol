@@ -1,30 +1,29 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.4;
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {LibFunding} from "./lib/LibFunding.sol";
+import {IPerpetual} from "./interfaces/IPerpetual.sol";
 
-import "hardhat/console.sol";
+contract stubPerpetual is IPerpetual {
+    event LogFundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
 
-import {Oracle} from "./impl/Oracle.sol";
-import {Reserve} from "./impl/Reserve.sol";
-import {MinterRedeemer} from "./impl/MinterRedeemer.sol";
-import {Storage} from "./impl/Storage.sol";
-import {vAMM} from "./impl/vAMM.sol";
-import {Getter} from "./impl/Getter.sol";
-import {Funding} from "./impl/Funding.sol";
+    Price[] prices;
 
-/// @title A perpetual contract w/ aTokens as collateral
-/// @author Markus Schick
-/// @notice You can only buy one type of perpetual and only use USDC as reserve
+    function getAllPeriods() public view override returns (uint256) {
+        return prices.length;
+    }
 
-contract Perpetual is Reserve, Oracle, MinterRedeemer, Funding {
-    /************************* constructor *************************/
+    function getLatestPrice() public view override returns (Price memory) {
+        uint256 numPeriods = getAllPeriods();
+        return prices[numPeriods];
+    }
 
-    constructor(
-        uint256 _quoteAssetReserve,
-        uint256 _baseAssetReserve,
-        address _quoteAssetOracleAddress,
-        address _lendingPoolAddressProvider
-    )
-        Oracle(_quoteAssetOracleAddress, _lendingPoolAddressProvider)
-        MinterRedeemer(_quoteAssetReserve, _baseAssetReserve)
-    {}
+    function getPrice(uint256 _period) public view override returns (Price memory) {
+        return prices[_period];
+    }
+
+    function setPrice(Price memory _newPrice) public {
+        prices.push(_newPrice);
+    }
 }

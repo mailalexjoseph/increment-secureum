@@ -4,6 +4,7 @@ artifacts/
 coverage/
 coverage.json
 typechain/
+contracts_depreciated/
 
 .vscode/*
 !.vscode/settings.json.default
@@ -22,3 +23,6 @@ deployments/localhost
 
 _toDo/
 notes.md
+
+docgen/
+*.png
