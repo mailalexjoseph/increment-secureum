@@ -24,8 +24,9 @@ deployments/localhost
 _toDo/
 notes.md
 
-contracts/depcreciated
-contracts/external
+depreciated/
+contracts/depreciated/
+contracts/external/
 
 docgen/
 *.png
