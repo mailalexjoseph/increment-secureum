@@ -9,7 +9,6 @@ import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
 // doDO: typecast numbers safely
-// doDO: use stable ERC20 implementation
 
 contract Vault is IVault {
     uint256 public constant maxDecimals = 18;

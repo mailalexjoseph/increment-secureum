@@ -2,33 +2,14 @@
 
 pragma solidity 0.8.4;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {IPerpetual} from "../interfaces/IPerpetual.sol";
-
-import {LibMath} from "./LibMath.sol";
-import {LibPerpetual} from "./LibPerpetual.sol";
+import {IPerpetual} from "./interfaces/Perpetual/IPerpetual.sol";
 
 import "hardhat/console.sol";
 
-// see: UniswapV3, Position Library
-// /// @notice Returns the Info struct of a position, given an owner and position boundaries
-// /// @param self The mapping containing all user positions
-// /// @param owner The address of the position owner
-// /// @param tickLower The lower tick boundary of the position
-// /// @param tickUpper The upper tick boundary of the position
-// /// @return position The position info struct of the given owners' position
-// function get(
-//     mapping(bytes32 => Info) storage self,
-//     address owner,
-//     int24 tickLower,
-//     int24 tickUpper
-// ) internal view returns (Position.Info storage position) {
-//     position = self[keccak256(abi.encodePacked(owner, tickLower, tickUpper))];
-// }
+/// @notice Calculates funding rates (uses Signed Math library of dYdX)
+/// @dev revamp modular structure to minimize state reads
 
 library LibFunding {
-    using LibMath for int256;
-    using LibMath for uint256;
-
     struct Price {
         uint128 roundId;
         uint128 timeStamp;
@@ -37,6 +18,8 @@ library LibFunding {
 
     function getChainlinkTWAP(int256 _delta, AggregatorV3Interface chainlinkOracle) internal view returns (int256) {
         require(address(chainlinkOracle) != address(0));
+
+        uint256 decimals = chainlinkOracle.decimals();
 
         // get last price
         (uint80 roundId, int256 price, , uint256 timeStamp, ) = chainlinkOracle.latestRoundData();
@@ -73,7 +56,7 @@ library LibFunding {
 
     function getPoolTWAP(int256 _delta, IPerpetual perpetual) internal view returns (int256) {
         // get last price
-        LibPerpetual.Price memory price = perpetual.getLatestPrice();
+        IPerpetual.Price memory price = perpetual.getLatestPrice();
 
         // get last price
         require(price.price > 0, "Negative price");

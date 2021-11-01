@@ -24,5 +24,10 @@ deployments/localhost
 _toDo/
 notes.md
 
+contracts/depcreciated
+contracts/external
+
 docgen/
 *.png
+
+workspace.code-workspace

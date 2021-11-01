@@ -103,6 +103,7 @@ export const setup = deployments.createFixture(async () => {
 
   const contracts = await getContracts(deployer);
 
+  // usds = await deployments.get("USDC")
   // fill container
   testEnv.deployer = await setupUser(deployer, contracts);
   testEnv.user = await setupUser(user, contracts);

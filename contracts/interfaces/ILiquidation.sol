@@ -2,4 +2,10 @@
 
 pragma solidity 0.8.4;
 
-interface ILiquidation {}
+import {IPerpetual} from "./IPerpetual.sol";
+
+interface ILiquidation {
+    function liquidate(address account, IPerpetual market) external;
+
+    function whiteListPerpetualMarket(IPerpetual perpetualMarket) external;
+}

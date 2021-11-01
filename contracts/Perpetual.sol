@@ -2,28 +2,59 @@
 
 pragma solidity 0.8.4;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {LibFunding} from "./lib/LibFunding.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
-contract stubPerpetual is IPerpetual {
+import {LibPerpetual} from "./lib/LibPerpetual.sol";
+
+contract Perpetual is IPerpetual {
     event LogFundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
 
-    Price[] prices;
+    LibPerpetual.Price[] public prices;
+    mapping(address => LibPerpetual.TraderPosition) userPosition;
+    LibPerpetual.GlobalPosition public globalPosition;
+    mapping(address => IVault) vaultUsed;
 
-    function getAllPeriods() public view override returns (uint256) {
-        return prices.length;
+    // viewer function
+    function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
+        return getPrice(prices.length - 1);
     }
 
-    function getLatestPrice() public view override returns (Price memory) {
-        uint256 numPeriods = getAllPeriods();
-        return prices[numPeriods];
-    }
-
-    function getPrice(uint256 _period) public view override returns (Price memory) {
+    function getPrice(uint256 _period) public view override returns (LibPerpetual.Price memory) {
         return prices[_period];
     }
 
-    function setPrice(Price memory _newPrice) public {
-        prices.push(_newPrice);
+    // functions
+    function setPrice(LibPerpetual.Price memory newPrice) external override {
+        prices.push(newPrice);
     }
+
+    function setVault(address _account, IVault _vault) external override {
+        vaultUsed[_account] = _vault;
+    }
+
+    function getVault(address _account) external override returns (IVault) {
+        vaultUsed[_account];
+    }
+
+    function getUserPosition(address account) external view override returns (LibPerpetual.TraderPosition memory) {
+        return userPosition[account];
+    }
+
+    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
+        return globalPosition;
+    }
+
+    // missing implementation
+    function mintLongPosition(uint256 amount) external view override returns (uint256) {}
+
+    function redeemLongPosition(uint256 amount) external view override returns (uint256) {}
+
+    function mintShortPosition(uint256 amount) external view override returns (uint256) {}
+
+    function redeemShortPosition(uint256 amount) external view override returns (uint256) {}
+
+    function settle(address account) external override {}
+
+    function marginIsValid(address account) external view override returns (bool) {}
 }
