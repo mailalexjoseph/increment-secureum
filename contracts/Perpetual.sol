@@ -24,17 +24,17 @@ contract Perpetual is IPerpetual {
         return prices[_period];
     }
 
-    function getVault(address _account) external override returns (IVault) {
+    function getVault(address _account) public override returns (IVault) {
         vaultUsed[_account];
     }
 
-    // function getUserPosition(address account) external view override returns (LibPerpetual.TraderPosition memory) {
-    //     return userPosition[account];
-    // }
+    function getUserPosition(address account) external view override returns (LibPerpetual.TraderPosition memory) {
+        return userPosition[account];
+    }
 
-    // function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
-    //     return globalPosition;
-    // }
+    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
+        return globalPosition;
+    }
 
     // functions
     function setPrice(LibPerpetual.Price memory newPrice) external override {
@@ -46,7 +46,7 @@ contract Perpetual is IPerpetual {
     }
 
     // missing implementation
-    function calcUnrealizedFundingPayments(address account) external view override returns (uint256) {}
+    //function calcUnrealizedFundingPayments(address account) external view override returns (uint256) {}
 
     function mintLongPosition(uint256 amount) external view override returns (uint256) {}
 
@@ -59,11 +59,8 @@ contract Perpetual is IPerpetual {
     function settle(address account) external override {
         LibPerpetual.TraderPosition memory user = userPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
-        if (user.notional == 0) {
-            // update user to global state when position is zero
-            userPosition[account].timestamp = global.timestamp;
-            userPosition[account].cumFundingRate = global.cumFundingRate
-        } else if (user.timeStamp < global.timeStamp) {
+
+        if (user.notional != 0 && user.timeStamp < global.timeStamp) {
             // update user variables when position opened before last update
 
             /* Funding rates (as defined in our protocol) are paid from shorts to longs
@@ -77,24 +74,22 @@ contract Perpetual is IPerpetual {
             int256 upcomingFundingRate = 0;
             int256 upcomingFundingPayment = 0;
             if (user.cumFundingRate != global.cumFundingRate) {
-                if (user.side = LibPerpetual.Side.Long) {
+                if (user.side == LibPerpetual.Side.Long) {
                     upcomingFundingRate = global.cumFundingRate - user.cumFundingRate;
                 } else {
                     upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
                 }
-            upcomingFundingPayment = upcomingFundingRate * user.notional;
+                upcomingFundingPayment = upcomingFundingRate * user.notional;
             }
 
             // get user vault
-            IVault userVault = perpetual.getVault(account);
+            IVault userVault = getVault(account);
             userVault.applyFundingPayment(account, upcomingFundingPayment);
         }
 
-
-            // update user variables to global state
-            userPosition[account].timestamp = global.timestamp;
-            userPosition[account].cumFundingRate = global.cumFundingRate
-        }
+        // update user variables to global state
+        userPosition[account].timeStamp = global.timeStamp;
+        userPosition[account].cumFundingRate = global.cumFundingRate;
     }
 
     function marginIsValid(address account) external view override returns (bool) {}

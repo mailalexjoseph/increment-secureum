@@ -26,7 +26,7 @@ contract Liquidation is ILiquidation, Ownable {
 
     /// @notice Register perpetual market liquidation contract
     function whiteListPerpetualMarket(IPerpetual perpetual) external override onlyOwner {
-        require(address(perpetual != address(0)));
+        require(address(perpetual) != address(0));
         isPerpetual[perpetual] = true;
     }
 
@@ -53,36 +53,36 @@ contract Liquidation is ILiquidation, Ownable {
         if (marginRatio < minMargin) {
             // calculate money left
             // calculate bad debt
-            (
-                int256 liquidatorQuoteChange,
-                int256 liquidatorBaseChange,
-                int256 liquidateeQuoteChange,
-                int256 liquidateeBaseChange
-            ) = LibLiquidation.liquidationBalanceChanges(
-                liquidatedBalance.position.base,
-                liquidatedBalance.position.quote,
-                amount
-            );
+            // (
+            //     int256 liquidatorQuoteChange,
+            //     int256 liquidatorBaseChange,
+            //     int256 liquidateeQuoteChange,
+            //     int256 liquidateeBaseChange
+            // ) = LibLiquidation.liquidationBalanceChanges(
+            //     liquidatedBalance.position.base,
+            //     liquidatedBalance.position.quote,
+            //     amount
+            // );
 
-            perpetual.updatePositionOnLiquidation(
-                msg.sender,
-                account,
-                liquidatorQuoteChange,
-                liquidatorBaseChange,
-                liquidateeQuoteChange,
-                liquidateeBaseChange,
-                amountToEscrow
-            );
+            // perpetual.updatePositionOnLiquidation(
+            //     msg.sender,
+            //     account,
+            //     liquidatorQuoteChange,
+            //     liquidatorBaseChange,
+            //     liquidateeQuoteChange,
+            //     liquidateeBaseChange,
+            //     amountToEscrow
+            // );
 
-            userVault.updateVaultOnLiquidation(
-                msg.sender,
-                account,
-                liquidatorQuoteChange,
-                liquidatorBaseChange,
-                liquidateeQuoteChange,
-                liquidateeBaseChange,
-                amountToEscrow
-            );
+            // userVault.updateVaultOnLiquidation(
+            //     msg.sender,
+            //     account,
+            //     liquidatorQuoteChange,
+            //     liquidatorBaseChange,
+            //     liquidateeQuoteChange,
+            //     liquidateeBaseChange,
+            //     amountToEscrow
+            // );
 
             emit LiquidationCall(address(perpetual), account, msg.sender, amount, block.timestamp);
         } else {

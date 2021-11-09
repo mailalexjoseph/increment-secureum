@@ -29,7 +29,7 @@ library LibPerpetual {
     }
 
     struct GlobalPosition {
-        uint256 timeStamp;
+        uint128 timeStamp;
         int256 cumFundingRate;
     }
 }

@@ -15,4 +15,6 @@ interface IVault {
     function getReserveValue(address account) external view returns (int256);
 
     function getAssetValue(address account, address asset) external view returns (int256);
+
+    function applyFundingPayment(address account, int256 upcomingFundingPayment) external;
 }

@@ -144,5 +144,5 @@ contract VaultV0 is IVault {
         return accountBalance * price;
     }
 
-    function applyFundingPayment(address account, int256 upcomingFundingPayment) {}
+    function applyFundingPayment(address account, int256 upcomingFundingPayment) external override {}
 }

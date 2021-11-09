@@ -15,7 +15,11 @@ interface ILiquidation {
         uint256 timestamp
     );
 
-    function liquidate(address account, IPerpetual market) external;
+    function liquidate(
+        uint256 amount,
+        address account,
+        IPerpetual perpetual
+    ) external;
 
     function whiteListPerpetualMarket(IPerpetual perpetualMarket) external;
 }
