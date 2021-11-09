@@ -15,34 +15,78 @@ import {LibMath} from "./lib/LibMath.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract Liquidation is ILiquidation, Ownable {
-    /// @notice Margin ratio for safe liquidation
-    int256 immutable maxMarginSafeLiquidate;
     /// @notice Margin ratio for full liquidation
-    int256 immutable maxMarginFullLiquidate;
+    int256 constant minMargin = 25e15; // 2.5%
+    /// @notice Liquidation fee
+    int256 constant liquidationFee = 60e15; // 6%
     /// @notice Register perpetuals in Liquidation contract
     mapping(IPerpetual => bool) isPerpetual;
 
-    constructor(int256 _maxMarginSafeLiquidate, int256 _maxMarginFullLiquidate) {
-        maxMarginSafeLiquidate = _maxMarginSafeLiquidate;
-        maxMarginFullLiquidate = _maxMarginFullLiquidate;
-    }
+    constructor() {}
 
     /// @notice Register perpetual market liquidation contract
-    function whiteListPerpetualMarket(IPerpetual perpetualMarket) external override onlyOwner {
-        isPerpetual[perpetualMarket] = true;
+    function whiteListPerpetualMarket(IPerpetual perpetual) external override onlyOwner {
+        require(address(perpetual != address(0)));
+        isPerpetual[perpetual] = true;
     }
 
-    function liquidate(address account, IPerpetual perpetual) external override {
+    function liquidate(
+        uint256 amount,
+        address account,
+        IPerpetual perpetual
+    ) external override {
         require(isPerpetual[perpetual], "No perpetual market");
-        // open position
+
+        // get account open positions
         LibPerpetual.TraderPosition memory position = perpetual.getUserPosition(account);
-        // vault contract used
+        // get account collateral vault
         IVault userVault = perpetual.getVault(account);
-        // user collateral
-        int256 margin = userVault.getReserveValue(account);
 
         // find under which conditions an position would be liquidated
-        int256 unrealizedPnl = 0;
-        int256 marginRatio = LibMath.div(margin + unrealizedPnl, position.notional);
+        int256 margin = userVault.getReserveValue(account);
+        int256 unrealizedPnl = 0; /// toDO: unrealizedPnl = position.getUnrealizedPnl();
+        int256 fundingPayments = 0; /// doDo: fundingPayments = market.getFundingPayments(account);
+
+        // calculate margin ratio
+        int256 marginRatio = LibMath.div(margin + unrealizedPnl + fundingPayments, position.notional);
+
+        if (marginRatio < minMargin) {
+            // calculate money left
+            // calculate bad debt
+            (
+                int256 liquidatorQuoteChange,
+                int256 liquidatorBaseChange,
+                int256 liquidateeQuoteChange,
+                int256 liquidateeBaseChange
+            ) = LibLiquidation.liquidationBalanceChanges(
+                liquidatedBalance.position.base,
+                liquidatedBalance.position.quote,
+                amount
+            );
+
+            perpetual.updatePositionOnLiquidation(
+                msg.sender,
+                account,
+                liquidatorQuoteChange,
+                liquidatorBaseChange,
+                liquidateeQuoteChange,
+                liquidateeBaseChange,
+                amountToEscrow
+            );
+
+            userVault.updateVaultOnLiquidation(
+                msg.sender,
+                account,
+                liquidatorQuoteChange,
+                liquidatorBaseChange,
+                liquidateeQuoteChange,
+                liquidateeBaseChange,
+                amountToEscrow
+            );
+
+            emit LiquidationCall(address(perpetual), account, msg.sender, amount, block.timestamp);
+        } else {
+            return;
+        }
     }
 }
