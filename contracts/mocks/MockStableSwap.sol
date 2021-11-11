@@ -2,10 +2,12 @@
 
 pragma solidity 0.8.4;
 
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+
 /// @notice Mock StableSwap market to test buying/selling of derivative toknens
 /// @dev Uses the well-known x * y = k formula
 
-contract MockStableSwap {
+contract MockStableSwap is Ownable {
     struct Pool {
         uint256 vQuote;
         uint256 vBase;
@@ -16,7 +18,7 @@ contract MockStableSwap {
     uint256 constant DECIMALS = 10**18;
     Pool public pool;
 
-    constructor(uint256 _vQuote, uint256 _vBase) {
+    constructor(uint256 _vQuote, uint256 _vBase) Ownable() {
         pool.vQuote = _vQuote;
         pool.vBase = _vBase;
         pool.totalAssetReserve = _vQuote * _vBase;
@@ -29,7 +31,7 @@ contract MockStableSwap {
     /************************* functions *************************/
 
     /* mint vBase to go long euro */
-    function _mintVBase(uint256 amount) internal returns (uint256) {
+    function mintVBase(uint256 amount) external onlyOwner returns (uint256) {
         uint256 vBasenew = pool.vBase + amount;
         uint256 vQuoteNew = pool.totalAssetReserve / vBasenew; // x = k / y
         uint256 buy = pool.vQuote - vQuoteNew;
@@ -40,7 +42,7 @@ contract MockStableSwap {
     }
 
     /* burn vBase to go short euro */
-    function _burnVBase(uint256 amount) internal returns (uint256) {
+    function burnVBase(uint256 amount) external onlyOwner returns (uint256) {
         uint256 vBasenew = pool.vBase - amount;
         uint256 vQuoteNew = pool.totalAssetReserve / vBasenew; // x = k / y
         uint256 buy = vQuoteNew - pool.vQuote;
@@ -50,7 +52,7 @@ contract MockStableSwap {
     }
 
     /* mint vQuote to close long euro */
-    function _mintVQuote(uint256 amount) internal returns (uint256) {
+    function mintVQuote(uint256 amount) external onlyOwner returns (uint256) {
         uint256 vQuoteNew = pool.vQuote + amount;
         uint256 vBasenew = pool.totalAssetReserve / vQuoteNew; // x = k / y
         uint256 sell = pool.vBase - vBasenew;
@@ -61,7 +63,7 @@ contract MockStableSwap {
     }
 
     /* burn vQuote to close short euro */
-    function _burnVQuote(uint256 amount) internal returns (uint256) {
+    function burnVQuote(uint256 amount) external onlyOwner returns (uint256) {
         uint256 vQuoteNew = pool.vBase - amount;
         uint256 vBasenew = pool.totalAssetReserve / vQuoteNew; // x = k / y
         uint256 sell = vBasenew - pool.vBase;
@@ -72,15 +74,15 @@ contract MockStableSwap {
     }
 
     /* update reserve balances after buying/selling */
-    function _updateBalances(uint256 _vBaseNew, uint256 _vQuoteNew) internal {
-        uint256 newPrice = (_vBaseNew * DECIMALS) / _vQuoteNew;
+    function _updateBalances(uint256 vBaseNew, uint256 vQuoteNew) internal {
+        uint256 newPrice = (vBaseNew * DECIMALS) / vQuoteNew;
 
         //console.log("vamm state before is", pool.price, pool.vBase, pool.vEUR);
         pool.price = newPrice;
-        pool.vBase = _vBaseNew;
-        pool.vQuote = _vQuoteNew;
+        pool.vBase = vBaseNew;
+        pool.vQuote = vQuoteNew;
 
         //console.log("vamm state after is", pool.price, pool.vBase, pool.vEUR);
-        emit NewReserves(_vBaseNew, _vQuoteNew, newPrice, block.number);
+        emit NewReserves(vBaseNew, vQuoteNew, newPrice, block.number);
     }
 }

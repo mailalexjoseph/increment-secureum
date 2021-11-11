@@ -3,5 +3,10 @@
 pragma solidity 0.8.4;
 
 import {IPerpetualFactory} from "./interfaces/IPerpetualFactory.sol";
+import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
-contract PerpetualFactory is IPerpetualFactory {}
+contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
+    constructor() IncreOwnable() {}
+
+    function deployPerpetual() external {}
+}

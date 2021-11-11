@@ -3,17 +3,18 @@
 pragma solidity 0.8.4;
 import {IVault} from "./IVault.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IPerpetual {
     // buy/ sell functions
     //@audit flag
-    function mintLongPosition(uint256 amount) external view returns (uint256);
+    function mintLongPosition(uint256 amount) external returns (uint256);
 
-    function redeemLongPosition(uint256 amount) external view returns (uint256);
+    function redeemLongPosition(uint256 amount) external returns (uint256);
 
-    function mintShortPosition(uint256 amount) external view returns (uint256);
+    function mintShortPosition(uint256 amount) external returns (uint256);
 
-    function redeemShortPosition(uint256 amount) external view returns (uint256);
+    function redeemShortPosition(uint256 amount) external returns (uint256);
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);
@@ -23,7 +24,18 @@ interface IPerpetual {
     function setPrice(LibPerpetual.Price memory newPrice) external;
 
     // integration functions
-    function setVault(address account, IVault vault) external;
+
+    function deposit(
+        uint256 amount,
+        IVault vault,
+        IERC20 token
+    ) external;
+
+    function withdraw(
+        uint256 amount,
+        IVault vault,
+        IERC20 token
+    ) external;
 
     function getVault(address _account) external returns (IVault vault);
 

@@ -11,7 +11,7 @@ import {IVault} from "./interfaces/IVault.sol";
 
 // token information
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
-import {IERC20} from "./interfaces/IERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // dependencies
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -75,8 +75,8 @@ contract VaultV0 is IVault {
      * @param  depositToken Token address deposited (used for backwards compatability)
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
-    function deposit(uint256 amount, address depositToken) public override {
-        require(depositToken == address(reserveToken));
+    function deposit(uint256 amount, IERC20 depositToken) external override {
+        require(depositToken == reserveToken);
         perpetual.settle(msg.sender);
 
         // deposit reserveTokens to contract
@@ -96,7 +96,7 @@ contract VaultV0 is IVault {
         balances[msg.sender] += convertedWadAmount;
         totalReserveToken += amount;
 
-        emit Deposit(msg.sender, depositToken, amount);
+        emit Deposit(msg.sender, address(depositToken), amount);
     }
 
     /**
@@ -104,8 +104,8 @@ contract VaultV0 is IVault {
      * @param withdrawToken ERC20 reserveToken address
      * @param  amount  Amount of USDC deposited
      */
-    function withdraw(uint256 amount, address withdrawToken) public override {
-        require(withdrawToken == address(reserveToken));
+    function withdraw(uint256 amount, IERC20 withdrawToken) external override {
+        require(withdrawToken == reserveToken);
         perpetual.settle(msg.sender);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
@@ -122,7 +122,7 @@ contract VaultV0 is IVault {
         // perform transfer
         require(IERC20(withdrawToken).transfer(msg.sender, rawTokenAmount), "TCR: Transfer failed");
 
-        emit Withdraw(msg.sender, withdrawToken, amount);
+        emit Withdraw(msg.sender, address(withdrawToken), amount);
     }
 
     /**

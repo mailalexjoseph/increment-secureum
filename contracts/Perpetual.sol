@@ -5,27 +5,41 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
+import {MockStableSwap} from "./mocks/MockStableSwap.sol";
+
 contract Perpetual is IPerpetual {
+    using SafeCast for uint256;
+    using SafeCast for int256;
     event LogFundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
+
+    MockStableSwap public market;
+
+    constructor(uint256 _vQuote, uint256 _vBase) {
+        market = new MockStableSwap(_vQuote, _vBase);
+    }
 
     LibPerpetual.Price[] public prices;
     mapping(address => LibPerpetual.TraderPosition) userPosition;
     LibPerpetual.GlobalPosition public globalPosition;
     mapping(address => IVault) vaultUsed;
+    mapping(IERC20 => IVault) tokenToVault;
 
     // viewer function
     function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
         return getPrice(prices.length - 1);
     }
 
-    function getPrice(uint256 _period) public view override returns (LibPerpetual.Price memory) {
-        return prices[_period];
+    function getPrice(uint256 period) public view override returns (LibPerpetual.Price memory) {
+        return prices[period];
     }
 
-    function getVault(address _account) public override returns (IVault) {
-        vaultUsed[_account];
+    function getVault(address account) public override returns (IVault) {
+        return vaultUsed[account];
     }
 
     function getUserPosition(address account) external view override returns (LibPerpetual.TraderPosition memory) {
@@ -41,22 +55,72 @@ contract Perpetual is IPerpetual {
         prices.push(newPrice);
     }
 
-    function setVault(address _account, IVault _vault) external override {
-        vaultUsed[_account] = _vault;
-    }
-
     // missing implementation
     //function calcUnrealizedFundingPayments(address account) external view override returns (uint256) {}
 
-    function mintLongPosition(uint256 amount) external view override returns (uint256) {}
+    /// @notice Deposits tokens into the vault. Note that a vault can support multiple collateral tokens.
+    function deposit(
+        uint256 amount,
+        IVault vault,
+        IERC20 token
+    ) external override {
+        IVault oldVault = vaultUsed[msg.sender];
+        if (address(oldVault) != address(0)) {
+            require(oldVault == vault);
+        } else {
+            vaultUsed[msg.sender] = vault;
+        }
+        vault.deposit(amount, token);
+    }
 
-    function redeemLongPosition(uint256 amount) external view override returns (uint256) {}
+    /// @notice Withdraw tokens from the vault. Note that a vault can support multiple collateral tokens.
+    function withdraw(
+        uint256 amount,
+        IVault vault,
+        IERC20 token
+    ) external override {
+        IVault oldVault = vaultUsed[msg.sender];
+        if (address(oldVault) != address(0)) {
+            require(oldVault == vault);
+        } else {
+            vaultUsed[msg.sender] = vault;
+        }
+        vault.deposit(amount, token);
+    }
 
-    function mintShortPosition(uint256 amount) external view override returns (uint256) {}
+    /// @notice Buys long Quote derivatives
+    /// @param amount Amount of Quote tokens to be bought
+    /// @dev No checks are done if bought amount exceeds allowance
+    function mintLongPosition(uint256 amount) external override returns (uint256) {
+        // require(balances[msg.sender].quoteShort == 0, "User can not go long w/ an open short position");
+        // require(balances[msg.sender].quoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
+        // require(_leverageIsFine(msg.sender, amount), "Leverage factor is too high");
 
-    function redeemShortPosition(uint256 amount) external view override returns (uint256) {}
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        uint256 quoteLongBought = market.mintVBase(amount);
 
-    function settle(address account) external override {
+        if (traderPosition.notional > 0) {
+            require(traderPosition.side == LibPerpetual.Side.Long, "User can not go long w/ an open short position");
+            settle(msg.sender);
+            traderPosition.notional += amount.toInt256();
+            traderPosition.positionSize += quoteLongBought.toInt256();
+        } else {
+            traderPosition.side = LibPerpetual.Side.Long;
+            traderPosition.notional = amount.toInt256();
+            traderPosition.positionSize = quoteLongBought.toInt256();
+            traderPosition.timeStamp = globalPosition.timeStamp;
+            traderPosition.cumFundingRate = globalPosition.cumFundingRate;
+        }
+        return quoteLongBought;
+    }
+
+    function redeemLongPosition(uint256 amount) external override returns (uint256) {}
+
+    function mintShortPosition(uint256 amount) external override returns (uint256) {}
+
+    function redeemShortPosition(uint256 amount) external override returns (uint256) {}
+
+    function settle(address account) public override {
         LibPerpetual.TraderPosition memory user = userPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
 
