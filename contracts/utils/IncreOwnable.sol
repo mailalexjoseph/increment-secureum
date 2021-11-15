@@ -34,17 +34,15 @@ contract IncreOwnable {
 
     /// @notice Transfer `owner` account.
     /// @param recipient Account granted `owner` access control.
-    /*/// @param direct If 'true', ownership is directly transferred.*/
-    function transferOwner(
-        address recipient /*, bool direct*/
-    ) external onlyOwner {
+    /// @param direct If 'true', ownership is directly transferred.
+    function transferOwner(address recipient, bool direct) external onlyOwner {
         require(recipient != address(0), "ZERO_ADDRESS");
-        // if (direct) {
-        //     owner = recipient;
-        //     emit TransferOwner(msg.sender, recipient);
-        // } else {
-        pendingOwner = recipient;
-        emit TransferOwnerClaim(msg.sender, recipient);
-        // }
+        if (direct) {
+            owner = recipient;
+            emit TransferOwner(msg.sender, recipient);
+        } else {
+            pendingOwner = recipient;
+            emit TransferOwnerClaim(msg.sender, recipient);
+        }
     }
 }

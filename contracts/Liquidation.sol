@@ -12,9 +12,9 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import {LibMath} from "./lib/LibMath.sol";
 
 // Dependencies
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
-contract Liquidation is ILiquidation, Ownable {
+contract Liquidation is ILiquidation, IncreOwnable {
     /// @notice Margin ratio for full liquidation
     int256 constant minMargin = 25e15; // 2.5%
     /// @notice Liquidation fee
@@ -30,6 +30,7 @@ contract Liquidation is ILiquidation, Ownable {
         isPerpetual[perpetual] = true;
     }
 
+    // thats good: see (https://consensys.net/blog/developers/solidity-best-practices-for-smart-contract-security/)
     function liquidate(
         uint256 amount,
         address account,
