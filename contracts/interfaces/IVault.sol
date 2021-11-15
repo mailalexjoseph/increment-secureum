@@ -5,7 +5,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 pragma solidity 0.8.4;
 
 // @dev: deposit uint and withdraw int
-// @author: only allows one type of collateral
+// @author: The interface used in other contracts
 
 interface IVault {
     event Deposit(address indexed user, address indexed asset, uint256 amount);
