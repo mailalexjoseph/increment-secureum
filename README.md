@@ -44,7 +44,7 @@ yarn lint(:fix)
 yarn format(:fix)
 ```
 
-************\*\*************\*\*************\*\*************\*\*\*************\*\*************\*\*************\*\*************+
+****\*\*\*\*****\*\*****\*\*\*\*****\*\*****\*\*\*\*****\*\*****\*\*\*\*****\*\*\*****\*\*\*\*****\*\*****\*\*\*\*****\*\*****\*\*\*\*****\*\*****\*\*\*\*****+
 
 ## OTHER
 
@@ -141,3 +141,25 @@ This will test the contract against a temporary fork of the specified network.
 This will deploy the contract against a fork of the specified network and it will keep running as a node.
 
 Behind the scene it uses `hardhat node` command so you can append any argument for it
+
+Feel free to [copy and paste this list](https://gist.githubusercontent.com/maurelian/13831f1940340e0dcd0482555eb5c4fe/raw/4f771be560d48a6adf7a4caf1283f723ac81011e/audit_prep_checklist.md) into a README, issue or elsewhere in your project.
+
+### Audit prep checklist ([reference](https://diligence.consensys.net/posts/2019/09/how-to-prepare-for-a-smart-contract-audit/))
+
+- [ ] Documentation (A plain english description of what you are building, and why you are building it. Should indicate the actions and states that should and should not be possible)
+  - [ ] For the overall system
+  - [ ] For each unique contract within the system
+- [ ] Clean code
+  - [ ] Run a linter (like [EthLint](https://www.ethlint.com/))
+  - [ ] Fix compiler warnings
+  - [ ] Remove TODO and FIXME comments
+  - [ ] Delete unused code
+- [ ] Testing
+  - [ ] README gives clear instructions for running tests
+  - [ ] Testing dependencies are packaged with the code OR are listed including versions
+- [ ] Automated Analysis
+  - [ ] Analysis with [MythX](https://mythx.io/)
+  - [ ] [Other tools](https://consensys.github.io/smart-contract-best-practices/security_tools/)
+- [ ] Frozen code
+  - [ ] Halt development of the contract code
+  - [ ] Provide commit hash for the audit to target
