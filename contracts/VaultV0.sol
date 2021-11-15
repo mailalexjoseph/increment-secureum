@@ -7,7 +7,7 @@ import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
-import {IVault} from "./interfaces/IVault.sol";
+import {IVaultV0} from "./interfaces/IVaultV0.sol";
 
 // token information
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
@@ -22,7 +22,7 @@ import {LibMath} from "./lib/LibMath.sol";
 
 // toD0: use stable ERC20 implementation
 
-contract VaultV0 is IVault {
+contract VaultV0 is IVaultV0 {
     using LibMath for uint256;
     using LibMath for int256;
     // constants
