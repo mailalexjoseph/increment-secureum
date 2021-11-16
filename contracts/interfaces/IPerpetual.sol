@@ -8,13 +8,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 interface IPerpetual {
     // buy/ sell functions
     //@audit flag
-    function openLongPosition(uint256 amount) external returns (uint256);
+    function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
 
-    function closeLongPosition(uint256 amount) external returns (uint256);
-
-    function openShortPosition(uint256 amount) external returns (uint256);
-
-    function closeShortPosition(uint256 amount) external returns (uint256);
+    function closePosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);
