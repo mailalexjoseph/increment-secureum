@@ -23,6 +23,7 @@ import {LibMath} from "./lib/LibMath.sol";
 // toD0: use stable ERC20 implementation
 
 contract VaultV0 is IVaultV0 {
+    using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;
     // constants
@@ -86,7 +87,10 @@ contract VaultV0 is IVaultV0 {
         // cast is safe since amount is a uint, and wadToToken can only
         // scale down the value
         uint256 rawTokenAmount = uint256(LibReserve.wadToToken(reserveTokenDecimals, amount).toInt256());
-        require(IERC20(depositToken).transferFrom(msg.sender, address(this), rawTokenAmount), "TCR: Transfer failed");
+        require(
+            IERC20(depositToken).safeTransferFrom(msg.sender, address(this), rawTokenAmount),
+            "TCR: Transfer failed"
+        );
 
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
@@ -120,7 +124,7 @@ contract VaultV0 is IVaultV0 {
         totalReserveToken -= uint256(convertedWadAmount);
 
         // perform transfer
-        require(IERC20(withdrawToken).transfer(msg.sender, rawTokenAmount), "TCR: Transfer failed");
+        require(IERC20(withdrawToken).safeTransfer(msg.sender, rawTokenAmount), "TCR: Transfer failed");
 
         emit Withdraw(msg.sender, address(withdrawToken), amount);
     }
