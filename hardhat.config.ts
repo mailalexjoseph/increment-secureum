@@ -121,7 +121,7 @@ const config: HardhatUserConfig = {
     overwrite: true,
     runOnCompile: true,
   },
-  docgen: {}, // https://hardhat.org/plugins/hardhat-docgen.html, run with `yarn run hardhat docgen`
+  //docgen: {}, // https://hardhat.org/plugins/hardhat-docgen.html, run with `yarn run hardhat docgen`
 };
 
 export default config;
