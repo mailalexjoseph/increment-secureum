@@ -23,6 +23,7 @@ library LibPerpetual {
     struct TraderPosition {
         int256 notional;
         int256 positionSize;
+        int256 debt;
         Side side;
         uint128 timeStamp;
         int256 cumFundingRate;

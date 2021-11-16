@@ -87,10 +87,8 @@ contract VaultV0 is IVaultV0 {
         // cast is safe since amount is a uint, and wadToToken can only
         // scale down the value
         uint256 rawTokenAmount = uint256(LibReserve.wadToToken(reserveTokenDecimals, amount).toInt256());
-        require(
-            IERC20(depositToken).safeTransferFrom(msg.sender, address(this), rawTokenAmount),
-            "TCR: Transfer failed"
-        );
+
+        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), rawTokenAmount);
 
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
@@ -124,7 +122,7 @@ contract VaultV0 is IVaultV0 {
         totalReserveToken -= uint256(convertedWadAmount);
 
         // perform transfer
-        require(IERC20(withdrawToken).safeTransfer(msg.sender, rawTokenAmount), "TCR: Transfer failed");
+        IERC20(withdrawToken).safeTransfer(msg.sender, rawTokenAmount);
 
         emit Withdraw(msg.sender, address(withdrawToken), amount);
     }
@@ -147,6 +145,4 @@ contract VaultV0 is IVaultV0 {
         int256 price = oracle.getAssetPrice(_asset);
         return accountBalance * price;
     }
-
-    function applyFundingPayment(address account, int256 upcomingFundingPayment) external override {}
 }

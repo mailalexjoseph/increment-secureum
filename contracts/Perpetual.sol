@@ -38,7 +38,7 @@ contract Perpetual is IPerpetual {
         return prices[period];
     }
 
-    function getVault(address account) public override returns (IVault) {
+    function getVault(address account) public view override returns (IVault) {
         return vaultUsed[account];
     }
 
@@ -91,7 +91,7 @@ contract Perpetual is IPerpetual {
     /// @notice Buys long Quote derivatives
     /// @param amount Amount of Quote tokens to be bought
     /// @dev No checks are done if bought amount exceeds allowance
-    function mintLongPosition(uint256 amount) external override returns (uint256) {
+    function openLongPosition(uint256 amount) external override returns (uint256) {
         // require(balances[msg.sender].quoteShort == 0, "User can not go long w/ an open short position");
         // require(balances[msg.sender].quoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
         // require(_leverageIsFine(msg.sender, amount), "Leverage factor is too high");
@@ -114,11 +114,56 @@ contract Perpetual is IPerpetual {
         return quoteLongBought;
     }
 
-    function redeemLongPosition(uint256 amount) external override returns (uint256) {}
+    function closeLongPosition(uint256 amount) external override returns (uint256) {
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        uint256 quoteLongSold = market.mintVQuote(amount);
+        settle(msg.sender);
+        if (traderPosition.notional < amount.toInt256()) {
+            traderPosition.notional -= amount.toInt256();
+            traderPosition.positionSize += quoteLongSold.toInt256();
+        } else {
+            require(traderPosition.notional == amount.toInt256(), "More shares than expected");
+            traderPosition.debt = traderPosition.notional - quoteLongSold.toInt256();
+            traderPosition.notional = 0;
+            traderPosition.positionSize = 0;
+        }
+        return quoteLongSold;
+    }
 
-    function mintShortPosition(uint256 amount) external override returns (uint256) {}
+    function openShortPosition(uint256 amount) external override returns (uint256) {
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        uint256 quoteShortBought = market.burnVBase(amount);
 
-    function redeemShortPosition(uint256 amount) external override returns (uint256) {}
+        if (traderPosition.notional > 0) {
+            require(traderPosition.side == LibPerpetual.Side.Short, "User can not go short w/ an open short position");
+            settle(msg.sender);
+            traderPosition.notional += amount.toInt256();
+            traderPosition.positionSize += quoteShortBought.toInt256();
+        } else {
+            traderPosition.side = LibPerpetual.Side.Short;
+            traderPosition.notional = amount.toInt256();
+            traderPosition.positionSize = quoteShortBought.toInt256();
+            traderPosition.timeStamp = globalPosition.timeStamp;
+            traderPosition.cumFundingRate = globalPosition.cumFundingRate;
+        }
+        return quoteShortBought;
+    }
+
+    function closeShortPosition(uint256 amount) external override returns (uint256) {
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        uint256 quoteShortSold = market.mintVQuote(amount);
+        settle(msg.sender);
+        if (traderPosition.notional < amount.toInt256()) {
+            traderPosition.notional -= amount.toInt256();
+            traderPosition.positionSize += quoteShortSold.toInt256();
+        } else {
+            require(traderPosition.notional == amount.toInt256(), "More shares than expected");
+            traderPosition.debt = traderPosition.notional - quoteShortSold.toInt256();
+            traderPosition.notional = 0;
+            traderPosition.positionSize = 0;
+        }
+        return quoteShortSold;
+    }
 
     function settle(address account) public override {
         LibPerpetual.TraderPosition memory user = userPosition[account];
@@ -146,9 +191,7 @@ contract Perpetual is IPerpetual {
                 upcomingFundingPayment = upcomingFundingRate * user.notional;
             }
 
-            // get user vault
-            IVault userVault = getVault(account);
-            userVault.applyFundingPayment(account, upcomingFundingPayment);
+            applyFundingPayment(account, upcomingFundingPayment);
         }
 
         // update user variables to global state
@@ -157,4 +200,8 @@ contract Perpetual is IPerpetual {
     }
 
     function marginIsValid(address account) external view override returns (bool) {}
+
+    function applyFundingPayment(address account, int256 newDebt) internal {
+        userPosition[account].debt += newDebt;
+    }
 }
