@@ -38,56 +38,61 @@ contract Liquidation is ILiquidation, IncreOwnable {
     ) external override {
         require(isPerpetual[perpetual], "No perpetual market");
 
-        // get account open positions
-        LibPerpetual.TraderPosition memory position = perpetual.getUserPosition(account);
-        // get account collateral vault
-        IVault userVault = perpetual.getVault(account);
+        // // get account open positions
+        // LibPerpetual.TraderPosition memory position = perpetual.getUserPosition(account);
 
-        // find under which conditions an position would be liquidated
-        int256 margin = userVault.getReserveValue(account);
-        int256 unrealizedPnl = 0; /// toDO: unrealizedPnl = position.getUnrealizedPnl();
-        int256 fundingPayments = 0; /// doDo: fundingPayments = market.getFundingPayments(account);
+        // // close position
+        // perpetual.closePosition(traderPosition.notional, position.side);
+        // // get account collateral vault
+        // IVault userVault = perpetual.getVault(account);
 
-        // calculate margin ratio
-        int256 marginRatio = LibMath.div(margin + unrealizedPnl + fundingPayments, position.notional);
+        // // find under which conditions an position would be liquidated
+        // int256 margin = userVault.getReserveValue(account);
+        // int256 unrealizedPnl = 0; /// toDO: unrealizedPnl = position.getUnrealizedPnl();
+        // int256 fundingPayments = 0; /// doDo: fundingPayments = market.getFundingPayments(account);
 
-        if (marginRatio < minMargin) {
-            // calculate money left
-            // calculate bad debt
-            // (
-            //     int256 liquidatorQuoteChange,
-            //     int256 liquidatorBaseChange,
-            //     int256 liquidateeQuoteChange,
-            //     int256 liquidateeBaseChange
-            // ) = LibLiquidation.liquidationBalanceChanges(
-            //     liquidatedBalance.position.base,
-            //     liquidatedBalance.position.quote,
-            //     amount
-            // );
+        // // calculate margin ratio
+        // int256 marginRatio = LibMath.div(margin + unrealizedPnl + fundingPayments, position.notional);
 
-            // perpetual.updatePositionOnLiquidation(
-            //     msg.sender,
-            //     account,
-            //     liquidatorQuoteChange,
-            //     liquidatorBaseChange,
-            //     liquidateeQuoteChange,
-            //     liquidateeBaseChange,
-            //     amountToEscrow
-            // );
+        // if (marginRatio < minMargin) {
+        //     // toDo: calculate the margin before
 
-            // userVault.updateVaultOnLiquidation(
-            //     msg.sender,
-            //     account,
-            //     liquidatorQuoteChange,
-            //     liquidatorBaseChange,
-            //     liquidateeQuoteChange,
-            //     liquidateeBaseChange,
-            //     amountToEscrow
-            // );
+        //     // calculate money left
+        //     // calculate bad debt
+        //     // (
+        //     //     int256 liquidatorQuoteChange,
+        //     //     int256 liquidatorBaseChange,
+        //     //     int256 liquidateeQuoteChange,
+        //     //     int256 liquidateeBaseChange
+        //     // ) = LibLiquidation.liquidationBalanceChanges(
+        //     //     liquidatedBalance.position.base,
+        //     //     liquidatedBalance.position.quote,
+        //     //     amount
+        //     // );
 
-            emit LiquidationCall(address(perpetual), account, msg.sender, amount, block.timestamp);
-        } else {
-            return;
-        }
+        //     // perpetual.updatePositionOnLiquidation(
+        //     //     msg.sender,
+        //     //     account,
+        //     //     liquidatorQuoteChange,
+        //     //     liquidatorBaseChange,
+        //     //     liquidateeQuoteChange,
+        //     //     liquidateeBaseChange,
+        //     //     amountToEscrow
+        //     // );
+
+        //     // userVault.updateVaultOnLiquidation(
+        //     //     msg.sender,
+        //     //     account,
+        //     //     liquidatorQuoteChange,
+        //     //     liquidatorBaseChange,
+        //     //     liquidateeQuoteChange,
+        //     //     liquidateeBaseChange,
+        //     //     amountToEscrow
+        //     // );
+
+        //     emit LiquidationCall(address(perpetual), account, msg.sender, amount, block.timestamp);
+        // } else {
+        //     return;
+        // }
     }
 }
