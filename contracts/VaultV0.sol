@@ -15,6 +15,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // dependencies
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 
 // libraries
 import {LibReserve} from "./lib/LibReserve.sol";
@@ -143,6 +144,8 @@ contract VaultV0 is IVaultV0 {
     function getAssetValue(address _account, address _asset) public view override returns (int256) {
         int256 accountBalance = balances[_account];
         int256 price = oracle.getAssetPrice(_asset);
-        return accountBalance * price;
+        return PRBMathSD59x18.mul(accountBalance, price);
     }
+
+    function settleDebt(address user, int256 amount) public view override returns (int256) {}
 }

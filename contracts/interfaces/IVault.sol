@@ -16,4 +16,6 @@ interface IVault {
     function withdraw(uint256 amount, IERC20 token) external;
 
     function getReserveValue(address account) external view returns (int256);
+
+    function settleDebt(address user, int256 amount) external view returns (int256);
 }

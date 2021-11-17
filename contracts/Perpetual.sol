@@ -6,6 +6,8 @@ import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 
@@ -13,10 +15,15 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 
-contract Perpetual is IPerpetual {
+contract Perpetual is IPerpetual, Context {
     using SafeCast for uint256;
     using SafeCast for int256;
     event LogFundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
+
+    /// @notice Margin ratio for full liquidation
+    int256 constant minMargin = 25e15; // 2.5%
+    /// @notice Liquidation fee
+    int256 constant liquidationFee = 60e15; // 6%
 
     MockStableSwap public market;
 
@@ -65,11 +72,11 @@ contract Perpetual is IPerpetual {
         IVault vault,
         IERC20 token
     ) external override {
-        IVault oldVault = vaultUsed[msg.sender];
+        IVault oldVault = vaultUsed[_msgSender()];
         if (address(oldVault) != address(0)) {
             require(oldVault == vault);
         } else {
-            vaultUsed[msg.sender] = vault;
+            vaultUsed[_msgSender()] = vault;
         }
         vault.deposit(amount, token);
     }
@@ -80,25 +87,28 @@ contract Perpetual is IPerpetual {
         IVault vault,
         IERC20 token
     ) external override {
-        IVault oldVault = vaultUsed[msg.sender];
+        IVault oldVault = vaultUsed[_msgSender()];
         if (address(oldVault) != address(0)) {
             require(oldVault == vault);
         } else {
-            vaultUsed[msg.sender] = vault;
+            vaultUsed[_msgSender()] = vault;
         }
-        vault.deposit(amount, token);
+        vault.withdraw(amount, token);
     }
 
     /// @notice Buys long Quote derivatives
     /// @param amount Amount of Quote tokens to be bought
     /// @dev No checks are done if bought amount exceeds allowance
     function openPosition(uint256 amount, LibPerpetual.Side direction) external override returns (uint256) {
-        // require(balances[msg.sender].quoteShort == 0, "User can not go long w/ an open short position");
-        // require(balances[msg.sender].quoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
-        // require(_leverageIsFine(msg.sender, amount), "Leverage factor is too high");
+        // require(balances[_msgSender()].quoteShort == 0, "User can not go long w/ an open short position");
+        // require(balances[_msgSender()].quoteLong == 0, "User can not go long w/ an open long position"); // since index would be recalculated
+        // require(_leverageIsFine(_msgSender(), amount), "Leverage factor is too high");
 
-        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[_msgSender()];
+        require(traderPosition.notional == 0, "Trader position is not allowed to have position open");
         uint256 quoteBought = 0;
+
+        // tODO: replace by curve logic
         if (direction == LibPerpetual.Side.Long) {
             quoteBought = market.mintVBase(amount);
         } else if (direction == LibPerpetual.Side.Short) {
@@ -107,40 +117,46 @@ contract Perpetual is IPerpetual {
             return 0;
         }
 
-        if (traderPosition.notional > 0) {
-            require(traderPosition.side == direction, "User can not go long w/ an open short position");
-            settle(msg.sender);
-            traderPosition.notional += amount.toInt256();
-            traderPosition.positionSize += quoteBought.toInt256();
-        } else {
-            traderPosition.side = direction;
-            traderPosition.notional = amount.toInt256();
-            traderPosition.positionSize = quoteBought.toInt256();
-            traderPosition.timeStamp = globalPosition.timeStamp;
-            traderPosition.cumFundingRate = globalPosition.cumFundingRate;
-        }
+        traderPosition.notional = amount.toInt256();
+        traderPosition.positionSize = quoteBought.toInt256();
+        traderPosition.debt = 0;
+        traderPosition.side = direction;
+        traderPosition.timeStamp = globalPosition.timeStamp;
+        traderPosition.cumFundingRate = globalPosition.cumFundingRate;
+
         return quoteBought;
     }
 
     function closePosition(uint256 amount, LibPerpetual.Side direction) external override returns (uint256) {
-        LibPerpetual.TraderPosition storage traderPosition = userPosition[msg.sender];
+        LibPerpetual.TraderPosition storage traderPosition = userPosition[_msgSender()];
+        require(traderPosition.notional == amount.toInt256(), "More shares than expected");
+        settle(_msgSender());
+        uint256 quoteSold = _closePosition(amount, _msgSender(), direction);
+        traderPosition.debt += traderPosition.notional - quoteSold.toInt256();
+
+        IVault userVault = vaultUsed[_msgSender()];
+        userVault.settleDebt(_msgSender(), traderPosition.debt);
+        traderPosition.notional = 0;
+        traderPosition.positionSize = 0;
+        return quoteSold;
+    }
+
+    function _closePosition(
+        uint256 amount,
+        address user,
+        LibPerpetual.Side direction
+    ) private returns (uint256) {
+        LibPerpetual.TraderPosition memory traderPosition = userPosition[user];
+        require(traderPosition.side == direction, "Wrong position");
+        require(traderPosition.notional == amount.toInt256(), "User must close close full position");
         uint256 quoteSold = 0;
+
+        require(direction == LibPerpetual.Side.Long || direction == LibPerpetual.Side.Short, "Unknown direction");
+        // tODO: replace by curve logic
         if (direction == LibPerpetual.Side.Long) {
             quoteSold = market.mintVQuote(amount);
-        } else if (direction == LibPerpetual.Side.Short) {
+        } else {
             quoteSold = market.burnVQuote(amount);
-        } else {
-            return 0;
-        }
-        settle(msg.sender);
-        if (traderPosition.notional < amount.toInt256()) {
-            traderPosition.notional -= amount.toInt256();
-            traderPosition.positionSize -= quoteSold.toInt256();
-        } else {
-            require(traderPosition.notional == amount.toInt256(), "More shares than expected");
-            traderPosition.debt += traderPosition.notional - quoteSold.toInt256();
-            traderPosition.notional = 0;
-            traderPosition.positionSize = 0;
         }
         return quoteSold;
     }
@@ -179,9 +195,9 @@ contract Perpetual is IPerpetual {
         userPosition[account].cumFundingRate = global.cumFundingRate;
     }
 
-    function marginIsValid(address account) external view override returns (bool) {}
+    function liquidate(address account) external {}
 
-    function unrealizedPnL(address account) internal view returns (int256) {}
+    function marginIsValid(address account) external view override returns (bool) {}
 
     function applyFundingPayment(address account, int256 newDebt) internal {
         userPosition[account].debt += newDebt;
