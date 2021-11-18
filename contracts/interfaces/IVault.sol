@@ -17,5 +17,5 @@ interface IVault {
 
     function getReserveValue(address account) external view returns (int256);
 
-    function settleDebt(address user, int256 amount) external view returns (int256);
+    function settleProfit(address user, int256 amount) external returns (int256);
 }

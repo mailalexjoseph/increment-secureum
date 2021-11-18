@@ -10,7 +10,7 @@ interface IPerpetual {
     //@audit flag
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
 
-    function closePosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
+    function closePosition() external;
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);
@@ -18,6 +18,8 @@ interface IPerpetual {
     function getPrice(uint256 period) external view returns (LibPerpetual.Price memory);
 
     function setPrice(LibPerpetual.Price memory newPrice) external;
+
+    function getUserProfit(address account) external returns (int256);
 
     // integration functions
 
@@ -41,6 +43,8 @@ interface IPerpetual {
     function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
 
     function settle(address account) external;
+
+    function marginRatio(address account) external view returns (int256);
 
     function marginIsValid(address account) external view returns (bool);
 }

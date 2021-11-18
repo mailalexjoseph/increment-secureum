@@ -16,6 +16,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // dependencies
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 
 // libraries
 import {LibReserve} from "./lib/LibReserve.sol";
@@ -23,12 +24,14 @@ import {LibMath} from "./lib/LibMath.sol";
 
 // toD0: use stable ERC20 implementation
 
-contract VaultV0 is IVaultV0 {
+contract VaultV0 is IVaultV0, Context {
     using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;
     // constants
-    uint256 public constant MAX_DECIMALS = 18;
+    uint256 private constant MAX_DECIMALS = 18;
+    uint256 private constant ONE = 1e18;
+    address private constant NO_ORACLE = 0x496E6372656d656E740000000000000000000000; /// 'Increment'
     uint256 private immutable reserveTokenDecimals;
 
     // dependent contracts
@@ -39,11 +42,11 @@ contract VaultV0 is IVaultV0 {
     IERC20 private immutable reserveToken;
 
     // deposit amount
-    mapping(address => int256) private balances;
     uint256 public totalReserveToken;
 
     //      amm     =>         trader =>            ERC20 => balances
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
+    mapping(address => int256) private balances;
 
     constructor(
         address _perpetual,
@@ -69,6 +72,12 @@ contract VaultV0 is IVaultV0 {
         reserveTokenDecimals = IERC20Decimals(_reserveToken).decimals();
     }
 
+    /************************* modifiers *************************/
+    modifier onlyPerpetual() {
+        require(_msgSender() == address(perpetual), "Only Perpetual can call this function");
+        _;
+    }
+
     /************************* functions *************************/
 
     /**
@@ -77,9 +86,8 @@ contract VaultV0 is IVaultV0 {
      * @param  depositToken Token address deposited (used for backwards compatability)
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
-    function deposit(uint256 amount, IERC20 depositToken) external override {
+    function deposit(uint256 amount, IERC20 depositToken) external override onlyPerpetual {
         require(depositToken == reserveToken);
-        perpetual.settle(msg.sender);
 
         // deposit reserveTokens to contract
 
@@ -107,9 +115,8 @@ contract VaultV0 is IVaultV0 {
      * @param withdrawToken ERC20 reserveToken address
      * @param  amount  Amount of USDC deposited
      */
-    function withdraw(uint256 amount, IERC20 withdrawToken) external override {
+    function withdraw(uint256 amount, IERC20 withdrawToken) external override onlyPerpetual {
         require(withdrawToken == reserveToken);
-        perpetual.settle(msg.sender);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
         int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, rawTokenAmount);
@@ -133,19 +140,25 @@ contract VaultV0 is IVaultV0 {
      * @param _account Account address
      */
     function getReserveValue(address _account) external view override returns (int256) {
-        return getAssetValue(_account, address(reserveToken));
+        return PRBMathSD59x18.mul(balances[_account], getAssetPrice());
     }
 
     /**
-     * @notice get the Asset value of some asset of an account
-     *  @param _account Account address
-     *  @param _asset Asset address
+     * @notice get the price of an asset
      */
-    function getAssetValue(address _account, address _asset) public view override returns (int256) {
-        int256 accountBalance = balances[_account];
-        int256 price = oracle.getAssetPrice(_asset);
-        return PRBMathSD59x18.mul(accountBalance, price);
+    function getAssetPrice() public view returns (int256) {
+        if (address(oracle) == NO_ORACLE) {
+            return 1e18;
+        }
+        // } else {
+        //     return oracle.getPrice(asset);
+        // }
+        return 1e18;
     }
 
-    function settleDebt(address user, int256 amount) public view override returns (int256) {}
+    function settleProfit(address user, int256 amount) public override onlyPerpetual returns (int256) {
+        int256 settlement = LibMath.div(amount, getAssetPrice());
+        balances[user] += settlement;
+        return settlement;
+    }
 }
