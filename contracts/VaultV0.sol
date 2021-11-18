@@ -86,7 +86,11 @@ contract VaultV0 is IVaultV0, Context {
      * @param  depositToken Token address deposited (used for backwards compatability)
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
-    function deposit(uint256 amount, IERC20 depositToken) external override onlyPerpetual {
+    function deposit(
+        address user,
+        uint256 amount,
+        IERC20 depositToken
+    ) external override onlyPerpetual {
         require(depositToken == reserveToken);
 
         // deposit reserveTokens to contract
@@ -97,17 +101,15 @@ contract VaultV0 is IVaultV0, Context {
         // scale down the value
         uint256 rawTokenAmount = uint256(LibReserve.wadToToken(reserveTokenDecimals, amount).toInt256());
 
-        IERC20(depositToken).safeTransferFrom(msg.sender, address(this), rawTokenAmount);
+        IERC20(depositToken).safeTransferFrom(user, address(this), rawTokenAmount);
 
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
         int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, rawTokenAmount);
 
         // increment balance
-        balances[msg.sender] += convertedWadAmount;
+        balances[user] += convertedWadAmount;
         totalReserveToken += amount;
-
-        emit Deposit(msg.sender, address(depositToken), amount);
     }
 
     /**
@@ -115,24 +117,26 @@ contract VaultV0 is IVaultV0, Context {
      * @param withdrawToken ERC20 reserveToken address
      * @param  amount  Amount of USDC deposited
      */
-    function withdraw(uint256 amount, IERC20 withdrawToken) external override onlyPerpetual {
+    function withdraw(
+        address user,
+        uint256 amount,
+        IERC20 withdrawToken
+    ) external override onlyPerpetual {
         require(withdrawToken == reserveToken);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
         int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, rawTokenAmount);
 
-        balances[msg.sender] -= convertedWadAmount;
+        balances[user] -= convertedWadAmount;
 
         // this may be able to be optimised
-        require(perpetual.marginIsValid(msg.sender));
+        require(perpetual.marginIsValid(user));
 
         // Safemath will throw if tvl < amount
         totalReserveToken -= uint256(convertedWadAmount);
 
         // perform transfer
-        IERC20(withdrawToken).safeTransfer(msg.sender, rawTokenAmount);
-
-        emit Withdraw(msg.sender, address(withdrawToken), amount);
+        IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
     }
 
     /**

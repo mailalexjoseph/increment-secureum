@@ -6,6 +6,26 @@ import {LibPerpetual} from "../lib/LibPerpetual.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 interface IPerpetual {
+    event Deposit(address indexed user, address indexed asset, uint256 amount);
+    event Withdraw(address indexed user, address indexed asset, uint256 amount);
+    event Settlement(address indexed user, uint128 indexed timeStamp, int256 amount);
+    event OpenPosition(
+        address indexed user,
+        uint128 indexed timeStamp,
+        LibPerpetual.Side direction,
+        uint256 notional,
+        uint256 amount
+    );
+    event ClosePosition(
+        address indexed user,
+        uint128 indexed timeStamp,
+        LibPerpetual.Side direction,
+        int256 notional,
+        uint256 amount
+    );
+    event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
+    event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
+
     // buy/ sell functions
     //@audit flag
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);

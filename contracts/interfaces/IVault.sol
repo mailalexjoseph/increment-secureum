@@ -8,12 +8,17 @@ pragma solidity 0.8.4;
 // @author: The interface used in other contracts
 
 interface IVault {
-    event Deposit(address indexed user, address indexed asset, uint256 amount);
-    event Withdraw(address indexed user, address indexed asset, uint256 amount);
+    function deposit(
+        address user,
+        uint256 amount,
+        IERC20 token
+    ) external;
 
-    function deposit(uint256 amount, IERC20 token) external;
-
-    function withdraw(uint256 amount, IERC20 token) external;
+    function withdraw(
+        address user,
+        uint256 amount,
+        IERC20 token
+    ) external;
 
     function getReserveValue(address account) external view returns (int256);
 

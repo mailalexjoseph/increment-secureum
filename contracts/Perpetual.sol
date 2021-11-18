@@ -80,7 +80,8 @@ contract Perpetual is IPerpetual, Context {
         } else {
             vaultUsed[_msgSender()] = vault;
         }
-        vault.deposit(amount, token);
+        vault.deposit(_msgSender(), amount, token);
+        emit Deposit(_msgSender(), address(token), amount);
     }
 
     /// @notice Withdraw tokens from the vault. Note that a vault can support multiple collateral tokens.
@@ -96,66 +97,83 @@ contract Perpetual is IPerpetual, Context {
             vaultUsed[_msgSender()] = vault;
         }
         require(getUserPosition(_msgSender()).notional == 0, "Has open position");
-        vault.withdraw(amount, token);
+        vault.withdraw(_msgSender(), amount, token);
+        emit Withdraw(_msgSender(), address(token), amount);
     }
 
     /// @notice Buys long Quote derivatives
     /// @param amount Amount of Quote tokens to be bought
     /// @dev No checks are done if bought amount exceeds allowance
     function openPosition(uint256 amount, LibPerpetual.Side direction) external override returns (uint256) {
-        LibPerpetual.TraderPosition storage traderPosition = userPosition[_msgSender()];
-        require(traderPosition.notional == 0, "Trader position is not allowed to have position open");
+        LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        require(user.notional == 0, "Trader position is not allowed to have position open");
 
+        uint256 quoteBought = _openPosition(user, global, direction, amount);
+
+        emit OpenPosition(_msgSender(), uint128(block.timestamp), direction, amount, quoteBought);
+
+        return quoteBought;
+    }
+
+    function _openPosition(
+        LibPerpetual.TraderPosition storage user,
+        LibPerpetual.GlobalPosition storage global,
+        LibPerpetual.Side direction,
+        uint256 amount
+    ) internal returns (uint256) {
         // buy derivative tokens
-        traderPosition.side = direction;
+        user.side = direction;
+        uint256 quoteBought = _openPositionOnMarket(amount, direction);
+
+        // set trader position
+        user.notional = amount.toInt256();
+        user.positionSize = quoteBought.toInt256();
+        user.profit = 0;
+
+        user.timeStamp = global.timeStamp;
+        user.cumFundingRate = global.cumFundingRate;
+
+        return quoteBought;
+    }
+
+    function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteBought = 0;
         if (direction == LibPerpetual.Side.Long) {
             quoteBought = market.mintVBase(amount);
         } else if (direction == LibPerpetual.Side.Short) {
             quoteBought = market.burnVBase(amount);
-        } else {
-            return 0;
         }
-
-        // set trader position
-        traderPosition.notional = amount.toInt256();
-        traderPosition.positionSize = quoteBought.toInt256();
-        traderPosition.profit = 0;
-
-        traderPosition.timeStamp = globalPosition.timeStamp;
-        traderPosition.cumFundingRate = globalPosition.cumFundingRate;
-
         return quoteBought;
     }
 
     /// @notice Closes position from account holder
     function closePosition() external override {
-        LibPerpetual.TraderPosition storage traderPosition = userPosition[_msgSender()];
+        LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
         LibPerpetual.GlobalPosition storage global = globalPosition;
         // get information about position
-        _closePosition(traderPosition, global);
+        _closePosition(user, global);
         // apply changes to collateral
         IVault userVault = vaultUsed[_msgSender()];
-        userVault.settleProfit(_msgSender(), traderPosition.profit);
+        userVault.settleProfit(_msgSender(), user.profit);
     }
 
-    function _closePosition(
-        LibPerpetual.TraderPosition storage traderPosition,
-        LibPerpetual.GlobalPosition storage global
-    ) internal {
-        uint256 amount = (traderPosition.positionSize).toUint256();
-        LibPerpetual.Side direction = traderPosition.side;
+    function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
+        internal
+    {
+        uint256 amount = (user.positionSize).toUint256();
+        LibPerpetual.Side direction = user.side;
 
         // settle funding rate
-        _settle(traderPosition, global);
+        _settle(user, global);
 
         // sell derivative tokens
         uint256 quoteSold = _closePositionOnMarket(amount, direction);
 
         // set trader position
-        traderPosition.profit += _calculatePnL(traderPosition.notional, quoteSold.toInt256());
-        traderPosition.notional = 0;
-        traderPosition.positionSize = 0;
+        user.profit += _calculatePnL(user.notional, quoteSold.toInt256());
+        user.notional = 0;
+        user.positionSize = 0;
     }
 
     // get information about position
@@ -186,6 +204,7 @@ contract Perpetual is IPerpetual, Context {
             // update user variables when position opened before last update
             int256 upcomingFundingPayment = getFundingPayments(user, global);
             _applyFundingPayment(user, upcomingFundingPayment);
+            emit Settlement(_msgSender(), user.timeStamp, upcomingFundingPayment);
         }
 
         // update user variables to global state
@@ -247,18 +266,18 @@ contract Perpetual is IPerpetual, Context {
         address liquidator = _msgSender();
 
         // load information about state
-        LibPerpetual.TraderPosition storage traderPosition = userPosition[account];
+        LibPerpetual.TraderPosition storage user = userPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        int256 notionalAmount = traderPosition.notional;
+        int256 notionalAmount = user.notional;
 
         // get information about position
-        _closePosition(traderPosition, global);
+        _closePosition(user, global);
 
         // liquidation costs
         int256 liquidationFee = (notionalAmount * LIQUIDATION_FEE) / PRECISION;
 
         // profits - liquidationFee gets paid out
-        int256 reducedProfit = traderPosition.profit - liquidationFee;
+        int256 reducedProfit = user.profit - liquidationFee;
 
         // substract fee from user account
         IVault userVault = vaultUsed[account];
@@ -267,5 +286,7 @@ contract Perpetual is IPerpetual, Context {
         // add fee to liquidator account
         IVault liquidatorVault = vaultUsed[liquidator];
         liquidatorVault.settleProfit(liquidator, liquidationFee);
+
+        emit LiquidationCall(account, _msgSender(), uint128(block.timestamp), notionalAmount);
     }
 }
