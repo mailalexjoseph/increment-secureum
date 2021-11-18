@@ -25,6 +25,7 @@ interface IPerpetual {
     );
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
+    event VaultAssigned(address indexed user, address indexed vault);
 
     // buy/ sell functions
     //@audit flag
@@ -49,11 +50,7 @@ interface IPerpetual {
         IERC20 token
     ) external;
 
-    function withdraw(
-        uint256 amount,
-        IVault vault,
-        IERC20 token
-    ) external;
+    function withdraw(uint256 amount, IERC20 token) external;
 
     function getVault(address _account) external returns (IVault vault);
 

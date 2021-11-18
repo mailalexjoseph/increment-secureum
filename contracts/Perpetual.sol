@@ -18,7 +18,6 @@ import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 contract Perpetual is IPerpetual, Context {
     using SafeCast for uint256;
     using SafeCast for int256;
-    event LogFundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
 
     // parameterization
     int256 constant MIN_MARGIN = 25e15; // 2.5%
@@ -26,9 +25,11 @@ contract Perpetual is IPerpetual, Context {
     int256 constant PRECISION = 10e18;
 
     // global state
+    bool private open;
     MockStableSwap private market;
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
+    mapping(IVault => bool) private vaultInitialized;
 
     // user state
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
@@ -68,35 +69,35 @@ contract Perpetual is IPerpetual, Context {
         prices.push(newPrice);
     }
 
+    function verifyAndCreateVault(IVault vault) internal {
+        require(vaultInitialized[vault], "Vault is not initialized");
+        IVault oldVault = vaultUsed[_msgSender()];
+        // if vault exists
+        if (address(oldVault) != address(0)) {
+            require(oldVault == vault, "Uses other vault");
+        } else {
+            // create new vault
+            vaultUsed[_msgSender()] = vault;
+            emit VaultAssigned(_msgSender(), address(vault));
+        }
+    }
+
     /// @notice Deposits tokens into the vault. Note that a vault can support multiple collateral tokens.
     function deposit(
         uint256 amount,
         IVault vault,
         IERC20 token
     ) external override {
-        IVault oldVault = vaultUsed[_msgSender()];
-        if (address(oldVault) != address(0)) {
-            require(oldVault == vault);
-        } else {
-            vaultUsed[_msgSender()] = vault;
-        }
+        verifyAndCreateVault(vault);
         vault.deposit(_msgSender(), amount, token);
         emit Deposit(_msgSender(), address(token), amount);
     }
 
     /// @notice Withdraw tokens from the vault. Note that a vault can support multiple collateral tokens.
-    function withdraw(
-        uint256 amount,
-        IVault vault,
-        IERC20 token
-    ) external override {
-        IVault oldVault = vaultUsed[_msgSender()];
-        if (address(oldVault) != address(0)) {
-            require(oldVault == vault);
-        } else {
-            vaultUsed[_msgSender()] = vault;
-        }
+    function withdraw(uint256 amount, IERC20 token) external override {
         require(getUserPosition(_msgSender()).notional == 0, "Has open position");
+        IVault vault = vaultUsed[_msgSender()];
+
         vault.withdraw(_msgSender(), amount, token);
         emit Withdraw(_msgSender(), address(token), amount);
     }
@@ -261,7 +262,7 @@ contract Perpetual is IPerpetual, Context {
         return LibMath.div(margin + unrealizedPnl + fundingPayments + profit, user.notional);
     }
 
-    function liquidate(address account) external {
+    function liquidate(address account, IVault liquidatorVault) external {
         require(!marginIsValid(account), "Margin is not valid");
         address liquidator = _msgSender();
 
@@ -284,7 +285,7 @@ contract Perpetual is IPerpetual, Context {
         userVault.settleProfit(account, reducedProfit);
 
         // add fee to liquidator account
-        IVault liquidatorVault = vaultUsed[liquidator];
+        verifyAndCreateVault(liquidatorVault);
         liquidatorVault.settleProfit(liquidator, liquidationFee);
 
         emit LiquidationCall(account, _msgSender(), uint128(block.timestamp), notionalAmount);
