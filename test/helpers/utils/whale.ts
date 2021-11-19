@@ -36,6 +36,10 @@ const whalesList: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress[]>> = {
     USDC: [''],
     DAI: [''],
   },
+  [eEthereumNetwork.localhost]: {
+    USDC: [''],
+    DAI: [''],
+  },
   [eEthereumNetwork.kovan]: {
     USDC: [''],
     DAI: [''],

@@ -1,7 +1,8 @@
 import {
   eEthereumNetwork,
   PerpetualConstructorArguments,
-  SetReserveTokenArguments,
+  VaultConstructorArguments,
+  tEthereumAddress,
 } from '../helpers/types';
 import {
   getReserveAddress,
@@ -15,40 +16,43 @@ import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
-export function getConstructorArgs(
+export function getPerpetualConstructorArgs(
   hre: HardhatRuntimeEnvironment
 ): PerpetualConstructorArguments {
-  return _getConstructorArgsByNetwork(getEthereumNetworkFromHRE(hre));
+  return _getPerpetualArgsByNetwork(getEthereumNetworkFromHRE(hre));
 }
 
-function _getConstructorArgsByNetwork(
+function _getPerpetualArgsByNetwork(
   network: eEthereumNetwork
 ): PerpetualConstructorArguments {
-  const constructorArgs: PerpetualConstructorArguments = [
+  const perpetualConstructorArgs: PerpetualConstructorArguments = [
     getQuoteAssetReserve(),
     getBaseAssetReserve(),
-    getChainlinkForexAggregator('JPY_USD', network),
-    getLendingPoolAddressProvider(network),
+    // getChainlinkForexAggregator('JPY_USD', network),
+    // getLendingPoolAddressProvider(network),
   ];
   //console.log('PerpetualConstructorArguments are', constructorArgs);
-  return constructorArgs;
+  return perpetualConstructorArgs;
 }
 
-function _getInitArgsByNetwork(
-  network: eEthereumNetwork
-): SetReserveTokenArguments {
-  const setReserveTokenArgs: SetReserveTokenArguments = [
-    getReserveAddress('USDC', network),
-    getReserveOracleAddress('USDC', network),
-    false,
+export function getVaultConstructorArgs(
+  hre: HardhatRuntimeEnvironment,
+  perpetualAddress: tEthereumAddress
+): VaultConstructorArguments {
+  return _getVaultArgsByNetwork(
+    getEthereumNetworkFromHRE(hre),
+    perpetualAddress
+  );
+}
+
+function _getVaultArgsByNetwork(
+  network: eEthereumNetwork,
+  perpetualAddress: tEthereumAddress
+): VaultConstructorArguments {
+  const vaultConstructorArgs: VaultConstructorArguments = [
+    perpetualAddress,
     getReserveAddress('USDC', network),
   ];
   //console.log('ConstructorArguments are', constructorArgs);
-  return setReserveTokenArgs;
-}
-
-export function getInitArgs(
-  hre: HardhatRuntimeEnvironment
-): SetReserveTokenArguments {
-  return _getInitArgsByNetwork(getEthereumNetworkFromHRE(hre));
+  return vaultConstructorArgs;
 }

@@ -32,3 +32,4 @@ docgen/
 *.png
 
 workspace.code-workspace
+test-old

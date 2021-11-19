@@ -1,4 +1,4 @@
-import {PerpConfig} from '../markets/ethereum';
+import {PerpConfig, VaultConfig} from '../markets/ethereum';
 import {
   eEthereumNetwork,
   tEthereumAddress,
@@ -19,14 +19,14 @@ export function getReserveAddress(
   reserveAssetName: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return PerpConfig.ReserveAssets[network][reserveAssetName];
+  return VaultConfig.ReserveAssets[network][reserveAssetName];
 }
 
 export function getReserveOracleAddress(
   reserveAssetName: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return PerpConfig.ChainlinkOracles[network][reserveAssetName];
+  return VaultConfig.ChainlinkOracles[network][reserveAssetName];
 }
 
 export function getQuoteAssetReserve(): BigNumber {
@@ -40,7 +40,7 @@ export function getBaseAssetReserve(): BigNumber {
 export function getLendingPoolAddressProvider(
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return PerpConfig.Integrations[network].lendingPoolAddressProvider;
+  return VaultConfig.Integrations[network].lendingPoolAddressProvider;
 }
 
 export function getFeedRegistry(

@@ -13,6 +13,7 @@ export enum eEthereumNetwork {
   main = 'main',
   coverage = 'coverage',
   hardhat = 'hardhat',
+  localhost = 'localhost',
 }
 
 export enum ePolygonNetwork {
@@ -73,6 +74,7 @@ export interface iEthereumParamsPerNetwork<T> {
   [eEthereumNetwork.coverage]: T;
   [eEthereumNetwork.kovan]: T;
   [eEthereumNetwork.main]: T;
+  [eEthereumNetwork.localhost]: T;
 }
 
 export interface iPolygonParamsPerNetwork<T> {
@@ -99,10 +101,10 @@ export type iMultiPoolsAssets<T> = iAssetCommon<T>;
 export interface IPerpetualConfiguration {
   MarketId: string;
   ReserveAssets: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-  ReservesConfig: iMultiPoolsAssets<IReserveParams>;
+  // ReservesConfig: iMultiPoolsAssets<IReserveParams>;
   ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
   VAMMConfig: iVAMMConfig;
-  Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+  // Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
 export interface iVAMMConfig {
@@ -110,16 +112,14 @@ export interface iVAMMConfig {
   BaseAssetReserve: BigNumber;
 }
 
-export type PerpetualConstructorArguments = [
-  BigNumber,
-  BigNumber,
-  tEthereumAddress,
-  tEthereumAddress
-];
+export interface IVaultConfiguration {
+  MarketId: string;
+  ReserveAssets: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+  Parameterization: iMultiPoolsAssets<IReserveParams>;
+  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+  Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+}
 
-export type SetReserveTokenArguments = [
-  tEthereumAddress,
-  tEthereumAddress,
-  boolean,
-  tEthereumAddress
-];
+export type PerpetualConstructorArguments = [BigNumber, BigNumber];
+
+export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];

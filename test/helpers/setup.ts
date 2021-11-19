@@ -16,10 +16,11 @@ import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
 import {BigNumber, tEthereumAddress} from '../../helpers/types';
 
 import env = require('hardhat');
-import {Perpetual, ERC20} from '../../typechain';
+import {Perpetual, Vault, ERC20} from '../../typechain';
 import {getWhale} from './utils';
 import {iVAMMConfig} from '../../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
+
 export interface TestEnv {
   // TODO: Define type for deployer/user
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -33,6 +34,7 @@ export interface TestEnv {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: any[];
   perpetual: Perpetual;
+  vault: Vault;
   usdc: ERC20;
   vAMMconfig: iVAMMConfig;
 }
@@ -49,6 +51,7 @@ const testEnv: TestEnv = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: [] as any[],
   perpetual: {} as Perpetual,
+  vault: {} as Vault,
   usdc: {} as ERC20,
   vAMMconfig: {} as iVAMMConfig,
 } as TestEnv;
@@ -58,6 +61,7 @@ const getContracts = async (deployerAccount: string) => {
     perpetual: <Perpetual>(
       await ethers.getContract('Perpetual', deployerAccount)
     ),
+    vault: <Vault>await ethers.getContract('Vault', deployerAccount),
     usdc: <ERC20>(
       await ethers.getContractAt(
         'ERC20',
@@ -95,15 +99,11 @@ export const funding = deployments.createFixture(async () => {
 
 export const setup = deployments.createFixture(async () => {
   // get contracts
-  //console.log('We are before running fixtures');
-  await deployments.fixture(['Perpetual', 'InitiateReserves']);
+  await deployments.fixture(['Perpetual', 'Vault']);
   await logDeployments();
-
   const {deployer, bob, alice, user} = await getNamedAccounts();
-
   const contracts = await getContracts(deployer);
 
-  // usds = await deployments.get("USDC")
   // fill container
   testEnv.deployer = await setupUser(deployer, contracts);
   testEnv.user = await setupUser(user, contracts);
@@ -111,6 +111,7 @@ export const setup = deployments.createFixture(async () => {
   testEnv.alice = await setupUser(alice, contracts);
   testEnv.users = await setupUsers(await getUnnamedAccounts(), contracts);
   testEnv.perpetual = contracts.perpetual;
+  testEnv.vault = contracts.vault;
   testEnv.usdc = contracts.usdc;
   testEnv.vAMMconfig = getVAMMConfig();
 
