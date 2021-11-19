@@ -13,9 +13,13 @@ import {LibMath} from "./lib/LibMath.sol";
 
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
+import {IncreOwnable} from "./utils/IncreOwnable.sol";
+
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 
-contract Perpetual is IPerpetual, Context {
+import "hardhat/console.sol";
+
+contract Perpetual is IPerpetual, Context, IncreOwnable {
     using SafeCast for uint256;
     using SafeCast for int256;
 
@@ -25,7 +29,6 @@ contract Perpetual is IPerpetual, Context {
     int256 constant PRECISION = 10e18;
 
     // global state
-    bool private open;
     MockStableSwap private market;
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
@@ -39,7 +42,15 @@ contract Perpetual is IPerpetual, Context {
         market = new MockStableSwap(_vQuote, _vBase);
     }
 
-    // viewer function
+    // global getter
+    function getStableSwap() public view returns (address) {
+        return address(market);
+    }
+
+    function isVault(address vaultAddress) public view returns (bool) {
+        return vaultInitialized[IVault(vaultAddress)];
+    }
+
     function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
         return getPrice(prices.length - 1);
     }
@@ -48,10 +59,11 @@ contract Perpetual is IPerpetual, Context {
         return prices[period];
     }
 
-    function getUserProfit(address account) public view override returns (int256) {
-        return userPosition[account].profit;
+    function getGlobalPosition() public view override returns (LibPerpetual.GlobalPosition memory) {
+        return globalPosition;
     }
 
+    // user getter
     function getVault(address account) public view override returns (IVault) {
         return vaultUsed[account];
     }
@@ -60,25 +72,28 @@ contract Perpetual is IPerpetual, Context {
         return userPosition[account];
     }
 
-    function getGlobalPosition() public view override returns (LibPerpetual.GlobalPosition memory) {
-        return globalPosition;
+    // functions
+    function setVault(address vaultAddress) public onlyOwner {
+        IVault vault = IVault(vaultAddress);
+        require(vaultInitialized[vault] == false, "Vault is already initialized");
+        vaultInitialized[vault] = true;
+        emit VaultRegistered(vaultAddress);
     }
 
-    // functions
     function setPrice(LibPerpetual.Price memory newPrice) external override {
         prices.push(newPrice);
     }
 
-    function verifyAndCreateVault(IVault vault) internal {
+    function _verifyAndSetVault(IVault vault) internal {
         require(vaultInitialized[vault], "Vault is not initialized");
         IVault oldVault = vaultUsed[_msgSender()];
-        // if vault exists
-        if (address(oldVault) != address(0)) {
-            require(oldVault == vault, "Uses other vault");
-        } else {
+        if (address(oldVault) == address(0)) {
             // create new vault
             vaultUsed[_msgSender()] = vault;
             emit VaultAssigned(_msgSender(), address(vault));
+        } else {
+            // check uses same vault
+            require(oldVault == vault, "Uses other vault");
         }
     }
 
@@ -88,7 +103,7 @@ contract Perpetual is IPerpetual, Context {
         IVault vault,
         IERC20 token
     ) external override {
-        verifyAndCreateVault(vault);
+        _verifyAndSetVault(vault);
         vault.deposit(_msgSender(), amount, token);
         emit Deposit(_msgSender(), address(token), amount);
     }
@@ -258,7 +273,7 @@ contract Perpetual is IPerpetual, Context {
         int256 margin = userVault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
         int256 unrealizedPnl = 0; /// toDO: requires implementation of curve pool;
-        int256 profit = getUserProfit(account);
+        int256 profit = getUserPosition(account).profit;
         return LibMath.div(margin + unrealizedPnl + fundingPayments + profit, user.notional);
     }
 
@@ -285,7 +300,7 @@ contract Perpetual is IPerpetual, Context {
         userVault.settleProfit(account, reducedProfit);
 
         // add fee to liquidator account
-        verifyAndCreateVault(liquidatorVault);
+        _verifyAndSetVault(liquidatorVault);
         liquidatorVault.settleProfit(liquidator, liquidationFee);
 
         emit LiquidationCall(account, _msgSender(), uint128(block.timestamp), notionalAmount);

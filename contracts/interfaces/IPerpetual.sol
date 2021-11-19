@@ -26,6 +26,7 @@ interface IPerpetual {
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
     event VaultAssigned(address indexed user, address indexed vault);
+    event VaultRegistered(address indexed vault);
 
     // buy/ sell functions
     //@audit flag
@@ -39,8 +40,6 @@ interface IPerpetual {
     function getPrice(uint256 period) external view returns (LibPerpetual.Price memory);
 
     function setPrice(LibPerpetual.Price memory newPrice) external;
-
-    function getUserProfit(address account) external returns (int256);
 
     // integration functions
 
