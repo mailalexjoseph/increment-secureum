@@ -7,7 +7,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
   console.log(`Current network is ${hre.network.name.toString()}`);
-  const perpetualConstructorArgs = getPerpetualConstructorArgs(hre);
+  const perpetualConstructorArgs = getPerpetualConstructorArgs();
 
   await hre.deployments.deploy('Perpetual', {
     from: deployer,

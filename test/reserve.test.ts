@@ -1,11 +1,11 @@
 import {expect} from 'chai';
-import {setup, funding} from './helpers/setup';
+import {setup, funding, User} from './helpers/setup';
 import {convertToCurrencyUnits} from '../helpers/contracts-helpers';
 import {utils, BigNumber} from 'ethers';
 import {Perpetual, Vault, ERC20} from '../typechain';
 
 describe('Increment App: Reserve', function () {
-  let user: any, deployer: any;
+  let user: User, deployer: User;
   let perpetual: Perpetual, vault: Vault, usdc: ERC20;
   let depositAmount: BigNumber;
 

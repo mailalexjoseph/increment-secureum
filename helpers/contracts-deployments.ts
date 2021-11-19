@@ -6,32 +6,22 @@ import {
 } from '../helpers/types';
 import {
   getReserveAddress,
-  getReserveOracleAddress,
-  getChainlinkForexAggregator,
   getQuoteAssetReserve,
   getBaseAssetReserve,
-  getLendingPoolAddressProvider,
 } from '../helpers/contract-getters';
 import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
-export function getPerpetualConstructorArgs(
-  hre: HardhatRuntimeEnvironment
-): PerpetualConstructorArguments {
-  return _getPerpetualArgsByNetwork(getEthereumNetworkFromHRE(hre));
+export function getPerpetualConstructorArgs(): PerpetualConstructorArguments {
+  return _getPerpetualArgsByNetwork();
 }
 
-function _getPerpetualArgsByNetwork(
-  network: eEthereumNetwork
-): PerpetualConstructorArguments {
+function _getPerpetualArgsByNetwork(): PerpetualConstructorArguments {
   const perpetualConstructorArgs: PerpetualConstructorArguments = [
     getQuoteAssetReserve(),
     getBaseAssetReserve(),
-    // getChainlinkForexAggregator('JPY_USD', network),
-    // getLendingPoolAddressProvider(network),
   ];
-  //console.log('PerpetualConstructorArguments are', constructorArgs);
   return perpetualConstructorArgs;
 }
 
@@ -53,6 +43,5 @@ function _getVaultArgsByNetwork(
     perpetualAddress,
     getReserveAddress('USDC', network),
   ];
-  //console.log('ConstructorArguments are', constructorArgs);
   return vaultConstructorArgs;
 }

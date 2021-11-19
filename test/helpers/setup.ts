@@ -21,18 +21,18 @@ import {getWhale} from './utils';
 import {iVAMMConfig} from '../../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
+export type User = {address: string} & {
+  perpetual: Perpetual;
+  vault: Vault;
+  usdc: ERC20;
+};
+
 export interface TestEnv {
-  // TODO: Define type for deployer/user
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deployer: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bob: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  alice: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  users: any[];
+  deployer: User;
+  user: User;
+  bob: User;
+  alice: User;
+  users: User[];
   perpetual: Perpetual;
   vault: Vault;
   usdc: ERC20;
@@ -41,15 +41,15 @@ export interface TestEnv {
 
 const testEnv: TestEnv = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  deployer: {} as any,
+  deployer: {} as User,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  user: {} as any,
+  user: {} as User,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  bob: {} as any,
+  bob: {} as User,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  alice: {} as any,
+  alice: {} as User,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  users: [] as any[],
+  users: [] as User[],
   perpetual: {} as Perpetual,
   vault: {} as Vault,
   usdc: {} as ERC20,

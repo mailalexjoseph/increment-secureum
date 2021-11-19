@@ -1,13 +1,6 @@
-import env = require('hardhat');
-import {BigNumber} from 'ethers';
 import {expect} from 'chai';
 import {utils} from 'ethers';
-import {
-  getChainlinkForexAggregator,
-  getReserveOracleAddress,
-} from '../helpers/contract-getters';
 import {ZERO_ADDRESS} from '../helpers/constants';
-import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 import {setup} from './helpers/setup';
 
 describe('Increment Protocol: Deployment', function () {
@@ -22,7 +15,7 @@ describe('Increment Protocol: Deployment', function () {
       expect(await perpetual.getStableSwap()).to.not.be.equal(ZERO_ADDRESS);
     });
     it('Should initialize Vault', async function () {
-      const {perpetual, usdc, vault, deployer} = await setup();
+      const {perpetual, usdc, vault} = await setup();
 
       expect(await vault.getPerpetual()).to.be.equal(perpetual.address);
       expect(await vault.getReserveToken()).to.be.equal(usdc.address);
