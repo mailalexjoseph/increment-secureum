@@ -7,7 +7,7 @@ import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
-import {IVaultV0} from "./interfaces/IVaultV0.sol";
+import {IVault} from "./interfaces/IVault.sol";
 
 // token information
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
@@ -23,8 +23,9 @@ import {LibReserve} from "./lib/LibReserve.sol";
 import {LibMath} from "./lib/LibMath.sol";
 
 // toD0: use stable ERC20 implementation
+import "hardhat/console.sol";
 
-contract VaultV0 is IVaultV0, Context {
+contract Vault is IVault, Context {
     using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;
@@ -34,38 +35,28 @@ contract VaultV0 is IVaultV0, Context {
     address private constant NO_ORACLE = 0x496E6372656d656E740000000000000000000000; /// 'Increment'
     uint256 private immutable reserveTokenDecimals;
 
-    // dependent contracts
-    //IInsurance private immutable insurance; // @dev Insurance address might not be needed
+    // state
     IPerpetual private immutable perpetual;
-    ILiquidation private immutable liquidation;
-    IOracle private immutable oracle;
+    // IOracle private immutable oracle;
     IERC20 private immutable reserveToken;
-
-    // deposit amount
-    uint256 public totalReserveToken;
-
+    uint256 private totalReserveToken;
     //      amm     =>         trader =>            ERC20 => balances
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
     mapping(address => int256) private balances;
 
     constructor(
         address _perpetual,
-        //address _insurance,
-        address _liquidation,
-        address _oracle,
+        // address _oracle,
         address _reserveToken
     ) {
         require(_perpetual != address(0), "Perpetual can not be zero address");
-        require(_liquidation != address(0), "Liquidation can not be zero address");
-        require(_oracle != address(0), "Oracle can not be zero address");
+        // require(_oracle != address(0), "Oracle can not be zero address");
         require(_reserveToken != address(0), "Token can not be zero address");
         require(IERC20Decimals(_reserveToken).decimals() <= MAX_DECIMALS, "Has to have less than 18 decimals");
 
         // set contract addresses
         perpetual = IPerpetual(_perpetual);
-        //insurance = IInsurance(_insurance);
-        liquidation = ILiquidation(_liquidation);
-        oracle = IOracle(_oracle);
+        // oracle = IOracle(_oracle);
         reserveToken = IERC20(_reserveToken);
 
         // set other parameters
@@ -78,11 +69,29 @@ contract VaultV0 is IVaultV0, Context {
         _;
     }
 
+    /************************* getter *************************/
+
+    function getPerpetual() public view returns (address) {
+        return address(perpetual);
+    }
+
+    function getReserveToken() public view returns (address) {
+        return address(reserveToken);
+    }
+
+    function getTotalReserveToken() public view returns (uint256) {
+        return totalReserveToken;
+    }
+
+    function getBalance(address user) public view returns (int256) {
+        return balances[user];
+    }
+
     /************************* functions *************************/
 
     /**
      * @notice Deposit reserveTokens to account
-     * @param  amount  Amount of reserveTokens with 18 decimals
+     * @param  amount  Amount of reserveTokens with token decimals
      * @param  depositToken Token address deposited (used for backwards compatability)
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
@@ -91,25 +100,17 @@ contract VaultV0 is IVaultV0, Context {
         uint256 amount,
         IERC20 depositToken
     ) external override onlyPerpetual {
-        require(depositToken == reserveToken);
+        require(depositToken == reserveToken, "Wrong token");
 
         // deposit reserveTokens to contract
-
-        // convert to decimals amount
-        // convert the WAD amount to the correct token amount to transfer
-        // cast is safe since amount is a uint, and wadToToken can only
-        // scale down the value
-        uint256 rawTokenAmount = uint256(LibReserve.wadToToken(reserveTokenDecimals, amount).toInt256());
-
-        IERC20(depositToken).safeTransferFrom(user, address(this), rawTokenAmount);
-
+        IERC20(depositToken).safeTransferFrom(user, address(this), amount);
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
-        int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, rawTokenAmount);
+        int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
         // increment balance
         balances[user] += convertedWadAmount;
-        totalReserveToken += amount;
+        totalReserveToken += convertedWadAmount.toUint256();
     }
 
     /**
@@ -122,19 +123,13 @@ contract VaultV0 is IVaultV0, Context {
         uint256 amount,
         IERC20 withdrawToken
     ) external override onlyPerpetual {
-        require(withdrawToken == reserveToken);
+        require(amount.toInt256() <= balances[user], "Not enough balance");
+        require(withdrawToken == reserveToken, "Wrong token address");
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
-        int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, rawTokenAmount);
-
-        balances[user] -= convertedWadAmount;
-
-        // this may be able to be optimised
-        require(perpetual.marginIsValid(user));
-
+        balances[user] -= amount.toInt256();
         // Safemath will throw if tvl < amount
-        totalReserveToken -= uint256(convertedWadAmount);
-
+        totalReserveToken -= amount;
         // perform transfer
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
     }
@@ -150,13 +145,7 @@ contract VaultV0 is IVaultV0, Context {
     /**
      * @notice get the price of an asset
      */
-    function getAssetPrice() public view returns (int256) {
-        if (address(oracle) == NO_ORACLE) {
-            return 1e18;
-        }
-        // } else {
-        //     return oracle.getPrice(asset);
-        // }
+    function getAssetPrice() public pure returns (int256) {
         return 1e18;
     }
 
