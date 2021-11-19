@@ -14,6 +14,10 @@ library LibMath {
         return SafeCast.toInt256(x);
     }
 
+    function toUint256(int256 x) internal pure returns (uint256) {
+        return SafeCast.toUint256(x);
+    }
+
     function div(int256 x, int256 y) internal pure returns (int256) {
         return PRBMathSD59x18.div(x, y);
     }
