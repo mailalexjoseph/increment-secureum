@@ -4,22 +4,25 @@ import {
   getUnnamedAccounts,
   getNamedAccounts,
 } from 'hardhat';
-import {getEthereumNetworkFromHRE} from '../../helpers/misc-utils';
+import env = require('hardhat');
+
+// helpers
 import {getReserveAddress, getVAMMConfig} from '../../helpers/contract-getters';
 import {
   setupUser,
   setupUsers,
   logDeployments,
   impersonateAccountsHardhat,
+  getEthereumNetworkFromHRE,
 } from '../../helpers/misc-utils';
 import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
-import {BigNumber, tEthereumAddress} from '../../helpers/types';
 
-import env = require('hardhat');
+// types
 import {Perpetual, Vault, ERC20} from '../../typechain';
-import {getWhale} from './utils';
-import {iVAMMConfig} from '../../helpers/types';
+import {BigNumber, tEthereumAddress, iVAMMConfig} from '../../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
+
+import {getWhale} from './utils';
 
 export type User = {address: string} & {
   perpetual: Perpetual;
@@ -40,15 +43,10 @@ export interface TestEnv {
 }
 
 const testEnv: TestEnv = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   deployer: {} as User,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   user: {} as User,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   bob: {} as User,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   alice: {} as User,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   users: [] as User[],
   perpetual: {} as Perpetual,
   vault: {} as Vault,
@@ -56,6 +54,7 @@ const testEnv: TestEnv = {
   vAMMconfig: {} as iVAMMConfig,
 } as TestEnv;
 
+/// @notice: get all deployed contracts
 const getContracts = async (deployerAccount: string) => {
   return {
     perpetual: <Perpetual>(
@@ -71,6 +70,7 @@ const getContracts = async (deployerAccount: string) => {
   };
 };
 
+/// @notice: steal funds from whale adress
 async function stealFunds(
   token: ERC20,
   newHolder: tEthereumAddress,
@@ -83,20 +83,21 @@ async function stealFunds(
   whale.token.transfer(newHolder, balance);
 }
 
-async function fundAcount(account: string): Promise<BigNumber> {
+async function _fundAcount(account: string): Promise<BigNumber> {
   const {usdc} = await getContracts(account);
   const fullAmount = await convertToCurrencyDecimals(usdc, '100');
   await stealFunds(usdc, account, fullAmount, env);
   return fullAmount;
 }
-
+/// @notice: fund user accounts
 export const funding = deployments.createFixture(async () => {
   const {bob, alice, user} = await getNamedAccounts();
-  await fundAcount(bob);
-  await fundAcount(alice);
-  return await fundAcount(user);
+  await _fundAcount(bob);
+  await _fundAcount(alice);
+  return await _fundAcount(user);
 });
 
+/// @notice: Main deployment function
 export const setup = deployments.createFixture(async () => {
   // get contracts
   await deployments.fixture(['Perpetual', 'Vault']);
