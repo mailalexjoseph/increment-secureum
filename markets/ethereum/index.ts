@@ -66,20 +66,22 @@ const chainlinkOracles = {
 
 const integrations = {
   [eEthereumNetwork.coverage]: {
-    lendingPoolAddressProvider: ZERO_ADDRESS,
+    LENDING_POOL_ADDRESS_PROVIDER: ZERO_ADDRESS,
   },
   [eEthereumNetwork.hardhat]: {
-    lendingPoolAddressProvider: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
+    LENDING_POOL_ADDRESS_PROVIDER: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
   },
   [eEthereumNetwork.localhost]: {
-    lendingPoolAddressProvider: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
+    LENDING_POOL_ADDRESS_PROVIDER: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
   },
 
   [eEthereumNetwork.kovan]: {
-    lendingPoolAddressProvider: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
+    LENDING_POOL_ADDRESS_PROVIDER: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
   },
   [eEthereumNetwork.main]: {
-    lendingPoolAddressProvider: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
+    LENDING_POOL_ADDRESS_PROVIDER: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
+    CRYPTOSWAP_EURS_SWAP: '0x98a7F18d4E56Cfe84E3D081B40001B3d5bD3eB8B',
+    CRYPTOSWAP_EURS_TOKEN: '0x3D229E1B4faab62F621eF2F6A610961f7BD7b23B',
   },
 };
 
