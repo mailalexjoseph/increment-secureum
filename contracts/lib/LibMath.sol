@@ -1,8 +1,7 @@
-// SPDX-License-Identifier: MIT
-
 //SPDX-License-Identifier: MIT
 pragma solidity 0.8.4;
 
+// dependencies
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";

@@ -1,28 +1,24 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
-
-// perpetual contracts
-import {IPerpetual} from "./interfaces/IPerpetual.sol";
-import {IInsurance} from "./interfaces/IInsurance.sol";
-import {ILiquidation} from "./interfaces/ILiquidation.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
-import {IVault} from "./interfaces/IVault.sol";
-
-// token information
-import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // dependencies
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+// interfaces
+import {IPerpetual} from "./interfaces/IPerpetual.sol";
+import {IInsurance} from "./interfaces/IInsurance.sol";
+import {ILiquidation} from "./interfaces/ILiquidation.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
+import {IVault} from "./interfaces/IVault.sol";
+import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
 
 // libraries
 import {LibReserve} from "./lib/LibReserve.sol";
 import {LibMath} from "./lib/LibMath.sol";
 
-// toD0: use stable ERC20 implementation
 import "hardhat/console.sol";
 
 contract Vault is IVault, Context {

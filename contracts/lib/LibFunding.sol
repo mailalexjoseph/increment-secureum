@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
+
+// dependencies
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
+// interfaces
 import {IPerpetual} from "../interfaces/IPerpetual.sol";
 
+// libraries
 import {LibMath} from "./LibMath.sol";
 import {LibPerpetual} from "./LibPerpetual.sol";
 

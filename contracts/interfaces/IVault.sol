@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
-
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
 pragma solidity 0.8.4;
+
+// dependencies
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // @dev: deposit uint and withdraw int
 // @author: The interface used in other contracts
-
 interface IVault {
     function deposit(
         address user,

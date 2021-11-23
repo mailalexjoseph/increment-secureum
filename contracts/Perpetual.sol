@@ -1,22 +1,22 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
+
+// dependencies
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {Context} from "@openzeppelin/contracts/utils/Context.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+// interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+// libraries
 import {LibMath} from "./lib/LibMath.sol";
-
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
-
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
-
 import "hardhat/console.sol";
 
 contract Perpetual is IPerpetual, Context, IncreOwnable {

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
+
+// dependencies
 import {IVault} from "./IVault.sol";
-import {LibPerpetual} from "../lib/LibPerpetual.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+// libraries
+import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
     event Deposit(address indexed user, address indexed asset, uint256 amount);

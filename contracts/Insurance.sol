@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
 
+// interfaces
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 

@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
-
 pragma solidity 0.8.4;
 
+// dependencies
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
-
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+
+// interfaces
+import {IOracle} from "./interfaces/IOracle.sol";
 
 contract Oracle is IOracle {
     using SafeCast for uint256;
