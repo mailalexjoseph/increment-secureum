@@ -33,4 +33,6 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Running tests
-        run: yarn testCI
+        run: yarn test
+        env:
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
