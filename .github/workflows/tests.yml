@@ -36,3 +36,4 @@ jobs:
         run: yarn test
         env:
           ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          HARDHAT_FORK_NUMBER: ${{ secrets.HARDHAT_FORK_NUMBER }}
