@@ -4,7 +4,7 @@ import 'hardhat-gas-reporter';
 import 'hardhat-deploy';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
-// import '@nomiclabs/hardhat-waffle';
+import '@nomiclabs/hardhat-waffle';
 
 import 'solidity-coverage';
 import 'hardhat-gas-reporter';
