@@ -1,11 +1,12 @@
 import 'dotenv/config';
-import 'hardhat-deploy';
 import 'hardhat-gas-reporter';
+
+import 'hardhat-deploy';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
-import '@nomiclabs/hardhat-waffle';
+// import '@nomiclabs/hardhat-waffle';
+
 import 'solidity-coverage';
-import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
 import {HardhatUserConfig} from 'hardhat/types';
@@ -121,7 +122,6 @@ const config: HardhatUserConfig = {
     overwrite: true,
     runOnCompile: true,
   },
-  //docgen: {}, // https://hardhat.org/plugins/hardhat-docgen.html, run with `yarn run hardhat docgen`
 };
 
 export default config;
