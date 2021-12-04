@@ -11,6 +11,7 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
+import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -30,7 +31,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     int256 constant PRECISION = 10e18;
 
     // global state
-    MockStableSwap private market;
+    ICryptoSwap private market;
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
     mapping(IVault => bool) private vaultInitialized;
@@ -39,8 +40,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
     mapping(address => IVault) private vaultUsed;
 
-    constructor(uint256 _vQuote, uint256 _vBase) {
-        market = new MockStableSwap(_vQuote, _vBase);
+    constructor(ICryptoSwap _market) {
+        market = _market;
     }
 
     // global getter
