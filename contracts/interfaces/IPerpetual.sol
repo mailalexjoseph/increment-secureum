@@ -4,6 +4,7 @@ pragma solidity 0.8.4;
 
 // dependencies
 import {IVault} from "./IVault.sol";
+import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // libraries
@@ -46,6 +47,7 @@ interface IPerpetual {
     function setPrice(LibPerpetual.Price memory newPrice) external;
 
     // integration functions
+    function setMarket(ICryptoSwap _market) external;
 
     function deposit(
         uint256 amount,

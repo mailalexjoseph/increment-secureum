@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+
 pragma solidity 0.8.4;
 
 // source: https://etherscan.io/address/0x0959158b6040D32d04c301A72CBFD6b39E21c9AE#code
@@ -13,17 +14,17 @@ interface ICurveFactory {
 
     function get_coins(address _pool) external view returns (address[2] memory);
 
-    function get_underlying_coins(address _pool) external view returns (address[8] memory);
+    function get_underlying_coins(address _pool) external view returns (address[2] memory);
 
     function get_decimals(address _pool) external view returns (uint256[2] memory);
 
-    function get_underlying_decimals(address _pool) external view returns (uint256[8] memory);
+    function get_underlying_decimals(address _pool) external view returns (uint256[2] memory);
 
     function get_rates(address _pool) external view returns (uint256[2] memory);
 
     function get_balances(address _pool) external view returns (uint256[2] memory);
 
-    function get_underlying_balances(address _pool) external view returns (uint256[8] memory);
+    function get_underlying_balances(address _pool) external view returns (uint256[2] memory);
 
     function get_A(address _pool) external view returns (uint256);
 
@@ -92,7 +93,7 @@ interface ICurveFactory {
     function deploy_plain_pool(
         string[32] memory _name,
         string[10] memory _symbol,
-        address[8] memory _coins,
+        address[2] memory _coins,
         uint256 _A,
         uint256 _fee,
         uint256 _asset_type,
