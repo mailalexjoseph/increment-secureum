@@ -34,7 +34,7 @@ contract Vault is IVault, Context {
 
     // state
     IPerpetual private immutable perpetual;
-    // IOracle private immutable oracle;
+    IOracle private immutable oracle;
     IERC20 private immutable reserveToken;
     uint256 private totalReserveToken;
     //      amm     =>         trader =>            ERC20 => balances
@@ -42,22 +42,22 @@ contract Vault is IVault, Context {
     mapping(address => int256) private balances;
 
     constructor(
-        address _perpetual,
-        // address _oracle,
-        address _reserveToken
+        IPerpetual _perpetual,
+        IOracle _oracle,
+        IERC20 _reserveToken
     ) {
-        require(_perpetual != address(0), "Perpetual can not be zero address");
-        // require(_oracle != address(0), "Oracle can not be zero address");
-        require(_reserveToken != address(0), "Token can not be zero address");
-        require(IERC20Decimals(_reserveToken).decimals() <= MAX_DECIMALS, "Has to have less than 18 decimals");
+        require(address(_perpetual) != address(0), "Perpetual can not be zero address");
+        require(address(_oracle) != address(0), "Oracle can not be zero address");
+        require(address(_reserveToken) != address(0), "Token can not be zero address");
+        require(IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS, "Has to have less than 18 decimals");
 
         // set contract addresses
-        perpetual = IPerpetual(_perpetual);
-        // oracle = IOracle(_oracle);
-        reserveToken = IERC20(_reserveToken);
+        perpetual = _perpetual;
+        oracle = _oracle;
+        reserveToken = _reserveToken;
 
         // set other parameters
-        reserveTokenDecimals = IERC20Decimals(_reserveToken).decimals();
+        reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
     }
 
     /************************* modifiers *************************/

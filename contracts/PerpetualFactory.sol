@@ -3,6 +3,7 @@
 pragma solidity 0.8.4;
 
 // interfaces
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IPerpetualFactory} from "./interfaces/IPerpetualFactory.sol";
 import {ICurveFactory} from "./interfaces/ICurveFactory.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
@@ -11,7 +12,9 @@ import {IInsurance} from "./interfaces/IInsurance.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {ISafetyPool} from "./interfaces/ISafetyPool.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
+import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 
+// contracts
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 import {Perpetual} from "./Perpetual.sol";
@@ -19,35 +22,80 @@ import {Insurance} from "./Insurance.sol";
 import {Oracle} from "./Oracle.sol";
 import {SafetyPool} from "./SafetyPool.sol";
 import {Vault} from "./Vault.sol";
+import {VirtualToken} from "./tokens/VirtualToken.sol";
 
 contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
     // collect all dependencies
     ICurveFactory public curveFactory;
 
     // deployed perpetuals & their vaults
-    Perpetual[] public deployedPerpetuals;
+    struct PerpetualInfo {
+        IPerpetual perpetual;
+        ICryptoSwap market;
+        IVault vault;
+    }
+    PerpetualInfo[] deployedPerpetuals;
 
-    Vault[] public deployedVaults;
-    mapping(IPerpetual => IVault[]) public vaultsUsed;
+    mapping(IVault => IPerpetual) vaultUsed; // to allow multiple vaults per perpetual
+    IInsurance public insurance;
+    IOracle public oracle;
+    ISafetyPool public safetyPool;
 
-    Insurance public insurance;
-    Oracle public oracle;
-    SafetyPool public safetyPool;
+    constructor(ICurveFactory _curveFactory) IncreOwnable() {
+        require(address(_curveFactory) != address(0), "Unknown address");
+        curveFactory = _curveFactory;
+        insurance = _deployInsurance();
+        oracle = _deployOracle();
+        safetyPool = _deploySafetyPool();
+    }
 
-    constructor(address _curveFactory) IncreOwnable() {
-        require(_curveFactory != address(0), "Unknown address");
-        curveFactory = ICurveFactory(_curveFactory);
+    // deployment functions
+    function deployNewPerpetualMarket(
+        string[32] memory _name,
+        string[10] memory _symbol,
+        IERC20 _reserveToken
+    ) external {
+        require(address(insurance) != address(0), "Insurance not deployed");
+        require(address(oracle) != address(0), "Oracle not deployed");
+        require(address(safetyPool) != address(0), "SafetyPool not deployed");
+
+        // deploy perpetual market
+        IPerpetual perpetual = _deployPerpetual(oracle);
+
+        // deploy trade tokens
+        IVirtualToken tokenA = _deployVirtualTokens("Long EUR/USD", "Long EUR/USD", perpetual);
+        IVirtualToken tokenB = _deployVirtualTokens("Short EUR/USD", "Short EUR/USD", perpetual);
+
+        // deploy curve market
+        // _A = 30, _fee =  4000000, _asset_type = 3, _implementation_idx = 0 /// TODO: find implementation idx (not sure what to select here)
+        ICryptoSwap market = _deployCryptoSwap(_name, _symbol, [address(tokenA), address(tokenB)], 30, 4000000, 3, 0);
+        perpetual.setMarket(market);
+
+        // deploy vault
+        IVault vault = _deployVault(perpetual, oracle, _reserveToken);
+        vaultUsed[vault] = perpetual;
+
+        deployedPerpetuals.push(PerpetualInfo(perpetual, market, vault));
+    }
+
+    function _deployVirtualTokens(
+        string memory _name,
+        string memory _symbol,
+        IPerpetual _perpetual
+    ) internal returns (IVirtualToken) {
+        IVirtualToken virtualToken = new VirtualToken(_name, _symbol, _perpetual);
+        return virtualToken;
     }
 
     function _deployCryptoSwap(
         string[32] memory _name,
         string[10] memory _symbol,
-        address[8] memory _coins,
+        address[2] memory _coins,
         uint256 _A,
         uint256 _fee,
         uint256 _asset_type,
         uint256 _implementation_idx
-    ) external {
+    ) internal returns (ICryptoSwap) {
         // from curveFactory:
         // @notice Deploy a new plain pool
         // @param _name Name of the new plain pool
@@ -77,30 +125,70 @@ contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
         }
         require(_fee >= 4000000 && _fee <= 100000000, "Invalid fee");
 
-        ICryptoSwap = curveFactory.deploy_plain_pool(
-            _name,
-            _symbol,
-            _coins,
-            _A,
-            _fee,
-            _asset_type,
-            _implementation_idx
+        ICryptoSwap market = ICryptoSwap(
+            curveFactory.deploy_plain_pool(_name, _symbol, _coins, _A, _fee, _asset_type, _implementation_idx)
         );
+        return market;
     }
 
-    function _deployPerpetual() external {
-        Perpetual perpetual = new Perpetual(); // hardcode for now
-        deployedPerpetuals.push(perpetual);
+    function _deployPerpetual(IOracle _oracle) internal returns (IPerpetual) {
+        Perpetual perpetual = new Perpetual(_oracle); // hardcode for now
+        return perpetual;
     }
 
-    function _deployVault() external {
-        Vault Vault = new Vault(10000, 13000); // hardcode for now
-        deployedVaults.push(Vault);
+    function _deployVault(
+        IPerpetual _perpetual,
+        IOracle _oracle,
+        IERC20 _reserveToken
+    ) internal returns (IVault) {
+        IVault vault = new Vault(_perpetual, _oracle, _reserveToken); // hardcode for now
+        return vault;
     }
 
-    function _deployOracle() external {}
+    function _deployOracle() internal returns (IOracle) {
+        return IOracle(address(0));
+    }
 
-    function _deploySafetyPool() external {}
+    function _deploySafetyPool() internal returns (ISafetyPool) {
+        return ISafetyPool(address(0));
+    }
 
-    function _deployInsurance() external {}
+    function _deployInsurance() internal returns (IInsurance) {
+        return IInsurance(address(0));
+    }
+
+    // // utils
+    // // quite inefficient with insight from https://ethereum.stackexchange.com/questions/32003/concat-two-bytes-arrays-with-assembly
+    // function _concatSymbol(string[9] memory symbol, string memory side)
+    //     internal
+    //     pure
+    //     returns (string[10] memory result)
+    // {
+    //     for (uint256 i = 0; i < symbol.length; i++) {
+    //         result[i] = symbol[i];
+    //     }
+    //     result[9] = side;
+    // }
+
+    // function _concatName(string[31] memory name, string memory side) internal pure returns (string[32] memory result) {
+    //     for (uint256 i = 0; i < name.length; i++) {
+    //         result[i] = name[i];
+    //     }
+    //     result[31] = side;
+    // }
+
+    // function _getVirtualTokenNames(string[31] memory _name, string[9] memory _symbol)
+    //     internal
+    //     returns (
+    //         string[32] memory longName,
+    //         string[10] memory longSymbol,
+    //         string[32] memory shortName,
+    //         string[10] memory shortSymbol
+    //     )
+    // {
+    //     longName = _concatName(_name, "LONG");
+    //     longSymbol = _concatSymbol(_symbol, "LONG");
+    //     shortName = _concatName(_name, "SHORT");
+    //     shortSymbol = _concatSymbol(_symbol, "SHORT");
+    // }
 }
