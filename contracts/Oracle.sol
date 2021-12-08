@@ -28,7 +28,7 @@ contract Oracle is IOracle, IncreOwnable {
 
     /****************************** Funding Rate ******************************/
 
-    function getAssetPrice(address asset) external view override onlyOwner returns (int256)  {
+    function getAssetPrice(address asset) external view override onlyOwner returns (int256) {
         AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
         uint8 chainlinkDecimals = chainlinkInterface.decimals();
         (, int256 price, , uint256 timeStamp, ) = chainlinkInterface.latestRoundData();
@@ -39,7 +39,7 @@ contract Oracle is IOracle, IncreOwnable {
         return scaledPrice.toInt256();
     }
 
-    function addAggregator(address _asset, address _aggregator) override onlyOwner external {
+    function addAggregator(address _asset, address _aggregator) external override onlyOwner {
         require(_asset != address(0));
         if (address(priceFeedMap[_asset]) == address(0)) {
             priceFeedKeys.push(_asset);
@@ -47,7 +47,7 @@ contract Oracle is IOracle, IncreOwnable {
         priceFeedMap[_asset] = AggregatorV3Interface(_aggregator);
     }
 
-    function removeAggregator(address _asset) override onlyOwner external {
+    function removeAggregator(address _asset) external override onlyOwner {
         require(_asset != address(0));
         delete priceFeedMap[_asset];
 
