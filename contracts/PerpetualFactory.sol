@@ -40,11 +40,11 @@ contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
     IInsurance public insurance;
     IOracle public oracle;
 
-    constructor(ICurveFactory _curveFactory) IncreOwnable() {
+    constructor(ICurveFactory _curveFactory, address _chainlinkFeedRegistryInterface) IncreOwnable() {
         require(address(_curveFactory) != address(0), "Unknown address");
         curveFactory = _curveFactory;
         insurance = _deployInsurance();
-        oracle = _deployOracle();
+        oracle = _deployOracle(_chainlinkFeedRegistryInterface);
     }
 
     // deployment functions
@@ -55,7 +55,6 @@ contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
     ) external {
         require(address(insurance) != address(0), "Insurance not deployed");
         require(address(oracle) != address(0), "Oracle not deployed");
-        require(address(safetyPool) != address(0), "SafetyPool not deployed");
 
         // deploy perpetual market
         IPerpetual perpetual = _deployPerpetual(oracle);

@@ -107,6 +107,10 @@ export interface IPerpetualConfiguration {
   // Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
+export interface IOracleConfig {
+  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+}
+
 export interface iVAMMConfig {
   QuoteAssetReserve: BigNumber;
   BaseAssetReserve: BigNumber;
@@ -120,6 +124,12 @@ export interface IVaultConfiguration {
   Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
-export type PerpetualConstructorArguments = [BigNumber, BigNumber];
+export type PerpetualConstructorArguments = [tEthereumAddress];
 
-export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
+export type VaultConstructorArguments = [
+  tEthereumAddress,
+  tEthereumAddress,
+  tEthereumAddress
+];
+
+export type OracleConstructorArguments = [tEthereumAddress];

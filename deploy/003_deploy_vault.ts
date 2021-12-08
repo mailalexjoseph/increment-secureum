@@ -9,8 +9,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   //await logDeployments();
 
   const perpetual = await ethers.getContract('Perpetual', deployer);
+  const oracle = await ethers.getContract('Oracle', deployer);
 
-  const vaultConstructorArgs = getVaultConstructorArgs(hre, perpetual.address);
+  const vaultConstructorArgs = getVaultConstructorArgs(
+    hre,
+    perpetual.address,
+    oracle.address
+  );
   await hre.deployments.deploy('Vault', {
     from: deployer,
     args: vaultConstructorArgs,
