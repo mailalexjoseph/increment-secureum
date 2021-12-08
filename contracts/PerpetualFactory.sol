@@ -39,14 +39,12 @@ contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
     mapping(IVault => IPerpetual) vaultUsed; // to allow multiple vaults per perpetual
     IInsurance public insurance;
     IOracle public oracle;
-    ISafetyPool public safetyPool;
 
     constructor(ICurveFactory _curveFactory) IncreOwnable() {
         require(address(_curveFactory) != address(0), "Unknown address");
         curveFactory = _curveFactory;
         insurance = _deployInsurance();
         oracle = _deployOracle();
-        safetyPool = _deploySafetyPool();
     }
 
     // deployment functions
@@ -145,50 +143,13 @@ contract PerpetualFactory is IPerpetualFactory, IncreOwnable {
         return vault;
     }
 
-    function _deployOracle() internal returns (IOracle) {
-        return IOracle(address(0));
-    }
-
-    function _deploySafetyPool() internal returns (ISafetyPool) {
-        return ISafetyPool(address(0));
+    function _deployOracle(address _chainlinkFeedRegistryInterface) internal returns (IOracle) {
+        oracle = new Oracle(_chainlinkFeedRegistryInterface);
+        return oracle;
     }
 
     function _deployInsurance() internal returns (IInsurance) {
-        return IInsurance(address(0));
+        insurance = new Insurance();
+        return insurance;
     }
-
-    // // utils
-    // // quite inefficient with insight from https://ethereum.stackexchange.com/questions/32003/concat-two-bytes-arrays-with-assembly
-    // function _concatSymbol(string[9] memory symbol, string memory side)
-    //     internal
-    //     pure
-    //     returns (string[10] memory result)
-    // {
-    //     for (uint256 i = 0; i < symbol.length; i++) {
-    //         result[i] = symbol[i];
-    //     }
-    //     result[9] = side;
-    // }
-
-    // function _concatName(string[31] memory name, string memory side) internal pure returns (string[32] memory result) {
-    //     for (uint256 i = 0; i < name.length; i++) {
-    //         result[i] = name[i];
-    //     }
-    //     result[31] = side;
-    // }
-
-    // function _getVirtualTokenNames(string[31] memory _name, string[9] memory _symbol)
-    //     internal
-    //     returns (
-    //         string[32] memory longName,
-    //         string[10] memory longSymbol,
-    //         string[32] memory shortName,
-    //         string[10] memory shortSymbol
-    //     )
-    // {
-    //     longName = _concatName(_name, "LONG");
-    //     longSymbol = _concatSymbol(_symbol, "LONG");
-    //     shortName = _concatName(_name, "SHORT");
-    //     shortSymbol = _concatSymbol(_symbol, "SHORT");
-    // }
 }
