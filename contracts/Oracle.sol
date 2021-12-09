@@ -35,7 +35,7 @@ contract Oracle is IOracle, IncreOwnable {
         // If the round is not complete yet, timestamp is 0
         require(timeStamp > 0, "Round not complete");
         require(price > 0, "Integer conversion failed");
-        uint256 scaledPrice = (uint256(price) + (uint256(timeStamp)) * DECIMALS) / chainlinkDecimals;
+        uint256 scaledPrice = (uint256(price) * DECIMALS) / chainlinkDecimals;
         return scaledPrice.toInt256();
     }
 
