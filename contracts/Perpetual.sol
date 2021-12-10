@@ -7,10 +7,13 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 
 // interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
+import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -20,7 +23,7 @@ import {IncreOwnable} from "./utils/IncreOwnable.sol";
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 import "hardhat/console.sol";
 
-contract Perpetual is IPerpetual, Context, IncreOwnable {
+contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     using SafeCast for uint256;
     using SafeCast for int256;
 
@@ -29,8 +32,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     int256 constant LIQUIDATION_FEE = 60e15; // 6%
     int256 constant PRECISION = 10e18;
 
+    // dependencies
+    ICryptoSwap private market;
+    IOracle private oracle;
+
     // global state
-    MockStableSwap private market;
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
     mapping(IVault => bool) private vaultInitialized;
@@ -39,8 +45,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
     mapping(address => IVault) private vaultUsed;
 
-    constructor(uint256 _vQuote, uint256 _vBase) {
-        market = new MockStableSwap(_vQuote, _vBase);
+    constructor(IOracle _oracle) {
+        oracle = _oracle;
+        _pause();
     }
 
     // global getter
@@ -74,6 +81,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     }
 
     // functions
+    function setMarket(ICryptoSwap _market) external override onlyOwner {
+        market = _market;
+    }
+
     function setVault(address vaultAddress) public onlyOwner {
         IVault vault = IVault(vaultAddress);
         require(vaultInitialized[vault] == false, "Vault is already initialized");
@@ -157,9 +168,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteBought = 0;
         if (direction == LibPerpetual.Side.Long) {
-            quoteBought = market.mintVBase(amount);
+            // quoteBought = market.mintVBase(amount);
         } else if (direction == LibPerpetual.Side.Short) {
-            quoteBought = market.burnVBase(amount);
+            // quoteBought = market.burnVBase(amount);
         }
         return quoteBought;
     }
@@ -202,9 +213,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable {
     function _closePositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteSold = 0;
         if (direction == LibPerpetual.Side.Long) {
-            quoteSold = market.mintVQuote(amount);
+            // quoteSold = market.mintVQuote(amount);
         } else {
-            quoteSold = market.burnVQuote(amount);
+            // quoteSold = market.burnVQuote(amount);
         }
         return quoteSold;
     }

@@ -1,4 +1,4 @@
-import {PerpConfig, VaultConfig} from '../markets/ethereum';
+import {PerpConfig, VaultConfig, OracleConfig} from '../markets/ethereum';
 import {
   eEthereumNetwork,
   tEthereumAddress,
@@ -43,10 +43,10 @@ export function getLendingPoolAddressProvider(
   return VaultConfig.Integrations[network].lendingPoolAddressProvider;
 }
 
-export function getFeedRegistry(
+export function getFeedRegistryAddress(
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return PerpConfig.ChainlinkOracles[network].FEED_REGISTRY;
+  return OracleConfig.ChainlinkOracles[network].FEED_REGISTRY;
 }
 
 export function getVAMMConfig(): iVAMMConfig {

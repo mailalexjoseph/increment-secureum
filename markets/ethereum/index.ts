@@ -6,6 +6,7 @@ import {
   IReserveParams,
   iVAMMConfig,
   IVaultConfiguration,
+  IOracleConfig,
 } from '../../helpers/types';
 
 // ----------------
@@ -140,6 +141,14 @@ export const PerpConfig: IPerpetualConfiguration = {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     },
   },
+  ChainlinkOracles: chainlinkOracles,
+};
+
+// ----------------
+// Oracle--SPECIFIC PARAMS
+// ----------------
+
+export const OracleConfig: IOracleConfig = {
   ChainlinkOracles: chainlinkOracles,
 };
 
