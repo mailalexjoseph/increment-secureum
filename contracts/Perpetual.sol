@@ -30,6 +30,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     int256 constant MIN_MARGIN = 25e15; // 2.5%
     int256 constant LIQUIDATION_FEE = 60e15; // 6%
     int256 constant PRECISION = 10e18;
+    uint256 constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
 
     // dependencies
     ICryptoSwap private market;
@@ -136,6 +137,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         require(user.notional == 0, "Trader position is not allowed to have position open");
 
+        updateFundingRate();
+
         uint256 quoteBought = _openPosition(user, global, direction, amount);
 
         emit OpenPosition(_msgSender(), uint128(block.timestamp), direction, amount, quoteBought);
@@ -178,6 +181,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function closePosition() external override {
         LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
         LibPerpetual.GlobalPosition storage global = globalPosition;
+
+        updateFundingRate();
+
         // get information about position
         _closePosition(user, global);
         // apply changes to collateral
@@ -201,6 +207,45 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.profit += _calculatePnL(user.notional, quoteSold.toInt256());
         user.notional = 0;
         user.positionSize = 0;
+    }
+
+    // @notice Calculate the funding rate for the next block
+
+    function updateFundingRate() public {
+        uint256 currentTime = block.timestamp;
+        uint256 lastFundingUpdate = uint256(globalPosition.timeStamp);
+        uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
+        uint256 lastTrade = globalPosition.timeOfLastTrade > lastFundingUpdate
+            ? uint256(globalPosition.timeOfLastTrade)
+            : lastFundingUpdate;
+
+        ////////////////////////////////// @TOOO wrap this into some library
+
+        //  if first trade of block
+        if (currentTime > lastTrade) {
+            // add to cumulative price if no block in trade yet
+            globalPosition.cumTradeVolume += (currentTime - lastTrade).toInt256() * globalPosition.priceOfLastTrade;
+
+            // reset time
+            globalPosition.timeOfLastTrade = currentTime.toUint128();
+        }
+
+        //  if funding rate should be updated
+        if (currentTime >= nextFundingRateUpdate) {
+            // get time since last funding rate update
+            int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
+
+            // update new funding Rate if 15 minutes have passed
+            globalPosition.cumFundingRate = globalPosition.cumTradeVolume / timePassed;
+
+            // reset time & volume
+            globalPosition.timeStamp = currentTime.toUint128();
+            globalPosition.cumTradeVolume = 0;
+        }
+
+        // update variables
+        globalPosition.priceOfLastTrade = market.get_virtual_price().toInt256(); // @note Is this the correct price?
+        ////////////////////////////////// @TOOO wrap this into some library
     }
 
     // get information about position
