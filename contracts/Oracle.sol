@@ -10,12 +10,13 @@ import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
 import {IOracle} from "./interfaces/IOracle.sol";
+import {IPerpetual} from "./interfaces/IPerpetual.sol";
 
 contract Oracle is IOracle, IncreOwnable {
     using SafeCast for uint256;
     FeedRegistryInterface private registry;
 
-    uint8 constant DECIMALS = 18;
+    uint8 constant OUT_DECIMALS = 18;
 
     constructor(address _registry) {
         registry = FeedRegistryInterface(_registry);
@@ -27,15 +28,26 @@ contract Oracle is IOracle, IncreOwnable {
 
     /****************************** Funding Rate ******************************/
 
+    function getIndexPrice() external view override returns (int256) {
+        AggregatorV3Interface chainlinkInterface = priceFeedMap[msg.sender];
+        require(address(chainlinkInterface) != address(0));
+        return _chainlinkPrice(chainlinkInterface);
+    }
+
     function getAssetPrice(address asset) external view override onlyOwner returns (int256) {
         AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
+        require(address(chainlinkInterface) != address(0));
+        return _chainlinkPrice(chainlinkInterface);
+    }
+
+    function _chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
         uint8 chainlinkDecimals = chainlinkInterface.decimals();
         (, int256 price, , uint256 timeStamp, ) = chainlinkInterface.latestRoundData();
         // If the round is not complete yet, timestamp is 0
         require(timeStamp > 0, "Round not complete");
         require(price > 0, "Integer conversion failed");
-        uint256 scaledPrice = (uint256(price) * DECIMALS) / chainlinkDecimals;
-        return scaledPrice.toInt256();
+        int256 scaledPrice = (price * int256(10**(OUT_DECIMALS - chainlinkDecimals)));
+        return scaledPrice;
     }
 
     function addAggregator(address _asset, address _aggregator) external override onlyOwner {

@@ -7,4 +7,6 @@ interface IOracle {
     function removeAggregator(address asset) external;
 
     function getAssetPrice(address asset) external view returns (int256);
+
+    function getIndexPrice() external view returns (int256);
 }

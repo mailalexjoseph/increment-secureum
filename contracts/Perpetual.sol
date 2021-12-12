@@ -212,23 +212,29 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     // @notice Calculate the funding rate for the next block
 
     function updateFundingRate() public {
-        uint256 currentTime = block.timestamp;
-        uint256 lastFundingUpdate = uint256(globalPosition.timeStamp);
-        uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
-        uint256 lastTrade = globalPosition.timeOfLastTrade > lastFundingUpdate
-            ? uint256(globalPosition.timeOfLastTrade)
-            : lastFundingUpdate;
+        // TODO: improve funding rate calculations
 
         ////////////////////////////////// @TOOO wrap this into some library
+        uint256 currentTime = block.timestamp;
+
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
         //  if first trade of block
-        if (currentTime > lastTrade) {
+        if (currentTime > timeOfLastTrade) {
+            int256 marketPrice = market.get_virtual_price().toInt256(); // is this the correct price?
+            int256 indexPrice = oracle.getIndexPrice();
+            int256 premium = (LibMath.div(marketPrice - indexPrice, indexPrice) * TWAP_FREQUENCY.toInt256()) / (1 days);
+
             // add to cumulative price if no block in trade yet
-            globalPosition.cumTradeVolume += (currentTime - lastTrade).toInt256() * globalPosition.priceOfLastTrade;
+            global.cumTradeVolume += LibMath.mul((currentTime - timeOfLastTrade).toInt256(), global.priceOfLastTrade);
 
             // reset time
-            globalPosition.timeOfLastTrade = currentTime.toUint128();
+            global.timeOfLastTrade = currentTime.toUint128();
         }
+
+        uint256 lastFundingUpdate = uint256(global.timeStamp);
+        uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
 
         //  if funding rate should be updated
         if (currentTime >= nextFundingRateUpdate) {
@@ -236,15 +242,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
 
             // update new funding Rate if 15 minutes have passed
-            globalPosition.cumFundingRate = globalPosition.cumTradeVolume / timePassed;
+            global.cumFundingRate = LibMath.div(global.cumTradeVolume, timePassed);
 
             // reset time & volume
-            globalPosition.timeStamp = currentTime.toUint128();
-            globalPosition.cumTradeVolume = 0;
+            global.timeStamp = currentTime.toUint128();
+            global.cumTradeVolume = 0;
         }
 
-        // update variables
-        globalPosition.priceOfLastTrade = market.get_virtual_price().toInt256(); // @note Is this the correct price?
         ////////////////////////////////// @TOOO wrap this into some library
     }
 
