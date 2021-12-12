@@ -17,6 +17,7 @@ import {IOracle} from "./interfaces/IOracle.sol";
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
+import {LibFunding} from "./lib/LibFunding.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
@@ -222,31 +223,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         //  if first trade of block
         if (currentTime > timeOfLastTrade) {
-            int256 marketPrice = market.get_virtual_price().toInt256(); // is this the correct price?
-            int256 indexPrice = oracle.getIndexPrice();
-            int256 premium = (LibMath.div(marketPrice - indexPrice, indexPrice) * TWAP_FREQUENCY.toInt256()) / (1 days);
-
-            // add to cumulative price if no block in trade yet
-            global.cumTradeVolume += LibMath.mul((currentTime - timeOfLastTrade).toInt256(), global.priceOfLastTrade);
-
-            // reset time
-            global.timeOfLastTrade = currentTime.toUint128();
-        }
-
-        uint256 lastFundingUpdate = uint256(global.timeStamp);
-        uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
-
-        //  if funding rate should be updated
-        if (currentTime >= nextFundingRateUpdate) {
-            // get time since last funding rate update
-            int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
-
-            // update new funding Rate if 15 minutes have passed
-            global.cumFundingRate = LibMath.div(global.cumTradeVolume, timePassed);
-
-            // reset time & volume
-            global.timeStamp = currentTime.toUint128();
-            global.cumTradeVolume = 0;
+            LibFunding.calculateFunding(
+                global,
+                market.get_virtual_price().toInt256(),
+                oracle.getIndexPrice(),
+                currentTime,
+                TWAP_FREQUENCY
+            );
         }
 
         ////////////////////////////////// @TOOO wrap this into some library

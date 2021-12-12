@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 // dependencies
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 // interfaces
 import {IPerpetual} from "../interfaces/IPerpetual.sol";
@@ -30,84 +31,43 @@ import "hardhat/console.sol";
 // }
 
 library LibFunding {
-    using LibMath for int256;
-    using LibMath for uint256;
+    using SafeCast for uint256;
+    using SafeCast for int256;
 
-    struct Price {
-        uint128 roundId;
-        uint128 timeStamp;
-        int256 price;
-    }
+    int256 constant SENSITIVITY = 10e18; // funding rate sensitivity to price deviations
 
-    function getChainlinkTWAP(int256 _delta, AggregatorV3Interface chainlinkOracle) internal view returns (int256) {
-        require(address(chainlinkOracle) != address(0));
+    function calculateFunding(
+        LibPerpetual.GlobalPosition storage global,
+        int256 marketPrice,
+        int256 indexPrice,
+        uint256 currentTime,
+        uint256 TWAP_FREQUENCY
+    ) internal {
+        int256 premium = (LibMath.div(marketPrice - indexPrice, indexPrice) * TWAP_FREQUENCY.toInt256()) / (1 days);
 
-        // get last price
-        (uint80 roundId, int256 price, , uint256 timeStamp, ) = chainlinkOracle.latestRoundData();
-        require(price > 0, "Negative price");
+        // add to cumulative price if no block in trade yet
+        global.cumTradeVolume += LibMath.mul(
+            (currentTime - global.timeOfLastTrade).toInt256(),
+            LibMath.mul(premium, SENSITIVITY)
+        );
 
-        // get start and end of period
-        uint256 latestDate = block.timestamp;
-        uint256 earliestDate = latestDate - uint256(_delta);
+        // reset time
+        global.timeOfLastTrade = currentTime.toUint128();
 
-        // initialize loop
-        uint256 oldTimeStap = timeStamp;
-        uint80 newRoundId;
-        int256 weighedAveragePrice;
+        uint256 lastFundingUpdate = uint256(global.timeStamp);
+        uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
 
-        if (timeStamp < earliestDate) {
-            // return if too early
-            return price;
+        //  if funding rate should be updated
+        if (currentTime >= nextFundingRateUpdate) {
+            // get time since last funding rate update
+            int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
+
+            // update new funding Rate if 15 minutes have passed
+            global.cumFundingRate = LibMath.div(global.cumTradeVolume, timePassed);
+
+            // reset time & volume
+            global.timeStamp = currentTime.toUint128();
+            global.cumTradeVolume = 0;
         }
-
-        // go from latest date to earliest
-        while (timeStamp >= earliestDate) {
-            if (roundId <= 0) {
-                return price;
-            }
-            // get id of price call before
-            newRoundId = roundId - 1;
-            (roundId, price, timeStamp, , ) = chainlinkOracle.getRoundData(newRoundId);
-            require(price > 0, "Negative price");
-            // weight by time
-            weighedAveragePrice += int256(oldTimeStap - timeStamp) * price;
-        }
-        return weighedAveragePrice / _delta;
-    }
-
-    function getPoolTWAP(int256 _delta, IPerpetual perpetual) internal view returns (int256) {
-        // get last price
-        LibPerpetual.Price memory price = perpetual.getLatestPrice();
-
-        // get last price
-        require(price.price > 0, "Negative price");
-
-        // get start and end of period
-        uint256 latestDate = block.timestamp;
-        uint256 earliestDate = latestDate - uint256(_delta);
-
-        // initialize loop
-        uint256 oldTimeStap = uint256(price.timeStamp);
-        uint256 newRoundId;
-        int256 weighedAveragePrice;
-
-        // return if too early
-        if (price.timeStamp < earliestDate) {
-            return price.price;
-        }
-
-        // go from latest date to earliest
-        while (price.timeStamp >= earliestDate) {
-            if (price.roundId <= 0) {
-                return price.price;
-            }
-            // get id of price call before
-            newRoundId = price.roundId - 1;
-            price = perpetual.getPrice(newRoundId);
-
-            // weight by time
-            weighedAveragePrice += int256(oldTimeStap - price.timeStamp) * price.price;
-        }
-        return weighedAveragePrice / _delta;
     }
 }
