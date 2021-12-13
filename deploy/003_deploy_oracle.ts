@@ -15,8 +15,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: oracleConstructorArgs,
     log: true,
   });
+
   console.log('We have deployed the oracle');
 };
-export default func;
+
 func.tags = ['Oracle'];
 func.id = 'deploy_oracle_contract';
+
+export default func;

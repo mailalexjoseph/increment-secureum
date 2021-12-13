@@ -1,13 +1,15 @@
 import {
   eEthereumNetwork,
-  PerpetualConstructorArguments,
   VaultConstructorArguments,
   OracleConstructorArguments,
   tEthereumAddress,
 } from '../helpers/types';
-import {getReserveAddress} from '../helpers/contract-getters';
-import {getFeedRegistryAddress} from '../helpers/contract-getters';
+import {
+  getReserveAddress,
+  getFeedRegistryAddress,
+} from '../helpers/contract-getters';
 import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
+import {integrations} from '../markets/ethereum';
 
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
@@ -25,42 +27,27 @@ function _getOracleConstructorArgsByNetwork(
   return oracleConstructorArguments;
 }
 
-export function getPerpetualConstructorArgs(
-  oracleAddress: tEthereumAddress
-): PerpetualConstructorArguments {
-  return _getPerpetualArgsByNetwork(oracleAddress);
-}
-
-function _getPerpetualArgsByNetwork(
-  oracleAddress: tEthereumAddress
-): PerpetualConstructorArguments {
-  const perpetualConstructorArgs: PerpetualConstructorArguments = [
-    oracleAddress,
-  ];
-  return perpetualConstructorArgs;
-}
-
 export function getVaultConstructorArgs(
   hre: HardhatRuntimeEnvironment,
-  perpetualAddress: tEthereumAddress,
   oracleAddress: tEthereumAddress
 ): VaultConstructorArguments {
-  return _getVaultArgsByNetwork(
-    getEthereumNetworkFromHRE(hre),
-    perpetualAddress,
-    oracleAddress
-  );
+  return _getVaultArgsByNetwork(getEthereumNetworkFromHRE(hre), oracleAddress);
 }
 
 function _getVaultArgsByNetwork(
   network: eEthereumNetwork,
-  perpetualAddress: tEthereumAddress,
   oracleAddress: tEthereumAddress
 ): VaultConstructorArguments {
   const vaultConstructorArgs: VaultConstructorArguments = [
-    perpetualAddress,
     oracleAddress,
     getReserveAddress('USDC', network),
   ];
   return vaultConstructorArgs;
+}
+
+export function getCurveFactoryAddress(
+  hre: HardhatRuntimeEnvironment
+): tEthereumAddress {
+  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
+  return integrations[ethereumNetwork].CURVE_FACTORY_CONTRACT;
 }

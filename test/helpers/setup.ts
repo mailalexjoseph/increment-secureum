@@ -100,7 +100,7 @@ export const funding = deployments.createFixture(async () => {
 /// @notice: Main deployment function
 export const setup = deployments.createFixture(async () => {
   // get contracts
-  await deployments.fixture(['Perpetual', 'Vault']);
+  await deployments.fixture(['Perpetual', 'Vault']); // TODO: UPDATE THESE
   await logDeployments();
   const {deployer, bob, alice, user} = await getNamedAccounts();
   const contracts = await getContracts(deployer);

@@ -124,12 +124,6 @@ export interface IVaultConfiguration {
   Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
-export type PerpetualConstructorArguments = [tEthereumAddress];
-
-export type VaultConstructorArguments = [
-  tEthereumAddress,
-  tEthereumAddress,
-  tEthereumAddress
-];
+export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
 
 export type OracleConstructorArguments = [tEthereumAddress];
