@@ -119,8 +119,8 @@ const config: HardhatUserConfig = {
     timeout: 0,
   },
   spdxLicenseIdentifier: {
-    overwrite: true,
-    runOnCompile: true,
+    overwrite: false,
+    runOnCompile: false,
   },
 };
 
