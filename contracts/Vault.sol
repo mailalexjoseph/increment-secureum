@@ -6,9 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IncreOwnable} from "../utils/IncreOwnable.sol";
 
 // interfaces
-import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
@@ -19,9 +19,8 @@ import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
 import {LibReserve} from "./lib/LibReserve.sol";
 import {LibMath} from "./lib/LibMath.sol";
 
-import "hardhat/console.sol";
-
-contract Vault is IVault, Context {
+/// @dev Vault must be called right after Perpetual is deployed to set Perpetual as the owner of the contract
+contract Vault is IVault, Context, IncreOwnable {
     using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;
@@ -32,7 +31,6 @@ contract Vault is IVault, Context {
     uint256 private immutable reserveTokenDecimals;
 
     // state
-    IPerpetual private immutable perpetual;
     IOracle private immutable oracle;
     IERC20 private immutable reserveToken;
     uint256 private totalReserveToken;
@@ -40,18 +38,15 @@ contract Vault is IVault, Context {
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
     mapping(address => int256) private balances;
 
-    constructor(
-        IPerpetual _perpetual,
-        IOracle _oracle,
-        IERC20 _reserveToken
-    ) {
-        require(address(_perpetual) != address(0), "Perpetual can not be zero address");
+    constructor(IOracle _oracle, IERC20 _reserveToken) {
         require(address(_oracle) != address(0), "Oracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
-        require(IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS, "Has to have less than 18 decimals");
+        require(
+            IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS,
+            "Has to have not more than 18 decimals"
+        );
 
         // set contract addresses
-        perpetual = _perpetual;
         oracle = _oracle;
         reserveToken = _reserveToken;
 
@@ -59,17 +54,7 @@ contract Vault is IVault, Context {
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
     }
 
-    /************************* modifiers *************************/
-    modifier onlyPerpetual() {
-        require(_msgSender() == address(perpetual), "Only Perpetual can call this function");
-        _;
-    }
-
     /************************* getter *************************/
-
-    function getPerpetual() public view returns (address) {
-        return address(perpetual);
-    }
 
     function getReserveToken() public view returns (address) {
         return address(reserveToken);
@@ -95,7 +80,7 @@ contract Vault is IVault, Context {
         address user,
         uint256 amount,
         IERC20 depositToken
-    ) external override onlyPerpetual {
+    ) external override onlyOwner {
         require(depositToken == reserveToken, "Wrong token");
 
         // deposit reserveTokens to contract
@@ -118,7 +103,7 @@ contract Vault is IVault, Context {
         address user,
         uint256 amount,
         IERC20 withdrawToken
-    ) external override onlyPerpetual {
+    ) external override onlyOwner {
         require(amount.toInt256() <= balances[user], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
@@ -145,7 +130,7 @@ contract Vault is IVault, Context {
         return 1e18;
     }
 
-    function settleProfit(address user, int256 amount) public override onlyPerpetual returns (int256) {
+    function settleProfit(address user, int256 amount) public override onlyOwner returns (int256) {
         int256 settlement = LibMath.div(amount, getAssetPrice());
         balances[user] += settlement;
         return settlement;

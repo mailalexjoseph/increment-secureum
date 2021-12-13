@@ -40,35 +40,32 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     IOracle private oracle;
     IVirtualToken private vBase;
     IVirtualToken private vQuote;
+    IVault private vault;
 
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
-    mapping(IVault => bool) private vaultInitialized;
 
     // user state
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
-    mapping(address => IVault) private vaultUsed;
 
     constructor(
         IOracle _oracle,
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
-        ICryptoSwap _curvePool
+        ICryptoSwap _curvePool,
+        IVault _vault,
     ) {
         oracle = _oracle;
         vBase = _vBase;
         vQuote = _vQuote;
         market = _curvePool;
+        vault = _vault;
     }
 
     // global getter
     function getStableSwap() public view returns (address) {
         return address(market);
-    }
-
-    function isVault(address vaultAddress) public view returns (bool) {
-        return vaultInitialized[IVault(vaultAddress)];
     }
 
     function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
@@ -84,54 +81,27 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // user getter
-    function getVault(address account) public view override returns (IVault) {
-        return vaultUsed[account];
-    }
-
     function getUserPosition(address account) public view override returns (LibPerpetual.TraderPosition memory) {
         return userPosition[account];
     }
 
     // functions
-    function setVault(address vaultAddress) public onlyOwner {
-        IVault vault = IVault(vaultAddress);
-        require(vaultInitialized[vault] == false, "Vault is already initialized");
-        vaultInitialized[vault] = true;
-        emit VaultRegistered(vaultAddress);
-    }
-
     function setPrice(LibPerpetual.Price memory newPrice) external override {
         prices.push(newPrice);
     }
 
-    function _verifyAndSetVault(IVault vault) internal {
-        require(vaultInitialized[vault], "Vault is not initialized");
-        IVault oldVault = vaultUsed[_msgSender()];
-        if (address(oldVault) == address(0)) {
-            // create new vault
-            vaultUsed[_msgSender()] = vault;
-            emit VaultAssigned(_msgSender(), address(vault));
-        } else {
-            // check uses same vault
-            require(oldVault == vault, "Uses other vault");
-        }
-    }
-
-    /// @notice Deposits tokens into the vault. Note that a vault can support multiple collateral tokens.
+    /// @notice Deposits tokens into the vault
     function deposit(
         uint256 amount,
-        IVault vault,
         IERC20 token
     ) external override {
-        _verifyAndSetVault(vault);
         vault.deposit(_msgSender(), amount, token);
         emit Deposit(_msgSender(), address(token), amount);
     }
 
-    /// @notice Withdraw tokens from the vault. Note that a vault can support multiple collateral tokens.
+    /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
         require(getUserPosition(_msgSender()).notional == 0, "Has open position");
-        IVault vault = vaultUsed[_msgSender()];
 
         vault.withdraw(_msgSender(), amount, token);
         emit Withdraw(_msgSender(), address(token), amount);
@@ -195,8 +165,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // get information about position
         _closePosition(user, global);
         // apply changes to collateral
-        IVault userVault = vaultUsed[_msgSender()];
-        userVault.settleProfit(_msgSender(), user.profit);
+        vault.settleProfit(_msgSender(), user.profit);
     }
 
     function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
@@ -317,17 +286,16 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function marginRatio(address account) public view override returns (int256) {
         LibPerpetual.TraderPosition memory user = getUserPosition(account);
         LibPerpetual.GlobalPosition memory global = getGlobalPosition();
-        IVault userVault = getVault(account);
 
         // calcuate margin ratio = = (margin + pnl + fundingPayments) / position.getNotional()
-        int256 margin = userVault.getReserveValue(account);
+        int256 margin = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
         int256 unrealizedPnl = 0; /// toDO: requires implementation of curve pool;
         int256 profit = getUserPosition(account).profit;
         return LibMath.div(margin + unrealizedPnl + fundingPayments + profit, user.notional);
     }
 
-    function liquidate(address account, IVault liquidatorVault) external {
+    function liquidate(address account) external {
         require(!marginIsValid(account), "Margin is not valid");
         address liquidator = _msgSender();
 
@@ -346,12 +314,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         int256 reducedProfit = user.profit - liquidationFee;
 
         // substract fee from user account
-        IVault userVault = vaultUsed[account];
-        userVault.settleProfit(account, reducedProfit);
+        vault.settleProfit(account, reducedProfit);
 
         // add fee to liquidator account
-        _verifyAndSetVault(liquidatorVault);
-        liquidatorVault.settleProfit(liquidator, liquidationFee);
+        vault.settleProfit(liquidator, liquidationFee);
 
         emit LiquidationCall(account, _msgSender(), uint128(block.timestamp), notionalAmount);
     }
