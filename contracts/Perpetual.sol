@@ -7,18 +7,20 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {IncreOwnable} from "./utils/IncreOwnable.sol";
+import {VirtualToken} from "./tokens/VirtualToken.sol";
 
 // interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
+import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import {LibFunding} from "./lib/LibFunding.sol";
-import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 import "hardhat/console.sol";
@@ -36,6 +38,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     // dependencies
     ICryptoSwap private market;
     IOracle private oracle;
+    IVirtualToken private vBase;
+    IVirtualToken private vQuote;
 
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
@@ -46,9 +50,16 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
     mapping(address => IVault) private vaultUsed;
 
-    constructor(IOracle _oracle) {
+    constructor(
+        IOracle _oracle,
+        IVirtualToken _vBase,
+        IVirtualToken _vQuote,
+        ICryptoSwap _curvePool
+    ) {
         oracle = _oracle;
-        _pause();
+        vBase = _vBase;
+        vQuote = _vQuote;
+        market = _curvePool;
     }
 
     // global getter
@@ -82,10 +93,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // functions
-    function setMarket(ICryptoSwap _market) external override onlyOwner {
-        market = _market;
-    }
-
     function setVault(address vaultAddress) public onlyOwner {
         IVault vault = IVault(vaultAddress);
         require(vaultInitialized[vault] == false, "Vault is already initialized");

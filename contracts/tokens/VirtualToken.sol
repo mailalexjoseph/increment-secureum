@@ -7,29 +7,17 @@ import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
 
 // dependencies
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IncreOwnable} from "../utils/IncreOwnable.sol";
 
 // toDO: Write optimized ERC20 implementation for trades
-contract VirtualToken is IVirtualToken, ERC20 {
-    IPerpetual public immutable perpetual;
+contract VirtualToken is IVirtualToken, ERC20, IncreOwnable {
+    constructor(string memory _name, string memory _symbol) ERC20(_name, _symbol) {}
 
-    modifier onlyPerpetual() {
-        require(msg.sender == address(perpetual));
-        _;
+    function mint(uint256 amount) external override onlyOwner {
+        _mint(address(owner), amount);
     }
 
-    constructor(
-        string memory _name,
-        string memory _symbol,
-        IPerpetual _perpetual
-    ) ERC20(_name, _symbol) {
-        perpetual = _perpetual;
-    }
-
-    function mint(uint256 amount) external override onlyPerpetual {
-        _mint(address(perpetual), amount);
-    }
-
-    function burn(uint256 amount) external override onlyPerpetual {
-        _burn(address(perpetual), amount);
+    function burn(uint256 amount) external override onlyOwner {
+        _burn(address(owner), amount);
     }
 }
