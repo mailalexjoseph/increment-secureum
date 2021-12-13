@@ -73,7 +73,7 @@ library LibFunding {
             int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
 
             // // update new funding Rate if 15 minutes have passed
-            // global.cumFundingRate += (LibMath.mul(SENSITIVITY, global.cumTradePremium) * timePassed) / 1 days;
+            global.cumFundingRate += (LibMath.mul(SENSITIVITY, global.cumTradePremium) * timePassed) / 1 days;
 
             // int256 rslt = LibMath.mul(SENSITIVITY, global.cumTradePremium);
             // console.log(
