@@ -22,10 +22,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     deployer
   );
   // see: https://github.com/curvefi/curve-factory/blob/fb61207c8d1095096dc07f2c705cf02d40757635/contracts/Factory.vy#L169
-  const VEURVUSDPoolAddress = curveFactory.find_pool_for_coins(
-    vEUR.address,
-    vUSD.address
-  );
+  const VEURVUSDPoolAddress = await curveFactory[
+    'find_pool_for_coins(address,address)'
+  ](vEUR.address, vUSD.address);
 
   const perpetualArgs = [
     oracle.address,

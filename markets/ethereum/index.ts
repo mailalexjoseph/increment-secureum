@@ -1,22 +1,11 @@
-import {IPerpetualConfiguration, eEthereumNetwork} from '../../helpers/types';
-import {utils} from 'ethers';
+import {eEthereumNetwork} from '../../helpers/types';
 import {ZERO_ADDRESS} from '../../helpers/constants';
 
 import {
   IReserveParams,
-  iVAMMConfig,
   IVaultConfiguration,
   IOracleConfig,
 } from '../../helpers/types';
-
-// ----------------
-// Parameterization
-// ----------------
-
-const vAMMConfig: iVAMMConfig = {
-  QuoteAssetReserve: utils.parseEther('100000000'),
-  BaseAssetReserve: utils.parseEther('900000'),
-};
 
 // ----------------
 // Reserve Assets
@@ -65,6 +54,12 @@ const chainlinkOracles = {
 // Integrations
 // ----------------
 
+// at the time of writing (Dec 2021), the current factory contract is 0xB9fC157394Af804a3578134A6585C0dc9cc990d4
+// but it could change, if so, use the address provider contract at 0x0000000022d53366457f9d5e68ec105046fc4383
+// ref: https://discord.com/channels/729808684359876718/729812922649542758/920105496546013204
+export const CURVE_FACTORY_MAINNET =
+  '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
+
 export const integrations = {
   [eEthereumNetwork.coverage]: {
     AAVE_CONTRACTS_GATEWAY: ZERO_ADDRESS,
@@ -72,7 +67,7 @@ export const integrations = {
   },
   [eEthereumNetwork.hardhat]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
-    CURVE_FACTORY_CONTRACT: ZERO_ADDRESS,
+    CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET, // reference to mainnet because we fork mainnet
   },
   [eEthereumNetwork.localhost]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
@@ -85,7 +80,7 @@ export const integrations = {
   },
   [eEthereumNetwork.main]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
-    CURVE_FACTORY_CONTRACT: '0x0959158b6040D32d04c301A72CBFD6b39E21c9AE',
+    CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET,
   },
 };
 
@@ -121,38 +116,9 @@ export const VaultConfig: IVaultConfiguration = {
 };
 
 // ----------------
-// POOL--SPECIFIC PARAMS
-// ----------------
-
-export const PerpConfig: IPerpetualConfiguration = {
-  MarketId: 'Increment finance vAMM market',
-  VAMMConfig: vAMMConfig,
-  ReserveAssets: {
-    [eEthereumNetwork.coverage]: {
-      USDC: ZERO_ADDRESS,
-    },
-    [eEthereumNetwork.hardhat]: {
-      USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    },
-    [eEthereumNetwork.localhost]: {
-      USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    },
-    [eEthereumNetwork.kovan]: {
-      USDC: '0xe22da380ee6B445bb8273C81944ADEB6E8450422',
-    },
-    [eEthereumNetwork.main]: {
-      USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    },
-  },
-  ChainlinkOracles: chainlinkOracles,
-};
-
-// ----------------
 // Oracle--SPECIFIC PARAMS
 // ----------------
 
 export const OracleConfig: IOracleConfig = {
   ChainlinkOracles: chainlinkOracles,
 };
-
-export default PerpConfig;

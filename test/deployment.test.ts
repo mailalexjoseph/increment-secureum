@@ -1,22 +1,49 @@
 import {expect} from 'chai';
-import {utils} from 'ethers';
-import {ZERO_ADDRESS} from '../helpers/constants';
 import {setup} from './helpers/setup';
 
-describe('Increment Protocol: Deployment', function () {
+describe('Protocol deployment', function () {
   describe('Deployment', function () {
-    it('Should initialize Perpetual', async function () {
-      const {perpetual, vault, deployer} = await setup();
+    it.only('Should initialize Perpetual with its dependencies', async function () {
+      const {deployer} = await setup();
 
-      // expect(await deployer.perpetual.setVault(vault.address)).to;
-      // expect(await perpetual.isVault(vault.address)).to.be.true;
+      expect(await deployer.perpetual.vault()).to.equal(deployer.vault.address);
+      expect(await deployer.perpetual.oracle()).to.equal(
+        deployer.oracle.address
+      );
+      expect(await deployer.perpetual.market()).to.equal(
+        deployer.market.address
+      );
+      expect(await deployer.perpetual.vBase()).to.equal(deployer.vEUR.address);
+      expect(await deployer.perpetual.vQuote()).to.equal(deployer.vUSD.address);
     });
-    it('Should initialize Vault', async function () {
-      const {perpetual, usdc, vault} = await setup();
 
-      // expect(await vault.getPerpetual()).to.be.equal(perpetual.address);
-      expect(await vault.getReserveToken()).to.be.equal(usdc.address);
-      expect(await vault.getTotalReserveToken()).to.be.equal(0);
+    it('Should initialize Vault with its dependencies and Perpetual as its owner', async function () {
+      const {deployer} = await setup();
+
+      expect(await deployer.vault.owner()).to.be.equal(
+        deployer.perpetual.address
+      );
+      expect(await deployer.vault.getReserveToken()).to.be.equal(
+        deployer.usdc.address
+      );
+      expect(await deployer.vault.getOracle()).to.be.equal(
+        deployer.oracle.address
+      );
+      expect(await deployer.vault.getTotalReserveToken()).to.be.equal(0);
+    });
+
+    it('Should initialize vBase and vQuote with Perpetual as their owner', async function () {
+      const {deployer} = await setup();
+
+      expect(await deployer.vEUR.owner()).to.be.equal(
+        deployer.perpetual.address
+      );
+      expect(await deployer.vEUR.symbol()).to.be.equal('vEUR');
+
+      expect(await deployer.vUSD.owner()).to.be.equal(
+        deployer.perpetual.address
+      );
+      expect(await deployer.vUSD.symbol()).to.be.equal('vUSD');
     });
   });
 });

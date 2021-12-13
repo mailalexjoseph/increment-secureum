@@ -98,22 +98,8 @@ export type iMultiPoolsAssets<T> = iAssetCommon<T>;
 
 /********************** OWN TYPES **************************/
 
-export interface IPerpetualConfiguration {
-  MarketId: string;
-  ReserveAssets: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-  // ReservesConfig: iMultiPoolsAssets<IReserveParams>;
-  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-  VAMMConfig: iVAMMConfig;
-  // Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-}
-
 export interface IOracleConfig {
   ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-}
-
-export interface iVAMMConfig {
-  QuoteAssetReserve: BigNumber;
-  BaseAssetReserve: BigNumber;
 }
 
 export interface IVaultConfiguration {

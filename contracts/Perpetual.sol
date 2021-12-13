@@ -36,11 +36,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
 
     // dependencies
-    ICryptoSwap private market;
-    IOracle private oracle;
-    IVirtualToken private vBase;
-    IVirtualToken private vQuote;
-    IVault private vault;
+    ICryptoSwap public market;
+    IOracle public oracle;
+    IVirtualToken public vBase;
+    IVirtualToken public vQuote;
+    IVault public vault;
 
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
@@ -54,7 +54,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
-        IVault _vault,
+        IVault _vault
     ) {
         oracle = _oracle;
         vBase = _vBase;
@@ -64,10 +64,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // global getter
-    function getStableSwap() public view returns (address) {
-        return address(market);
-    }
-
     function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
         return getPrice(prices.length - 1);
     }
@@ -91,10 +87,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Deposits tokens into the vault
-    function deposit(
-        uint256 amount,
-        IERC20 token
-    ) external override {
+    function deposit(uint256 amount, IERC20 token) external override {
         vault.deposit(_msgSender(), amount, token);
         emit Deposit(_msgSender(), address(token), amount);
     }

@@ -64,7 +64,7 @@
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "compile": "hardhat compile",
     "void:deploy": "hardhat deploy",
-    "test": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha --bail --recursive test",
+    "test": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha --bail --recursive test --timeout 60000",
     "testCI": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_COMPILE=true mocha --bail --recursive test",
     "gas": "cross-env REPORT_GAS=true hardhat test",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet hardhat coverage",

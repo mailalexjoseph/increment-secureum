@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
+/// @dev Contract https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/two/CurveCryptoSwap2.vy
 interface ICryptoSwap {
     function A() external view returns (uint256);
 

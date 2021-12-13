@@ -12,9 +12,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vault = await ethers.getContract('Vault', deployer);
   const perpetual = await ethers.getContract('Perpetual', deployer);
 
-  vEUR.transferOwner(perpetual.address, true);
-  vUSD.transferOwner(perpetual.address, true);
-  vault.transferOwner(perpetual.address, true);
+  await vEUR.transferOwner(perpetual.address, true);
+  await vUSD.transferOwner(perpetual.address, true);
+  await vault.transferOwner(perpetual.address, true);
 
   console.log(
     'We have updated the references of vEUR, vUSD and Vault to Perpetual'

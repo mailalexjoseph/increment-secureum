@@ -4,6 +4,7 @@ import {ethers} from 'hardhat';
 
 import {getCurveFactoryAddress} from '../helpers/contracts-deployments';
 import curveFactoryAbi from '../contracts/dependencies/curve-factory-v2.json';
+import {ZERO_ADDRESS} from '../helpers/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -11,6 +12,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(`Current network is ${hre.network.name.toString()}`);
 
   const curveFactoryAddress = getCurveFactoryAddress(hre);
+  console.log(curveFactoryAddress);
 
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
@@ -22,11 +24,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   // see ICurveFactory arguments detail
   // note: in deploy_perpetual, we get the address of the deployed pool with `curveFactory.find_pool_for_coins`
-  // see: https://github.com/curvefi/curve-factory/blob/fb61207c8d1095096dc07f2c705cf02d40757635/contracts/Factory.vy#L169
-  curveFactory.deploy_plain_pool(
+  // for function overload in ethers.js, see https://docs.ethers.io/v5/single-page/#/v5/migration/web3/-%23-migration-from-web3-js--contracts--overloaded-functions
+  await curveFactory[
+    'deploy_plain_pool(string,string,address[4],uint256,uint256,uint256,uint256)'
+  ](
     'vEUR/vUSD pair',
     'VEURVUSD',
-    [vEUR.address, vUSD.address],
+    [vEUR.address, vUSD.address, ZERO_ADDRESS, ZERO_ADDRESS],
     30,
     4000000,
     3,

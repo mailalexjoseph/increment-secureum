@@ -6,7 +6,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IncreOwnable} from "../utils/IncreOwnable.sol";
+import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
 import {IInsurance} from "./interfaces/IInsurance.sol";
@@ -58,6 +58,10 @@ contract Vault is IVault, Context, IncreOwnable {
 
     function getReserveToken() public view returns (address) {
         return address(reserveToken);
+    }
+
+    function getOracle() public view returns (address) {
+        return address(oracle);
     }
 
     function getTotalReserveToken() public view returns (uint256) {

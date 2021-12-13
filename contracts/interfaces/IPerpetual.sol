@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 // dependencies
-import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -29,8 +28,6 @@ interface IPerpetual {
     );
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
-    event VaultAssigned(address indexed user, address indexed vault);
-    event VaultRegistered(address indexed vault);
 
     // buy/ sell functions
     //@audit flag
@@ -46,17 +43,9 @@ interface IPerpetual {
     function setPrice(LibPerpetual.Price memory newPrice) external;
 
     // integration functions
-    function setMarket(ICryptoSwap _market) external;
-
-    function deposit(
-        uint256 amount,
-        IVault vault,
-        IERC20 token
-    ) external;
+    function deposit(uint256 amount, IERC20 token) external;
 
     function withdraw(uint256 amount, IERC20 token) external;
-
-    function getVault(address _account) external returns (IVault vault);
 
     // user position function
     function getUserPosition(address account) external view returns (LibPerpetual.TraderPosition memory);
