@@ -44,7 +44,7 @@ library LibFunding {
         uint256 currentTime,
         uint256 TWAP_FREQUENCY
     ) internal {
-        int256 latestTradePremium = LibMath.div(marketPrice - indexPrice, indexPrice);
+        int256 latestTradePremium = LibMath.wadMul(marketPrice - indexPrice, indexPrice);
 
         // @dev For now always take the spot chainlink price as reference for the trade
         global.cumTradePremium += (currentTime - global.timeOfLastTrade).toInt256() * latestTradePremium;
@@ -62,7 +62,7 @@ library LibFunding {
             int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
 
             // // update new funding Rate if 15 minutes have passed
-            global.cumFundingRate += (LibMath.mul(SENSITIVITY, global.cumTradePremium) * timePassed) / 1 days;
+            global.cumFundingRate += (LibMath.wadMul(SENSITIVITY, global.cumTradePremium) * timePassed) / 1 days;
             global.timeStamp = currentTime.toUint128();
 
             // reset temporal variables

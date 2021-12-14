@@ -19,11 +19,13 @@ library LibMath {
         return SafeCast.toUint256(x);
     }
 
-    function div(int256 x, int256 y) internal pure returns (int256) {
+    // wad division
+    function wadDiv(int256 x, int256 y) internal pure returns (int256) {
         return PRBMathSD59x18.div(x, y);
     }
 
-    function mul(int256 x, int256 y) internal pure returns (int256) {
+    // wad multiplication
+    function wadMul(int256 x, int256 y) internal pure returns (int256) {
         return PRBMathSD59x18.mul(x, y);
     }
 }

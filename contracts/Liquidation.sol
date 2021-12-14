@@ -51,7 +51,7 @@ pragma solidity 0.8.4;
 //         // int256 fundingPayments = 0; /// doDo: fundingPayments = market.getFundingPayments(account);
 
 //         // // calculate margin ratio
-//         // int256 marginRatio = LibMath.div(margin + unrealizedPnl + fundingPayments, position.notional);
+//         // int256 marginRatio = LibMath.wadDiv(margin + unrealizedPnl + fundingPayments, position.notional);
 
 //         // if (marginRatio < minMargin) {
 //         //     // toDo: calculate the margin before

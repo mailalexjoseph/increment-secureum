@@ -122,8 +122,8 @@ contract Vault is IVault, Context, IncreOwnable {
         return 1e18;
     }
 
-    function settleProfit(address user, int256 amount) public override onlyOwner returns (int256) {
-        int256 settlement = LibMath.div(amount, getAssetPrice());
+    function settleProfit(address user, int256 amount) public override onlyPerpetual returns (int256) {
+        int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
         balances[user] += settlement;
         return settlement;
     }

@@ -266,7 +266,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             } else {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
             }
-            upcomingFundingPayment = LibMath.mul(upcomingFundingRate, user.notional);
+            upcomingFundingPayment = LibMath.wadDiv(upcomingFundingRate, user.notional);
         }
         return upcomingFundingPayment;
     }
@@ -285,7 +285,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         int256 fundingPayments = getFundingPayments(user, global);
         int256 unrealizedPnl = 0; /// toDO: requires implementation of curve pool;
         int256 profit = getUserPosition(account).profit;
-        return LibMath.div(margin + unrealizedPnl + fundingPayments + profit, user.notional);
+        return LibMath.wadDiv(margin + unrealizedPnl + fundingPayments + profit, user.notional);
     }
 
     function liquidate(address account) external {
