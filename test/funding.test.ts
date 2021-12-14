@@ -144,14 +144,17 @@ describe('Funding libary: Unit tests', function () {
       const position = await funding.getGlobalPosition();
 
       // calculate expected values of functions
-      const ePremium: BigNumber = calcTradePremium(marketPrice, indexPrice);
+      const eTradePremium: BigNumber = calcTradePremium(
+        marketPrice,
+        indexPrice
+      );
       const eCumTradePremium: BigNumber = calcCumTradePremium(
-        ePremium,
+        eTradePremium,
         startTime,
         currentTime
       );
       // console.log('Time difference', currentTime - startTime);
-      // console.log('ePremium is: ' + ePremium);
+      // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
       expect(position.cumTradePremium).to.be.equal(eCumTradePremium);
       expect(position.timeOfLastTrade).to.be.equal(currentTime);
@@ -172,14 +175,17 @@ describe('Funding libary: Unit tests', function () {
       const position = await funding.getGlobalPosition();
 
       // calculate expected values of functions
-      const ePremium: BigNumber = calcTradePremium(marketPrice, indexPrice);
+      const eTradePremium: BigNumber = calcTradePremium(
+        marketPrice,
+        indexPrice
+      );
       const eCumTradePremium: BigNumber = calcCumTradePremium(
-        ePremium,
+        eTradePremium,
         startTime,
         currentTime
       );
       // console.log('Time difference', currentTime - startTime);
-      // console.log('ePremium is: ' + ePremium);
+      // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
       expect(position.timeOfLastTrade).to.be.equal(currentTime);
@@ -188,6 +194,77 @@ describe('Funding libary: Unit tests', function () {
       const eFundingRate = calcFundingRate(
         SENSITIVITY,
         eCumTradePremium,
+        currentTime - startTime
+      );
+
+      // console.log(
+      //   'SENSITIVITY x cumTradePremium' + rMul(SENSITIVITY, eCumTradePremium)
+      // );
+      // console.log('timePassed is' + BigNumber.from(currentTime - startTime));
+      // console.log('1 days' + BigNumber.from(days(1)));
+      // console.log('eCumFundingRate is: ' + eFundingRate);
+      expect(position.cumFundingRate).to.be.equal(eFundingRate);
+    });
+    it('one trade in funding rate window and one trade after', async () => {
+      marketPrice = asBigNumber('1');
+      indexPrice = asBigNumber('1.1');
+
+      /************* FIRST TRADE ***************/
+      // initial parameters for first call
+
+      currentTime = startTime + minutes(5); // before end of funding rate window
+      const timeOfTradeOne = currentTime; // before end of funding rate window
+      await funding.calculateFunding(
+        marketPrice,
+        indexPrice,
+        currentTime,
+        TWAP_FREQUENCY
+      );
+
+      // expected values after first trade
+      const eTradePremium1: BigNumber = calcTradePremium(
+        marketPrice,
+        indexPrice
+      );
+      const eCumTradePremiumTmp: BigNumber = calcCumTradePremium(
+        eTradePremium1,
+        startTime,
+        currentTime
+      );
+
+      /************* SECOND TRADE ***************/
+      currentTime = startTime + TWAP_FREQUENCY + 1; // after end of funding rate window
+      await funding.calculateFunding(
+        marketPrice,
+        indexPrice,
+        currentTime,
+        TWAP_FREQUENCY
+      );
+
+      // expected values after first trade
+      const eTradePremium2: BigNumber = calcTradePremium(
+        marketPrice,
+        indexPrice
+      );
+      const eCumTradePremiumFinal: BigNumber = calcCumTradePremium(
+        eTradePremium2,
+        timeOfTradeOne, // only [tradeOfTradeOne, currentTime] is relevant
+        currentTime
+      ).add(eCumTradePremiumTmp); // add premium from first trade
+
+      /************* CHECK RSLTs ***************/
+
+      const position = await funding.getGlobalPosition();
+      // console.log('Time difference', currentTime - startTime);
+      // console.log('ePremium is: ' + eTradePremium);
+      // console.log('eCumTradePremium is: ' + eCumTradePremium);
+      expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
+      expect(position.timeOfLastTrade).to.be.equal(currentTime);
+      expect(position.timeStamp).to.be.equal(currentTime);
+
+      const eFundingRate = calcFundingRate(
+        SENSITIVITY,
+        eCumTradePremiumFinal,
         currentTime - startTime
       );
 
