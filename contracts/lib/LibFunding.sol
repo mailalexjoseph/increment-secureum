@@ -64,11 +64,11 @@ library LibFunding {
         uint256 lastFundingUpdate = uint256(global.timeStamp);
 
         uint256 nextFundingRateUpdate = lastFundingUpdate + TWAP_FREQUENCY;
-        console.log("hardhat: Next funding update at %s", nextFundingRateUpdate);
-        console.log("hardhat: currentTime is %s", currentTime);
+        // console.log("hardhat: Next funding update at %s", nextFundingRateUpdate);
+        // console.log("hardhat: currentTime is %s", currentTime);
         // //  if funding rate should be updated
         if (currentTime >= nextFundingRateUpdate) {
-            console.log("hardhat: Funding rate update");
+            // console.log("hardhat: Funding rate update");
             // get time since last funding rate update
             int256 timePassed = (currentTime - lastFundingUpdate).toInt256();
 

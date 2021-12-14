@@ -1,15 +1,14 @@
-import {BigNumber} from 'ethers';
+import {BigNumber, Signer} from 'ethers';
 import {TestLibFunding} from '../typechain';
 import {TestLibFunding__factory} from '../typechain';
 import {ethers} from 'hardhat';
-// import {expect} from 'chai';
 
 import chaiModule = require('./chai-setup');
 const {expect} = chaiModule;
 
 // utils
 const asBigNumber = (number: string) => ethers.utils.parseEther(number);
-const asDecimal = (number: BigNumber) => ethers.utils.formatEther(number);
+//const asDecimal = (number: BigNumber) => ethers.utils.formatEther(number);
 
 // time-utils
 const minutes = (number: number) => number * 60;
@@ -54,9 +53,9 @@ const calcFundingRate = (
 
 describe('Funding libary: Unit tests', function () {
   // contract and accounts
-  let deployer: any;
+  let deployer: Signer;
   let fundingContract: TestLibFunding;
-  let funding: any;
+  let funding: TestLibFunding;
 
   // position parameters
   let cumTradePremium: BigNumber,
