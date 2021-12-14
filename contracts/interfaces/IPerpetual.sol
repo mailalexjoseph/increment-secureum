@@ -1,6 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
+// interfaces
+import {IVault} from "./interfaces/IVault.sol";
+import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
+import {IOracle} from "./interfaces/IOracle.sol";
+import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
+
 // dependencies
 import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -29,11 +35,23 @@ interface IPerpetual {
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
 
+    function market() external view returns (ICryptoSwap);
+
+    function oracle() external view returns (IOracle);
+
+    function vBase() external view returns (IVirtualToken);
+
+    function vQuote() external view returns (IVirtualToken);
+
+    function vault() external view returns (IVault);
+
     // buy/ sell functions
     //@audit flag
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
 
     function closePosition() external;
+
+    function getGlobalPosition() public view returns (LibPerpetual.GlobalPosition memory);
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);

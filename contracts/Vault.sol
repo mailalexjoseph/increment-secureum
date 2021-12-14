@@ -31,9 +31,9 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 private immutable reserveTokenDecimals;
 
     // state
-    IOracle private immutable oracle;
-    IERC20 private immutable reserveToken;
-    uint256 private totalReserveToken;
+    IOracle public immutable oracle;
+    IERC20 public immutable reserveToken;
+    uint256 public totalReserveToken;
     //      amm     =>         trader =>            ERC20 => balances
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
     mapping(address => int256) private balances;
@@ -55,18 +55,6 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /************************* getter *************************/
-
-    function getReserveToken() public view returns (address) {
-        return address(reserveToken);
-    }
-
-    function getOracle() public view returns (address) {
-        return address(oracle);
-    }
-
-    function getTotalReserveToken() public view returns (uint256) {
-        return totalReserveToken;
-    }
 
     function getBalance(address user) public view returns (int256) {
         return balances[user];

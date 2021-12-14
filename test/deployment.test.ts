@@ -3,7 +3,7 @@ import {setup} from './helpers/setup';
 
 describe('Protocol deployment', function () {
   describe('Deployment', function () {
-    it.only('Should initialize Perpetual with its dependencies', async function () {
+    it('Should initialize Perpetual with its dependencies', async function () {
       const {deployer} = await setup();
 
       expect(await deployer.perpetual.vault()).to.equal(deployer.vault.address);
