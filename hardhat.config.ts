@@ -118,10 +118,6 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: 0,
   },
-  spdxLicenseIdentifier: {
-    overwrite: false,
-    runOnCompile: false,
-  },
 };
 
 export default config;
