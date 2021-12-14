@@ -48,11 +48,12 @@ describe('Increment App: Reserve', function () {
   it('Should withdraw USDC', async function () {
     // deposit
     await user.perpetual.deposit(depositAmount, user.usdc.address);
+    const userDeposits = await user.vault.getReserveValue(user.address);
 
     // withdrawal should fire up withdrawal event
-    await expect(user.perpetual.withdraw(depositAmount, user.usdc.address))
+    await expect(user.perpetual.withdraw(userDeposits, user.usdc.address))
       .to.emit(user.perpetual, 'Withdraw')
-      .withArgs(user.address, user.usdc.address, depositAmount);
+      .withArgs(user.address, user.usdc.address, userDeposits);
 
     // balance should be same as before withdrawal
     expect(await user.usdc.balanceOf(user.address)).to.be.equal(depositAmount);
@@ -85,14 +86,14 @@ describe('Increment App: Reserve', function () {
   it('User should not be able to access vault directly', async function () {
     await expect(
       user.vault.deposit(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('Only Perpetual can call this function');
+    ).to.be.revertedWith('NOT_OWNER');
 
     await expect(
       user.vault.withdraw(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('Only Perpetual can call this function');
+    ).to.be.revertedWith('NOT_OWNER');
 
     await expect(user.vault.settleProfit(user.address, 0)).to.be.revertedWith(
-      'Only Perpetual can call this function'
+      'NOT_OWNER'
     );
   });
 });

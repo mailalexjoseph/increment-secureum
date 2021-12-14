@@ -31,9 +31,9 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 private immutable reserveTokenDecimals;
 
     // state
-    IOracle public immutable oracle;
-    IERC20 public immutable reserveToken;
-    uint256 public totalReserveToken;
+    IOracle public immutable override oracle;
+    IERC20 public immutable override reserveToken;
+    uint256 public override totalReserveToken;
     //      amm     =>         trader =>            ERC20 => balances
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
     mapping(address => int256) private balances;

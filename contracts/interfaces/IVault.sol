@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 // dependencies
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
+import {IOracle} from "./IOracle.sol";
 
 // @dev: deposit uint and withdraw int
 // @author: The interface used in other contracts

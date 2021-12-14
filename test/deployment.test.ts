@@ -23,13 +23,13 @@ describe('Protocol deployment', function () {
       expect(await deployer.vault.owner()).to.be.equal(
         deployer.perpetual.address
       );
-      expect(await deployer.vault.getReserveToken()).to.be.equal(
+      expect(await deployer.vault.reserveToken()).to.be.equal(
         deployer.usdc.address
       );
-      expect(await deployer.vault.getOracle()).to.be.equal(
+      expect(await deployer.vault.oracle()).to.be.equal(
         deployer.oracle.address
       );
-      expect(await deployer.vault.getTotalReserveToken()).to.be.equal(0);
+      expect(await deployer.vault.totalReserveToken()).to.be.equal(0);
     });
 
     it('Should initialize vBase and vQuote with Perpetual as their owner', async function () {

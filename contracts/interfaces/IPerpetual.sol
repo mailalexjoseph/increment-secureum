@@ -2,10 +2,10 @@
 pragma solidity 0.8.4;
 
 // interfaces
-import {IVault} from "./interfaces/IVault.sol";
-import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
-import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
+import {IVault} from "./IVault.sol";
+import {ICryptoSwap} from "./ICryptoSwap.sol";
+import {IOracle} from "./IOracle.sol";
+import {IVirtualToken} from "./IVirtualToken.sol";
 
 // dependencies
 import {ICryptoSwap} from "./ICryptoSwap.sol";
@@ -50,8 +50,6 @@ interface IPerpetual {
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
 
     function closePosition() external;
-
-    function getGlobalPosition() public view returns (LibPerpetual.GlobalPosition memory);
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);

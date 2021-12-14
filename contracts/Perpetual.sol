@@ -36,11 +36,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
 
     // dependencies
-    ICryptoSwap public market;
-    IOracle public oracle;
-    IVirtualToken public vBase;
-    IVirtualToken public vQuote;
-    IVault public vault;
+    ICryptoSwap public override market;
+    IOracle public override oracle;
+    IVirtualToken public override vBase;
+    IVirtualToken public override vQuote;
+    IVault public override vault;
 
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
