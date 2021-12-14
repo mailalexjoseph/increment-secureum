@@ -44,7 +44,7 @@ library LibFunding {
         uint256 currentTime,
         uint256 TWAP_FREQUENCY
     ) internal {
-        int256 latestTradePremium = LibMath.wadMul(marketPrice - indexPrice, indexPrice);
+        int256 latestTradePremium = LibMath.wadDiv(marketPrice - indexPrice, indexPrice);
 
         // @dev For now always take the spot chainlink price as reference for the trade
         global.cumTradePremium += (currentTime - global.timeOfLastTrade).toInt256() * latestTradePremium;
