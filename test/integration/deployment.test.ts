@@ -1,7 +1,9 @@
-import {expect} from 'chai';
 import {setup} from './helpers/setup';
 
-describe('Protocol deployment', function () {
+import chaiModule = require('../chai-setup');
+const {expect} = chaiModule;
+
+describe('Increment Protocol: Deployment', function () {
   describe('Deployment', function () {
     it('Should initialize Perpetual with its dependencies', async function () {
       const {deployer} = await setup();

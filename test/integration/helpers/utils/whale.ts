@@ -4,12 +4,12 @@ import {
   iEthereumParamsPerNetwork,
   SymbolMap,
   tEthereumAddress,
-} from '../../../helpers/types';
-import {getEthereumNetworkFromString} from '../../../helpers/misc-utils';
+} from '../../../../helpers/types';
+import {getEthereumNetworkFromString} from '../../../../helpers/misc-utils';
 
 import env = require('hardhat');
 
-import {ERC20} from '../../../typechain';
+import {ERC20} from '../../../../typechain';
 /* Top token holder wallets from etherscan */
 const whalesList: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress[]>> = {
   [eEthereumNetwork.main]: {

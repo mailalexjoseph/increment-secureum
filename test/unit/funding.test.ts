@@ -1,9 +1,9 @@
 import {BigNumber, Signer} from 'ethers';
-import {TestLibFunding} from '../typechain';
-import {TestLibFunding__factory} from '../typechain';
+import {TestLibFunding} from '../../typechain';
+import {TestLibFunding__factory} from '../../typechain';
 import {ethers} from 'hardhat';
 
-import chaiModule = require('./chai-setup');
+import chaiModule = require('../chai-setup');
 const {expect} = chaiModule;
 
 // utils

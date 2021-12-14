@@ -7,15 +7,15 @@ import {
 import env = require('hardhat');
 
 // helpers
-import {getReserveAddress} from '../../helpers/contract-getters';
+import {getReserveAddress} from '../../../helpers/contract-getters';
 import {
   setupUser,
   setupUsers,
   logDeployments,
   impersonateAccountsHardhat,
   getEthereumNetworkFromHRE,
-} from '../../helpers/misc-utils';
-import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
+} from '../../../helpers/misc-utils';
+import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
 
 // types
 import {
@@ -25,15 +25,15 @@ import {
   Perpetual,
   Vault,
   VirtualToken,
-} from '../../typechain';
-import {BigNumber, tEthereumAddress} from '../../helpers/types';
+} from '../../../typechain';
+import {BigNumber, tEthereumAddress} from '../../../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 import {getWhale} from './utils';
 
-import {CURVE_FACTORY_MAINNET} from '../../markets/ethereum';
-import curveFactoryAbi from '../../contracts/dependencies/curve-factory-v2.json';
-import curveSwapAbi from '../../contracts/dependencies/curve-swap-v2.json';
+import {CURVE_FACTORY_MAINNET} from '../../../markets/ethereum';
+import curveFactoryAbi from '../../../contracts/dependencies/curve-factory-v2.json';
+import curveSwapAbi from '../../../contracts/dependencies/curve-swap-v2.json';
 
 export type User = {address: string} & {
   perpetual: Perpetual;

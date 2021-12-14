@@ -1,6 +1,8 @@
-import {expect} from 'chai';
+import chaiModule = require('../chai-setup');
+const {expect} = chaiModule;
+
 import {setup, funding, User} from './helpers/setup';
-import {convertToCurrencyUnits} from '../helpers/contracts-helpers';
+import {convertToCurrencyUnits} from '../../helpers/contracts-helpers';
 import {utils, BigNumber} from 'ethers';
 
 describe('Increment App: Reserve', function () {
