@@ -9,10 +9,7 @@ import {ZERO_ADDRESS} from '../helpers/constants';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  console.log(`Current network is ${hre.network.name.toString()}`);
-
   const curveFactoryAddress = getCurveFactoryAddress(hre);
-  console.log(curveFactoryAddress);
 
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);

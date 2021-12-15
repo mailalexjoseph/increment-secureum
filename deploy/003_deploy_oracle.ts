@@ -6,8 +6,6 @@ import {getOracleConstructorArgs} from '../helpers/contracts-deployments';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  console.log(`Current network is ${hre.network.name.toString()}`);
-
   const oracleConstructorArgs = getOracleConstructorArgs(hre);
 
   await hre.deployments.deploy('Oracle', {

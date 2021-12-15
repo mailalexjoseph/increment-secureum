@@ -8,8 +8,6 @@ import curveFactoryAbi from '../contracts/dependencies/curve-factory-v2.json';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  console.log(`Current network is ${hre.network.name.toString()}`);
-
   const oracle = await ethers.getContract('Oracle', deployer);
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
