@@ -10,6 +10,7 @@ import {
 } from '../helpers/contract-getters';
 import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 import {integrations} from '../markets/ethereum';
+import {OracleConfig} from '../markets/ethereum';
 
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
@@ -50,4 +51,12 @@ export function getCurveFactoryAddress(
 ): tEthereumAddress {
   const ethereumNetwork = getEthereumNetworkFromHRE(hre);
   return integrations[ethereumNetwork].CURVE_FACTORY_CONTRACT;
+}
+
+export function getChainlinkOracle(
+  hre: HardhatRuntimeEnvironment,
+  name: string
+): tEthereumAddress {
+  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
+  return OracleConfig.ChainlinkOracles[ethereumNetwork][name];
 }
