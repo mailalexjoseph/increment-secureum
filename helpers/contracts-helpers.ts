@@ -3,12 +3,23 @@ import {utils} from 'ethers';
 import {ERC20} from '../typechain';
 import {BigNumber} from './types';
 
+// @author: convert string to BigNumber with token decimals
 export async function convertToCurrencyDecimals(
   token: ERC20,
   amount: string
 ): Promise<BigNumber> {
   const decimals = (await token.decimals()).toString();
   return utils.parseUnits(amount, decimals);
+}
+
+// @author: convert BigNumber with token decimals to BigNumber with 18 decimals
+export async function tokenToWad(
+  token: ERC20,
+  amount: BigNumber
+): Promise<BigNumber> {
+  const decimals = (await token.decimals()).toString();
+  const amountAsString = utils.formatUnits(amount, decimals);
+  return utils.parseEther(amountAsString);
 }
 
 export async function convertToCurrencyUnits(
