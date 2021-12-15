@@ -72,7 +72,7 @@ contract Vault is IVault, Context, IncreOwnable {
         address user,
         uint256 amount,
         IERC20 depositToken
-    ) external override onlyOwner {
+    ) external override onlyOwner returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
         // deposit reserveTokens to contract
@@ -84,6 +84,8 @@ contract Vault is IVault, Context, IncreOwnable {
         // increment balance
         balances[user] += convertedWadAmount;
         totalReserveToken += convertedWadAmount.toUint256();
+
+        return convertedWadAmount.toUint256();
     }
 
     /**
@@ -95,7 +97,7 @@ contract Vault is IVault, Context, IncreOwnable {
         address user,
         uint256 amount,
         IERC20 withdrawToken
-    ) external override onlyOwner {
+    ) external override onlyOwner returns (uint256) {
         require(amount.toInt256() <= balances[user], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
@@ -105,6 +107,7 @@ contract Vault is IVault, Context, IncreOwnable {
         totalReserveToken -= amount;
         // perform transfer
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
+        return rawTokenAmount;
     }
 
     /**

@@ -34,7 +34,7 @@ contract Oracle is IOracle, IncreOwnable {
         return _chainlinkPrice(chainlinkInterface);
     }
 
-    function getAssetPrice(address asset) external view override onlyOwner returns (int256) {
+    function getAssetPrice(address asset) external view override returns (int256) {
         AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
         require(address(chainlinkInterface) != address(0));
         return _chainlinkPrice(chainlinkInterface);

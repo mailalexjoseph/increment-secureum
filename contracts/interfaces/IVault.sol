@@ -18,13 +18,13 @@ interface IVault {
         address user,
         uint256 amount,
         IERC20 token
-    ) external;
+    ) external returns (uint256);
 
     function withdraw(
         address user,
         uint256 amount,
         IERC20 token
-    ) external;
+    ) external returns (uint256);
 
     function getReserveValue(address account) external view returns (int256);
 

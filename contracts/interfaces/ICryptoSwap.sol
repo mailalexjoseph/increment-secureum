@@ -3,6 +3,10 @@ pragma solidity 0.8.4;
 
 /// @dev Contract https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/two/CurveCryptoSwap2.vy
 interface ICryptoSwap {
+    function totalSupply() external view returns (uint256);
+
+    function balances(uint256 i) external view returns (uint256);
+
     function A() external view returns (uint256);
 
     function gamma() external view returns (uint256);
@@ -39,9 +43,9 @@ interface ICryptoSwap {
         uint256 dx
     ) external returns (uint256);
 
-    function add_liquidity(uint256[] calldata amounts, uint256 min_mint_amount) external returns (uint256);
+    function add_liquidity(uint256[2] calldata amounts, uint256 min_mint_amount) external returns (uint256);
 
-    function remove_liquidity(uint256 _amount, uint256[] calldata min_amounts) external returns (uint256);
+    function remove_liquidity(uint256 _amount, uint256[2] calldata min_amounts) external returns (uint256[2] memory);
 
     function remove_liquidity_one_coin(
         uint256 token_amount,

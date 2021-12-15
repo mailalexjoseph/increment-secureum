@@ -45,6 +45,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
+    uint256 totalLiquidityProvided;
+
+    // liquidity provider state
+    mapping(address => uint256) private liquidityProvided;
 
     // user state
     mapping(address => LibPerpetual.TraderPosition) private userPosition;
@@ -61,6 +65,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vQuote = _vQuote;
         market = _curvePool;
         vault = _vault;
+
+        // approve all future transfers between Perpetual and market (curve pool)
+        vBase.approve(address(market), type(uint256).max);
+        vQuote.approve(address(market), type(uint256).max);
     }
 
     // global getter
@@ -95,7 +103,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
         require(getUserPosition(_msgSender()).notional == 0, "Has open position");
-
         vault.withdraw(_msgSender(), amount, token);
         emit Withdraw(_msgSender(), address(token), amount);
     }
@@ -194,7 +201,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         if (currentTime > timeOfLastTrade) {
             LibFunding.calculateFunding(
                 global,
-                market.get_virtual_price().toInt256(),
+                marketPrice().toInt256(),
                 oracle.getIndexPrice(),
                 currentTime,
                 TWAP_FREQUENCY
@@ -271,8 +278,92 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return upcomingFundingPayment;
     }
 
+    // @notice Return the current market price (e.g. EUR/USD = 1.2 <=> 1 EUR = 1.2 USD <=> 10 EUR = 12 USD)
+    function marketPrice() public view returns (uint256) {
+        return LibMath.wadDiv(market.balances(1), market.balances(0)); // vBase / vQuote
+    }
+
+    function indexPrice() public view returns (int256) {
+        return oracle.getIndexPrice();
+    }
+
     function marginIsValid(address account) public view override returns (bool) {
         return marginRatio(account) <= MIN_MARGIN;
+    }
+
+    /// @notice Provide liquidity to the pool
+    /// @param amount of token to be added to the pool (with token decimals)
+    /// @param  token to be added to the pool
+
+    function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
+        address sender = _msgSender();
+        require(amount != 0, "Zero amount");
+        require(liquidityProvided[sender] == 0, "Has provided liquidity before");
+
+        // return amount with 18 decimals
+        uint256 wadAmount = vault.deposit(_msgSender(), amount, token);
+
+        uint256 price;
+        if (totalLiquidityProvided == 0) {
+            price = indexPrice().toUint256();
+        } else {
+            price = marketPrice();
+        }
+        // split liquidity between long and short (TODO: account for value of liquidity provider already made)
+        uint256 vQuoteAmount = wadAmount / 2;
+        uint256 vBaseAmount = LibMath.wadDiv(vQuoteAmount, price); // vUSD / vEUR/vUSD  <=> 1 / 1.2 = 0.83
+
+        // mint tokens
+        vQuote.mint(vQuoteAmount);
+        vBase.mint(vBaseAmount);
+
+        // supply liquidity to curve pool
+        uint256 min_mint_amount = 0; // set to zero for now
+        uint256[2] memory mint_amounts = [vBaseAmount, vQuoteAmount];
+        market.add_liquidity(mint_amounts, min_mint_amount); //  first token in curve pool is vBase & second token is vQuote
+
+        // increment balances
+        liquidityProvided[sender] += amount; // with 6 decimals
+        totalLiquidityProvided += wadAmount; // with 18 decimals
+
+        emit LiquidityProvided(sender, address(token), amount);
+        return (vBaseAmount, vQuoteAmount);
+    }
+
+    /// @notice Withdraw liquidity from the pool
+    /// @param amount of liquidity to be removed from the pool (with 18 decimals)
+    /// @param  token to be removed from the pool
+    function withdrawLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
+        address sender = _msgSender();
+        require(liquidityProvided[msg.sender] >= amount, "Not enough liquidity provided");
+
+        // withdraw from curve pool
+        uint256 withdrawAmount = (amount * market.totalSupply()) / totalLiquidityProvided; // can this round to zero?
+
+        // remove liquidity from th epool
+        uint256[2] memory amountReturned;
+        try market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]) returns (uint256[2] memory result) {
+            amountReturned = result;
+        } catch Error(string memory reason) {
+            revert(reason);
+        }
+        uint256 vBaseAmount = amountReturned[0];
+        uint256 vQuoteAmount = amountReturned[1];
+
+        // burn virtual tokens
+        vBase.burn(vBaseAmount);
+        vQuote.burn(vQuoteAmount);
+
+        // TODO: calculate profit from operation ... profit = returned money - deposited money
+        int256 profit = 0;
+        vault.settleProfit(sender, profit);
+        vault.withdraw(sender, amount, token);
+
+        // lower balances
+        liquidityProvided[sender] -= amount;
+        totalLiquidityProvided -= amount;
+
+        emit LiquidityWithdrawn(sender, address(token), amount);
     }
 
     /// @notice Calculate the margin Ratio of some account

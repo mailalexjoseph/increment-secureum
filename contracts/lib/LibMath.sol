@@ -28,4 +28,14 @@ library LibMath {
     function wadMul(int256 x, int256 y) internal pure returns (int256) {
         return PRBMathSD59x18.mul(x, y);
     }
+
+    // wad division
+    function wadDiv(uint256 x, uint256 y) internal pure returns (uint256) {
+        return PRBMathUD60x18.div(x, y);
+    }
+
+    // wad multiplication
+    function wadMul(uint256 x, uint256 y) internal pure returns (uint256) {
+        return PRBMathUD60x18.mul(x, y);
+    }
 }
