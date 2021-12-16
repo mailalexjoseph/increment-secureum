@@ -23,18 +23,7 @@ const strategyUSDC: IReserveParams = {
 // ----------------
 
 const chainlinkOracles = {
-  [eEthereumNetwork.coverage]: {
-    USDC: ZERO_ADDRESS,
-    JPY_USD: ZERO_ADDRESS,
-    FEED_REGISTRY: ZERO_ADDRESS,
-  },
   [eEthereumNetwork.hardhat]: {
-    USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
-    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
-    EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-    FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
-  },
-  [eEthereumNetwork.localhost]: {
     USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
     JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
     EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
@@ -65,19 +54,10 @@ export const CURVE_FACTORY_MAINNET =
   '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
 
 export const integrations = {
-  [eEthereumNetwork.coverage]: {
-    AAVE_CONTRACTS_GATEWAY: ZERO_ADDRESS,
-    CURVE_FACTORY_CONTRACT: ZERO_ADDRESS,
-  },
   [eEthereumNetwork.hardhat]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
     CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET, // reference to mainnet because we fork mainnet
   },
-  [eEthereumNetwork.localhost]: {
-    AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
-    CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET,
-  },
-
   [eEthereumNetwork.kovan]: {
     AAVE_CONTRACTS_GATEWAY: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
     CURVE_FACTORY_CONTRACT: ZERO_ADDRESS,
@@ -96,13 +76,7 @@ export const VaultConfig: IVaultConfiguration = {
   MarketId: 'Increment finance reserve Module V0',
 
   ReserveAssets: {
-    [eEthereumNetwork.coverage]: {
-      USDC: ZERO_ADDRESS,
-    },
     [eEthereumNetwork.hardhat]: {
-      USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
-    },
-    [eEthereumNetwork.localhost]: {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     },
     [eEthereumNetwork.kovan]: {

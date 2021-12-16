@@ -11,9 +11,7 @@ export type eNetwork = eEthereumNetwork | ePolygonNetwork | eXDaiNetwork;
 export enum eEthereumNetwork {
   kovan = 'kovan',
   main = 'main',
-  coverage = 'coverage',
   hardhat = 'hardhat',
-  localhost = 'localhost',
 }
 
 export enum ePolygonNetwork {
@@ -71,10 +69,8 @@ export interface iParamsPerNetworkAll<T>
 
 export interface iEthereumParamsPerNetwork<T> {
   [eEthereumNetwork.hardhat]: T;
-  [eEthereumNetwork.coverage]: T;
   [eEthereumNetwork.kovan]: T;
   [eEthereumNetwork.main]: T;
-  [eEthereumNetwork.localhost]: T;
 }
 
 export interface iPolygonParamsPerNetwork<T> {
