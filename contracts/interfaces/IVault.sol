@@ -20,6 +20,8 @@ interface IVault {
         IERC20 token
     ) external returns (uint256);
 
+    function withdrawAll(address user, IERC20 withdrawToken) external returns (uint256);
+
     function withdraw(
         address user,
         uint256 amount,

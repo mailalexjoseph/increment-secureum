@@ -342,11 +342,30 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // remove liquidity from th epool
         uint256[2] memory amountReturned;
+
         try market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]) returns (uint256[2] memory result) {
             amountReturned = result;
         } catch Error(string memory reason) {
-            revert(reason);
+            // This is executed in case
+            // revert was called inside removeLiquidity
+            // and a reason string was provided.
+            console.log("hardhat: error", reason);
+            return (0, 0);
+        } catch Panic(uint256 errorCode) {
+            // This is executed in case of a panic,
+            // i.e. a serious error like division by zero
+            // or overflow. The error code can be used
+            // to determine the kind of error.
+            console.log("hardhat: panic", errorCode);
+            return (0, 0);
+        } catch (bytes memory lowLevelData) {
+            console.log("hardhat: other");
+            console.logBytes(lowLevelData);
+            //console.log(lowLevelData);
+            // This is executed in case revert() was used.
+            return (0, 0);
         }
+
         uint256 vBaseAmount = amountReturned[0];
         uint256 vQuoteAmount = amountReturned[1];
 
@@ -355,15 +374,25 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vQuote.burn(vQuoteAmount);
 
         // TODO: calculate profit from operation ... profit = returned money - deposited money
-        int256 profit = 0;
+        uint256 price;
+        if (totalLiquidityProvided == 0) {
+            price = indexPrice().toUint256();
+        } else {
+            price = marketPrice();
+        }
+        // split liquidity between long and short (TODO: account for value of liquidity provider already made)
+        uint256 withdrawableAmount = vQuoteAmount + LibMath.wadMul(vBaseAmount, price);
+
+        int256 profit = liquidityProvided[sender].toInt256() - withdrawableAmount.toInt256();
         vault.settleProfit(sender, profit);
-        vault.withdraw(sender, amount, token);
+        vault.withdrawAll(sender, token); // TODO: withdraw all liquidity
 
         // lower balances
         liquidityProvided[sender] -= amount;
         totalLiquidityProvided -= amount;
 
         emit LiquidityWithdrawn(sender, address(token), amount);
+        return (vBaseAmount, vQuoteAmount);
     }
 
     /// @notice Calculate the margin Ratio of some account

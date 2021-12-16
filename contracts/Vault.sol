@@ -89,6 +89,14 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /**
+     * @notice Withdraw all ERC20 reserveToken from margin of the contract account.
+     * @param withdrawToken ERC20 reserveToken address
+     */
+    function withdrawAll(address user, IERC20 withdrawToken) external override onlyOwner returns (uint256) {
+        return withdraw(user, balances[user].toUint256(), withdrawToken);
+    }
+
+    /**
      * @notice Withdraw ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
      * @param  amount  Amount of USDC deposited
@@ -97,7 +105,7 @@ contract Vault is IVault, Context, IncreOwnable {
         address user,
         uint256 amount,
         IERC20 withdrawToken
-    ) external override onlyOwner returns (uint256) {
+    ) public override onlyOwner returns (uint256) {
         require(amount.toInt256() <= balances[user], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
