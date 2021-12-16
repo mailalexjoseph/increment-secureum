@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
-// dependencies
+// contracts
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
@@ -30,10 +30,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     using SafeCast for int256;
 
     // parameterization
-    int256 constant MIN_MARGIN = 25e15; // 2.5%
-    int256 constant LIQUIDATION_FEE = 60e15; // 6%
-    int256 constant PRECISION = 10e18;
-    uint256 constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
+    int256 public constant MIN_MARGIN = 25e15; // 2.5%
+    int256 public constant LIQUIDATION_FEE = 60e15; // 6%
+    int256 public constant PRECISION = 10e18;
+    uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
+    int256 public constant FEE = 3e16; // 3%
+    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE;
 
     // dependencies
     ICryptoSwap public override market;
@@ -103,55 +105,69 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
         require(getUserPosition(_msgSender()).notional == 0, "Has open position");
+
         vault.withdraw(_msgSender(), amount, token);
         emit Withdraw(_msgSender(), address(token), amount);
     }
 
-    /// @notice Buys long Quote derivatives
-    /// @param amount Amount of Quote tokens to be bought
+    /// @notice Open position, long or short
+    /// @param amount Amount of virtual tokens to be bought
+    /// @param direction Side of the position to open, long or short
+    /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN
     /// @dev No checks are done if bought amount exceeds allowance
     function openPosition(uint256 amount, LibPerpetual.Side direction) external override returns (uint256) {
-        LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
+        address sender = _msgSender();
+        LibPerpetual.TraderPosition storage user = userPosition[sender];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        require(user.notional == 0, "Trader position is not allowed to have position open");
 
-        updateFundingRate();
+        // Checks
+        require(amount > 0, "The amount can't be null");
+        require(user.notional == 0, "Trader position is not allowed to have a position already open");
 
-        uint256 quoteBought = _openPosition(user, global, direction, amount);
+        int256 prospectiveMargin = LibMath.wadDiv(vault.getReserveValue(sender), amount.toInt256());
+        require(prospectiveMargin >= MIN_MARGIN_AT_CREATION, "Not enough funds in the vault for this position");
 
-        emit OpenPosition(_msgSender(), uint128(block.timestamp), direction, amount, quoteBought);
+        // updateFundingRate();
 
-        return quoteBought;
-    }
-
-    function _openPosition(
-        LibPerpetual.TraderPosition storage user,
-        LibPerpetual.GlobalPosition storage global,
-        LibPerpetual.Side direction,
-        uint256 amount
-    ) internal returns (uint256) {
-        // buy derivative tokens
-        user.side = direction;
+        // Buy virtual tokens for the position
         uint256 quoteBought = _openPositionOnMarket(amount, direction);
 
-        // set trader position
+        // Update trader position
         user.notional = amount.toInt256();
         user.positionSize = quoteBought.toInt256();
         user.profit = 0;
-
-        user.timeStamp = global.timeStamp;
+        user.side = direction;
+        user.timeStamp = global.timeStamp; // note: timestamp of the last update of the cumFundingRate
         user.cumFundingRate = global.cumFundingRate;
 
+        emit OpenPosition(sender, uint128(block.timestamp), direction, amount, quoteBought);
         return quoteBought;
     }
 
     function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteBought = 0;
+
         if (direction == LibPerpetual.Side.Long) {
-            // quoteBought = market.mintVBase(amount);
+            // quoteBought = market.balances(1);
+
+            // quoteBought = market.get_dy(1, 0, amount);
+
+            // assumption: vBase is the 1st token, vQuote is the 2nd one
+            // vQuote.mint(amount);
+            // quoteBought = market.exchange(1, 0, amount, amount - amount / 2);
+
+            // create tokens to be supplied to the pool
+            vQuote.mint(amount);
+            vBase.mint(amount);
+            // supply liquidity to curve pool
+            uint256 min_mint_amount = 0;
+            uint256[2] memory mint_amounts = [amount, amount];
+            market.add_liquidity(mint_amounts, min_mint_amount);
         } else if (direction == LibPerpetual.Side.Short) {
-            // quoteBought = market.burnVBase(amount);
+            vBase.mint(amount);
+            quoteBought = market.exchange(0, 1, amount, 0);
         }
+
         return quoteBought;
     }
 
@@ -294,7 +310,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Provide liquidity to the pool
     /// @param amount of token to be added to the pool (with token decimals)
     /// @param  token to be added to the pool
-
     function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
         address sender = _msgSender();
         require(amount != 0, "Zero amount");
