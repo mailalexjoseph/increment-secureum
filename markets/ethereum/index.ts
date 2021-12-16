@@ -37,6 +37,7 @@ const chainlinkOracles = {
   [eEthereumNetwork.localhost]: {
     USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
     JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
+    EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
     FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
   },
   [eEthereumNetwork.kovan]: {
@@ -74,7 +75,7 @@ export const integrations = {
   },
   [eEthereumNetwork.localhost]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
-    CURVE_FACTORY_CONTRACT: ZERO_ADDRESS,
+    CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET,
   },
 
   [eEthereumNetwork.kovan]: {

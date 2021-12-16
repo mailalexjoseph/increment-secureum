@@ -101,7 +101,7 @@ async function stealFunds(
   balance: BigNumber,
   hre: HardhatRuntimeEnvironment
 ): Promise<void> {
-  const whaleAddress = await getWhale(token, balance);
+  const whaleAddress = await getWhale(token, balance, hre);
   await impersonateAccountsHardhat([whaleAddress], hre);
   const whale = await setupUser(whaleAddress, {token: token});
   whale.token.transfer(newHolder, balance);

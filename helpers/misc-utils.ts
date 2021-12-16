@@ -42,6 +42,16 @@ export async function impersonateAccountsHardhat(
   }
 }
 
+export async function fundAccountsHardhat(
+  accounts: string[],
+  hre: HardhatRuntimeEnvironment,
+  amount = '0x56bc75e2d63100000' // 100 ETH
+): Promise<void> {
+  for (const account of accounts) {
+    await hre.network.provider.send('hardhat_setBalance', [account, amount]);
+  }
+}
+
 export function getEthereumNetworkFromString(String: string): eEthereumNetwork {
   if (Object.values(eEthereumNetwork).some((col: string) => col === String)) {
     return <eEthereumNetwork>String;

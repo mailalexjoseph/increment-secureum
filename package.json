@@ -61,7 +61,7 @@
     "test": "yarn test:unit && yarn test:integration",
     "test:integration": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha 'test/integration/*.test.ts'",
     "test:unit": "cross-env mocha --bail --recursive 'test/unit/*.test.ts'",
-    "test:debug": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true hardhat",
+    "test:debug": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true hardhat test test/integration/liquidity.test.ts",
     "gas": "cross-env REPORT_GAS=true hardhat test",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet hardhat coverage",
     "verify": "yarn run compile && yarn run lint && yarn run format && yarn run test",
