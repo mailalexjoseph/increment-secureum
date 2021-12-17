@@ -118,7 +118,7 @@ describe('Perpetual', () => {
           nextBlockTimestamp,
           Side.Long,
           depositAmount.div(2),
-          0
+          99560
         );
     });
 

@@ -148,21 +148,27 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 quoteBought = 0;
 
         if (direction == LibPerpetual.Side.Long) {
+            vQuote.mint(amount);
+            // NOTE: this works
             // quoteBought = market.balances(1);
 
+            // NOTE: this works
+            // // create tokens to be supplied to the pool
+            // vQuote.mint(amount);
+            // vBase.mint(amount);
+            // // supply liquidity to curve pool
+            // uint256 min_mint_amount = 0;
+            // uint256[2] memory mint_amounts = [amount, amount];
+            // market.add_liquidity(mint_amounts, min_mint_amount);
+
+            // NOTE: this doesn't work
             // quoteBought = market.get_dy(1, 0, amount);
 
+            // NOTE: this doesn't work
             // assumption: vBase is the 1st token, vQuote is the 2nd one
-            // vQuote.mint(amount);
-            // quoteBought = market.exchange(1, 0, amount, amount - amount / 2);
-
-            // create tokens to be supplied to the pool
-            vQuote.mint(amount);
-            vBase.mint(amount);
-            // supply liquidity to curve pool
-            uint256 min_mint_amount = 0;
-            uint256[2] memory mint_amounts = [amount, amount];
-            market.add_liquidity(mint_amounts, min_mint_amount);
+            int128 firstCoin = 1;
+            int128 secondCoin = 0;
+            quoteBought = market.exchange(firstCoin, secondCoin, 100000, 0);
         } else if (direction == LibPerpetual.Side.Short) {
             vBase.mint(amount);
             quoteBought = market.exchange(0, 1, amount, 0);
