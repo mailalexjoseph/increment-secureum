@@ -24,15 +24,10 @@ const config: HardhatUserConfig = {
       // process.env.HARDHAT_FORK will specify the network that the fork is made from.
       // this line ensure the use of the corresponding accounts
       accounts: accounts(process.env.HARDHAT_FORK),
-      forking: process.env.HARDHAT_FORK
-        ? {
-            // TODO once PR merged : network: process.env.HARDHAT_FORK,
-            url: node_url(process.env.HARDHAT_FORK),
-            blockNumber: process.env.HARDHAT_FORK_NUMBER
-              ? parseInt(process.env.HARDHAT_FORK_NUMBER)
-              : undefined,
-          }
-        : undefined,
+      forking: {
+        url: node_url('MAINNET'),
+        blockNumber: 13818037,
+      },
     },
     localhost: {
       url: node_url('localhost'),
