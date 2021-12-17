@@ -52,6 +52,20 @@ export async function fundAccountsHardhat(
   }
 }
 
+let nextBlockTimestamp = 1000000000;
+export async function setNextBlockTimestamp(
+  hre: HardhatRuntimeEnvironment
+): Promise<number> {
+  nextBlockTimestamp += 1000000000;
+
+  await hre.network.provider.request({
+    method: 'evm_setNextBlockTimestamp',
+    params: [nextBlockTimestamp],
+  });
+
+  return nextBlockTimestamp;
+}
+
 export function getEthereumNetworkFromString(String: string): eEthereumNetwork {
   if (Object.values(eEthereumNetwork).some((col: string) => col === String)) {
     return <eEthereumNetwork>String;

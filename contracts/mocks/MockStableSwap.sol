@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
-// dependencies
+// contracts
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @notice Mock StableSwap market to test buying/selling of derivative toknens

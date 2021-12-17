@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
+// contract
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICryptoSwap} from "./ICryptoSwap.sol";
+
 // interfaces
 import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IOracle} from "./IOracle.sol";
 import {IVirtualToken} from "./IVirtualToken.sol";
-
-// dependencies
-import {ICryptoSwap} from "./ICryptoSwap.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // libraries
 import {LibPerpetual} from "../lib/LibPerpetual.sol";

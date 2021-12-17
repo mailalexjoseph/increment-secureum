@@ -2,13 +2,12 @@ import chaiModule = require('../chai-setup');
 const {expect} = chaiModule;
 
 import {utils, BigNumber} from 'ethers';
-import {rMul, rDiv} from './helpers/utils/calculations';
+import env from 'hardhat';
 
+import {rMul, rDiv} from './helpers/utils/calculations';
 import {setup, funding, User} from './helpers/setup';
-import {
-  setUpPoolLiquidity,
-  setNextBlockTimestamp,
-} from './helpers/PerpetualUtils';
+import {setUpPoolLiquidity} from './helpers/PerpetualUtils';
+import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 
 const enum Side {
   Long,
@@ -108,7 +107,7 @@ describe('Perpetual', () => {
 
       // flow
       await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
-      const nextBlockTimestamp = await setNextBlockTimestamp();
+      const nextBlockTimestamp = await setNextBlockTimestamp(env);
       await expect(
         alice.perpetual.openPosition(depositAmount.div(2), Side.Long)
       )

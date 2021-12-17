@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
+// contracts
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IncreOwnable} from "../utils/IncreOwnable.sol";
+
 // interfaces
 import {IPerpetual} from "../interfaces/IPerpetual.sol";
 import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
-
-// dependencies
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {IncreOwnable} from "../utils/IncreOwnable.sol";
 
 // toDO: Write optimized ERC20 implementation for trades
 contract VirtualToken is IVirtualToken, ERC20, IncreOwnable {

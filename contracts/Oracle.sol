@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
-// dependencies
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+// contracts
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
+// libraries
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
+
 // interfaces
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
 import {IOracle} from "./interfaces/IOracle.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 

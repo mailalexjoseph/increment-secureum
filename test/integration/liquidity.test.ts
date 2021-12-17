@@ -127,6 +127,7 @@ describe('Increment App: Liquidity', function () {
         vUSDlpBalance.add(liquidityWadAmount.div(2))
       );
     });
+
     // TODO: wait for open/close position logic to be implemented
     // it('Should not allow to use the deposited liquidity to open up a long position', async function () {
     //   // deposit
@@ -168,7 +169,7 @@ describe('Increment App: Liquidity', function () {
 
       /* withdraw liquidity from curve pool*/
       const vEUR = await ethers.getContract('VBase', user.address);
-      vEUR
+      await vEUR
         .connect(marketSigner)
         .transfer(DEAD_ADDRESS, await user.vEUR.balanceOf(user.market.address));
       expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
@@ -180,6 +181,7 @@ describe('Increment App: Liquidity', function () {
       );
       //console.log('result of withdrawal is', result);
     });
+
     it('Should allow to withdraw liquidity', async function () {
       // deposit
       await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);

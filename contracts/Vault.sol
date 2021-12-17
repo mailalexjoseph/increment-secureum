@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
-// dependencies
+// contracts
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";

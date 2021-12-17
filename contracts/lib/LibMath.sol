@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 pragma solidity 0.8.4;
 
-// dependencies
+// libraries
 import {PRBMathUD60x18} from "prb-math/contracts/PRBMathUD60x18.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 library LibMath {
