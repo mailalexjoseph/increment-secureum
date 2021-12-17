@@ -6,13 +6,13 @@ import {
 } from 'hardhat';
 import env = require('hardhat');
 
+import {fundAccountWithUSDC} from './utils/changeBalance';
 // helpers
 import {getReserveAddress} from '../../../helpers/contract-getters';
 import {
   setupUser,
   setupUsers,
   logDeployments,
-  impersonateAccountsHardhat,
   getEthereumNetworkFromHRE,
 } from '../../../helpers/misc-utils';
 import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
@@ -26,10 +26,7 @@ import {
   Vault,
   VirtualToken,
 } from '../../../typechain';
-import {BigNumber, tEthereumAddress} from '../../../helpers/types';
-import {HardhatRuntimeEnvironment} from 'hardhat/types';
-
-import {getWhale} from './utils';
+import {BigNumber} from '../../../helpers/types';
 
 import {CURVE_FACTORY_MAINNET} from '../../../markets/ethereum';
 import curveFactoryAbi from '../../../contracts/dependencies/curve-factory-v2.json';
@@ -94,23 +91,10 @@ const getContracts = async (deployerAccount: string) => {
   };
 };
 
-/// @notice: steal funds from whale adress
-async function stealFunds(
-  token: ERC20,
-  newHolder: tEthereumAddress,
-  balance: BigNumber,
-  hre: HardhatRuntimeEnvironment
-): Promise<void> {
-  const whaleAddress = await getWhale(token, balance, hre);
-  await impersonateAccountsHardhat([whaleAddress], hre);
-  const whale = await setupUser(whaleAddress, {token: token});
-  whale.token.transfer(newHolder, balance);
-}
-
 async function _fundAcount(account: string): Promise<BigNumber> {
   const {usdc} = await getContracts(account);
   const fullAmount = await convertToCurrencyDecimals(usdc, '100');
-  await stealFunds(usdc, account, fullAmount, env);
+  await fundAccountWithUSDC(env, usdc, account, fullAmount);
   return fullAmount;
 }
 /// @notice: fund user accounts

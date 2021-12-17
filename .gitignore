@@ -33,3 +33,5 @@ docgen/
 
 workspace.code-workspace
 test-old
+
+crytic-export/
