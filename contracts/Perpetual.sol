@@ -47,7 +47,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     // global state
     LibPerpetual.GlobalPosition private globalPosition;
     LibPerpetual.Price[] private prices;
-    uint256 totalLiquidityProvided;
+    uint256 public totalLiquidityProvided;
 
     // liquidity provider state
     mapping(address => uint256) private liquidityProvided;
@@ -364,6 +364,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // remove liquidity from th epool
         uint256[2] memory amountReturned;
 
+        // remove liquidity from curve pool
+        // calc_token_amount
         try market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]) returns (uint256[2] memory result) {
             amountReturned = result;
         } catch Error(string memory reason) {

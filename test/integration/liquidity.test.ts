@@ -14,7 +14,6 @@ import {DEAD_ADDRESS} from '../../helpers/constants';
 const {getSigner} = ethers;
 
 import env = require('hardhat');
-import {use} from 'chai';
 
 describe('Increment App: Liquidity', function () {
   let user: User, bob: User;
@@ -29,12 +28,13 @@ describe('Increment App: Liquidity', function () {
     await bob.usdc.approve(bob.vault.address, liquidityAmount);
   });
 
-  describe('Can deposit and withdraw liquidity to the curve pool', function () {
+  describe('Can deposit liquidity to the curve pool', async function () {
     it('Should not allow to deposit zero', async function () {
       await expect(
         user.perpetual.provideLiquidity(0, user.usdc.address)
       ).to.be.revertedWith('Zero amount');
     });
+
     it('Should allow to deposit positive', async function () {
       await expect(
         user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
@@ -48,6 +48,7 @@ describe('Increment App: Liquidity', function () {
         liquidityAmount
       );
     });
+
     it('Should not allow to deposit twice', async function () {
       await user.perpetual.provideLiquidity(
         liquidityAmount.div(2),
@@ -132,67 +133,155 @@ describe('Increment App: Liquidity', function () {
     // it('Should not allow to use the deposited liquidity to open up a long position', async function () {
     //   // deposit
     //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+    describe('Can withdraw liquidity from the curve pool', async function () {
+      it('Should not allow to withdraw liquidity when non provided', async function () {
+        await expect(
+          user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
+        ).to.be.revertedWith('Not enough liquidity provided');
+      });
 
-    //   // try to open a position
-    //   await expect(user.perpetual.openPosition(10,0)).to.be.revertedWith("")
-    // });
-
-    it('Should not allow to withdraw liquidity when non provided', async function () {
-      await expect(
-        user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
-      ).to.be.revertedWith('Not enough liquidity provided');
-    });
-
-    it('Should not allow to withdraw liquidity more liquidity then provided', async function () {
-      // deposit
-      await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
-
-      // withdraw
-      await expect(
-        user.perpetual.withdrawLiquidity(
-          liquidityAmount.add(BigNumber.from('1')),
+      it('Should not allow to withdraw liquidity more liquidity then provided', async function () {
+        // deposit
+        await user.perpetual.provideLiquidity(
+          liquidityAmount,
           user.usdc.address
-        )
-      ).to.be.revertedWith('Not enough liquidity provided');
-    });
+        );
 
-    it('Should revert withdrawal if not enough liquidity', async function () {
-      // deposit
-      await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+        // withdraw
+        await expect(
+          user.perpetual.withdrawLiquidity(
+            liquidityAmount.add(BigNumber.from('1')),
+            user.usdc.address
+          )
+        ).to.be.revertedWith('Not enough liquidity provided');
+      });
 
-      // withdraw token liquidity from pool
+      it('Should revert withdrawal if not enough liquidity in the pool', async function () {
+        // deposit
+        await user.perpetual.provideLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
 
-      /* take over curve pool & fund with ether*/
-      await impersonateAccountsHardhat([user.market.address], env);
-      const marketSigner = await getSigner(user.market.address);
-      await fundAccountsHardhat([user.market.address], env);
+        // withdraw token liquidity from pool
 
-      /* withdraw liquidity from curve pool*/
-      const vEUR = await ethers.getContract('VBase', user.address);
-      await vEUR
-        .connect(marketSigner)
-        .transfer(DEAD_ADDRESS, await user.vEUR.balanceOf(user.market.address));
-      expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
+        /* take over curve pool & fund with ether*/
+        await impersonateAccountsHardhat([user.market.address], env);
+        const marketSigner = await getSigner(user.market.address);
+        await fundAccountsHardhat([user.market.address], env);
 
-      // try withdrawal from pool
-      const result = await user.perpetual.withdrawLiquidity(
-        liquidityAmount,
-        user.usdc.address
-      );
-      //console.log('result of withdrawal is', result);
-    });
+        /* burn liquidity from curve pool*/
+        const vEUR = await ethers.getContract('VBase', user.address);
 
-    it('Should allow to withdraw liquidity', async function () {
-      // deposit
-      await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+        /* withdraw vEUR from curve pool */
+        await vEUR
+          .connect(marketSigner)
+          .transfer(
+            DEAD_ADDRESS,
+            await user.vEUR.balanceOf(user.market.address)
+          );
 
-      // withdraw
+        expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
+
+        // withdraw token liquidity from pool
+
+        /* take over curve pool & fund with ether*/
+        await impersonateAccountsHardhat([user.market.address], env);
+        const marketSigner = await getSigner(user.market.address);
+        await fundAccountsHardhat([user.market.address], env);
+
+        /* withdraw liquidity from curve pool*/
+        const vEUR = await ethers.getContract('VBase', user.address);
+        await vEUR
+          .connect(marketSigner)
+          .transfer(
+            DEAD_ADDRESS,
+            await user.vEUR.balanceOf(user.market.address)
+          );
+        expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
+
+        // try withdrawal from pool
+        const result = await user.perpetual.withdrawLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+        //console.log('result of withdrawal is', result);
+      });
+
+      it('Should allow to withdraw liquidity', async function () {
+        // deposit
+        await user.perpetual.provideLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+
+        // withdraw
+        // try withdrawal from pool
+        const result = await user.perpetual.withdrawLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+        console.log('result of withdrawal is', result);
+      });
+      // it('Should allow to withdraw liquidity', async function () {
+      //   const userBalanceStart = await user.usdc.balanceOf(user.address);
+
+      //   // deposit
+      //   await user.perpetual.provideLiquidity(
+      //     liquidityAmount,
+      //     user.usdc.address
+      //   );
+      //   const userBalanceAfter = await user.usdc.balanceOf(user.address);
+
+      //   //withdraw;
       //   await expect(
       //     user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
       //   )
       //     .to.emit(user.perpetual, 'LiquidityWithdrawn')
       //     .withArgs(user.address, user.usdc.address, liquidityAmount);
-      //
+      //   const userBalanceEnd = await user.usdc.balanceOf(user.address);
+
+      //   // check balances
+      //   expect(userBalanceEnd).to.be.equal(userBalanceStart);
+      //   expect(userBalanceAfter).to.be.equal(0);
+      // });
+      //   describe('Can calculate profit from liquidity provision', async function () {});
+      // });
+      describe('Misc', async function () {
+        it.only('Should emit provide liquidity event in the curve pool', async function () {
+          const price = await user.perpetual.marketPrice();
+          const liquidityWadAmount = await tokenToWad(
+            user.usdc,
+            liquidityAmount
+          ); // deposited liquidity with 18 decimals
+
+          console.log(
+            'has already provided',
+            await user.perpetual.totalLiquidityProvided()
+          );
+          await expect(
+            user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
+          )
+            .to.emit(user.market.address, 'LiquidityProvided')
+            .withArgs(
+              user.perpetual.address,
+              [
+                liquidityWadAmount.div(2).mul(PRECISON).div(price),
+                liquidityWadAmount.div(2),
+              ],
+              0,
+              0
+            );
+        });
+
+        // TODO: wait for open/close position logic to be implemented
+        it('Should not allow to use the deposited liquidity to open up a long position', async function () {
+          //   // deposit
+          //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+          //   // try to open a position
+          //   await expect(user.perpetual.openPosition(10,0)).to.be.revertedWith("")
+        });
+      });
     });
   });
 });

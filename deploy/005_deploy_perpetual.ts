@@ -2,9 +2,6 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 
-import {getCurveFactoryAddress} from '../helpers/contracts-deployments';
-import curveFactoryAbi from '../contracts/dependencies/curve-factory-v2.json';
-
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
@@ -12,23 +9,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
   const vault = await ethers.getContract('Vault', deployer);
-
-  const curveFactoryAddress = getCurveFactoryAddress(hre);
-  const curveFactory = await ethers.getContractAt(
-    curveFactoryAbi,
-    curveFactoryAddress,
-    deployer
-  );
-  // see: https://github.com/curvefi/curve-factory/blob/fb61207c8d1095096dc07f2c705cf02d40757635/contracts/Factory.vy#L169
-  const VEURVUSDPoolAddress = await curveFactory[
-    'find_pool_for_coins(address,address)'
-  ](vEUR.address, vUSD.address);
+  const market = await ethers.getContractAt('CryptoSwap', deployer);
 
   const perpetualArgs = [
     oracle.address,
     vEUR.address,
     vUSD.address,
-    VEURVUSDPoolAddress,
+    market.address,
     vault.address,
   ];
 

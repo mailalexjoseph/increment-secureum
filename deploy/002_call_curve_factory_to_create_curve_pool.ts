@@ -2,6 +2,7 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 
+import {logDeployments} from '../helpers/misc-utils';
 import {getCurveFactoryAddress} from '../helpers/contracts-deployments';
 import curveFactoryAbi from '../contracts/dependencies/curve-factory-v2.json';
 import {ZERO_ADDRESS} from '../helpers/constants';
@@ -9,31 +10,30 @@ import {ZERO_ADDRESS} from '../helpers/constants';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const curveFactoryAddress = getCurveFactoryAddress(hre);
+  // owner: address,
+  // admin_fee_receiver: address,
+  // A: uint256,
+  // gamma: uint256,
+  // mid_fee: uint256,
+  // out_fee: uint256,
+  // allowed_extra_profit: uint256,
+  // fee_gamma: uint256,
+  // adjustment_step: uint256,
+  // admin_fee: uint256,
+  // ma_half_time: uint256,
+  // initial_price: uint256
 
-  const vEUR = await ethers.getContract('VBase', deployer);
-  const vUSD = await ethers.getContract('VQuote', deployer);
-  const curveFactory = await ethers.getContractAt(
-    curveFactoryAbi,
-    curveFactoryAddress,
-    deployer
-  );
+  await hre.deployments.deploy('CryptoSwap', {
+    from: deployer,
+    args: [deployer, deployer, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+    log: true,
+  });
 
-  // see ICurveFactory arguments detail
-  // note: in deploy_perpetual, we get the address of the deployed pool with `curveFactory.find_pool_for_coins`
-  // for function overload in ethers.js, see https://docs.ethers.io/v5/single-page/#/v5/migration/web3/-%23-migration-from-web3-js--contracts--overloaded-functions
-  await curveFactory[
-    'deploy_plain_pool(string,string,address[4],uint256,uint256,uint256,uint256)'
-  ](
-    'vEUR/vUSD pair',
-    'VEURVUSD',
-    [vEUR.address, vUSD.address, ZERO_ADDRESS, ZERO_ADDRESS],
-    30,
-    4000000,
-    3,
-    0
-  );
+  await logDeployments();
+  const market = await ethers.getContractAt('CryptoSwap', deployer);
+  console.log(await market.token());
 
+  console.log(token);
   console.log('We have deployed vEUR/vUSD curve pool');
 };
 
