@@ -30,10 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   await logDeployments();
-  const market = await ethers.getContractAt('CryptoSwap', deployer);
-  console.log(await market.token());
 
-  console.log(token);
   console.log('We have deployed vEUR/vUSD curve pool');
 };
 

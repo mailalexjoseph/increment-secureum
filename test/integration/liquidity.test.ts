@@ -170,26 +170,6 @@ describe('Increment App: Liquidity', function () {
         const marketSigner = await getSigner(user.market.address);
         await fundAccountsHardhat([user.market.address], env);
 
-        /* burn liquidity from curve pool*/
-        const vEUR = await ethers.getContract('VBase', user.address);
-
-        /* withdraw vEUR from curve pool */
-        await vEUR
-          .connect(marketSigner)
-          .transfer(
-            DEAD_ADDRESS,
-            await user.vEUR.balanceOf(user.market.address)
-          );
-
-        expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
-
-        // withdraw token liquidity from pool
-
-        /* take over curve pool & fund with ether*/
-        await impersonateAccountsHardhat([user.market.address], env);
-        const marketSigner = await getSigner(user.market.address);
-        await fundAccountsHardhat([user.market.address], env);
-
         /* withdraw liquidity from curve pool*/
         const vEUR = await ethers.getContract('VBase', user.address);
         await vEUR
@@ -205,7 +185,7 @@ describe('Increment App: Liquidity', function () {
           liquidityAmount,
           user.usdc.address
         );
-        //console.log('result of withdrawal is', result);
+        console.log('result of withdrawal is', result);
       });
 
       it('Should allow to withdraw liquidity', async function () {
