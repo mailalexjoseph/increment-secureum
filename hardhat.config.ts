@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import 'dotenv/config';
 import 'hardhat-gas-reporter';
 import '@nomiclabs/hardhat-vyper';
@@ -17,6 +20,14 @@ import {node_url, accounts} from './helpers/network';
 if (process.env.HARDHAT_FORK) {
   process.env['HARDHAT_DEPLOY_FORK'] = process.env.HARDHAT_FORK;
 }
+
+// Prevent to load scripts before compilation and typechain
+const tasksPath = path.join(__dirname, 'tasks');
+fs.readdirSync(tasksPath)
+  .filter((pth) => pth.includes('.ts'))
+  .forEach((task) => {
+    require(`${tasksPath}/${task}`);
+  });
 
 const config: HardhatUserConfig = {
   defaultNetwork: 'hardhat',
