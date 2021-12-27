@@ -11,6 +11,7 @@ import {
 } from '../../helpers/misc-utils';
 
 import {DEAD_ADDRESS} from '../../helpers/constants';
+
 const {getSigner} = ethers;
 
 import env = require('hardhat');
@@ -36,6 +37,7 @@ describe('Increment App: Liquidity', function () {
     });
 
     it('Should allow to deposit positive', async function () {
+      console.log(user.market.functions);
       await expect(
         user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
       )
@@ -227,41 +229,41 @@ describe('Increment App: Liquidity', function () {
       // });
       //   describe('Can calculate profit from liquidity provision', async function () {});
       // });
-      describe('Misc', async function () {
-        it.only('Should emit provide liquidity event in the curve pool', async function () {
-          const price = await user.perpetual.marketPrice();
-          const liquidityWadAmount = await tokenToWad(
-            user.usdc,
-            liquidityAmount
-          ); // deposited liquidity with 18 decimals
+      // describe('Misc', async function () {
+      //   // it.only('Should emit provide liquidity event in the curve pool', async function () {
+      //   //   const price = await user.perpetual.marketPrice();
+      //   //   const liquidityWadAmount = await tokenToWad(
+      //   //     user.usdc,
+      //   //     liquidityAmount
+      //   //   ); // deposited liquidity with 18 decimals
 
-          console.log(
-            'has already provided',
-            await user.perpetual.totalLiquidityProvided()
-          );
-          await expect(
-            user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
-          )
-            .to.emit(user.market.address, 'LiquidityProvided')
-            .withArgs(
-              user.perpetual.address,
-              [
-                liquidityWadAmount.div(2).mul(PRECISON).div(price),
-                liquidityWadAmount.div(2),
-              ],
-              0,
-              0
-            );
-        });
+      //   //   console.log(
+      //   //     'has already provided',
+      //   //     await user.perpetual.totalLiquidityProvided()
+      //   //   );
+      //   //   await expect(
+      //   //     user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
+      //   //   )
+      //   //     .to.emit(user.market.address, 'LiquidityProvided')
+      //   //     .withArgs(
+      //   //       user.perpetual.address,
+      //   //       [
+      //   //         liquidityWadAmount.div(2).mul(PRECISON).div(price),
+      //   //         liquidityWadAmount.div(2),
+      //   //       ],
+      //   //       0,
+      //   //       0
+      //   //     );
+      //   // });
 
-        // TODO: wait for open/close position logic to be implemented
-        it('Should not allow to use the deposited liquidity to open up a long position', async function () {
-          //   // deposit
-          //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
-          //   // try to open a position
-          //   await expect(user.perpetual.openPosition(10,0)).to.be.revertedWith("")
-        });
-      });
+      //   // TODO: wait for open/close position logic to be implemented
+      //   it('Should not allow to use the deposited liquidity to open up a long position', async function () {
+      //     //   // deposit
+      //     //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+      //     //   // try to open a position
+      //     //   await expect(user.perpetual.openPosition(10,0)).to.be.revertedWith("")
+      //   });
+      // });
     });
   });
 });

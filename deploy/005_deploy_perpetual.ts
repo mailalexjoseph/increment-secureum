@@ -9,7 +9,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
   const vault = await ethers.getContract('Vault', deployer);
-  const market = await ethers.getContractAt('CryptoSwap', deployer);
+  const market = await ethers.getContract('CryptoSwap', deployer);
 
   const perpetualArgs = [
     oracle.address,

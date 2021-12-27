@@ -20,17 +20,13 @@ import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
 // types
 import {
   ERC20,
-  ICryptoSwap,
   Oracle,
   Perpetual,
   Vault,
   VirtualToken,
 } from '../../../typechain';
 import {BigNumber} from '../../../helpers/types';
-
-import {CURVE_FACTORY_MAINNET} from '../../../markets/ethereum';
-import curveFactoryAbi from '../../../contracts/dependencies/curve-factory-v2.json';
-import curveSwapAbi from '../../../contracts/dependencies/curve-swap-v2.json';
+import {CryptoSwap} from '../../../contracts-vyper/typechain/CryptoSwap';
 
 export type User = {address: string} & {
   perpetual: Perpetual;
@@ -38,7 +34,7 @@ export type User = {address: string} & {
   usdc: ERC20;
   vEUR: VirtualToken;
   vUSD: VirtualToken;
-  market: ICryptoSwap;
+  market: CryptoSwap;
   oracle: Oracle;
 };
 
@@ -57,25 +53,10 @@ const getContracts = async (deployerAccount: string) => {
     await ethers.getContract('VQuote', deployerAccount)
   );
 
-  const curveFactory = await ethers.getContractAt(
-    curveFactoryAbi,
-    CURVE_FACTORY_MAINNET,
-    deployerAccount
-  );
-  const VEURVUSDPoolAddress = await curveFactory[
-    'find_pool_for_coins(address,address)'
-  ](vEUR.address, vUSD.address);
-
   return {
     vEUR,
     vUSD,
-    market: <ICryptoSwap>(
-      await ethers.getContractAt(
-        curveSwapAbi,
-        VEURVUSDPoolAddress,
-        deployerAccount
-      )
-    ),
+    market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
     oracle: <Oracle>await ethers.getContract('Oracle', deployerAccount),
     vault: <Vault>await ethers.getContract('Vault', deployerAccount),
     perpetual: <Perpetual>(

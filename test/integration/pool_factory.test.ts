@@ -1,6 +1,6 @@
 import {ethers} from 'hardhat';
-import curveFactoryAbi from '../../contracts/dependencies/curve-factory-v2.json';
-import curveSwapAbi from '../../contracts/dependencies/curve-swap-v2.json';
+import curveFactoryAbi from '../../contract-dependencies/curve/curve-factory-v2.json';
+import curveSwapAbi from '../../contract-dependencies/curve/curve-swap-v2.json';
 
 const CURVE_FACTORY_MAINNET_ADDRESS =
   '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
@@ -11,9 +11,12 @@ const oneUnit = ethers.utils.parseEther('1');
 
 const unlimitedGasParams = {gasPrice: 100000, gasLimit: 100000};
 
+/// @note The current factory contract can only deploy v1 pools (21/12/2021)
+/// @notice Script was written based on (https://discord.com/channels/729808684359876718/729812922649542758/921088270270595153)
+/// @dev: Should we just delete this test for now?
 describe('Pool test', () => {
   it('Curve pool interaction', async () => {
-    const [owner, alice, bob] = await ethers.getSigners();
+    const [owner] = await ethers.getSigners();
 
     console.log(`Owner balance: ${await owner.getBalance()}`);
 
@@ -60,19 +63,8 @@ describe('Pool test', () => {
       0
     );
 
-    console.log(`Owner balance: ${await owner.getBalance()}`);
-
-    // console.log(await pool.A(unlimitedGasParams));
-
-    console.log((await pool.balances(0, unlimitedGasParams)).toString());
-    console.log((await pool.balances(1, unlimitedGasParams)).toString());
-
-    // get_dy, exchange test
-    const dy = await pool['get_dy(int128,int128,uint256)'](1, 0, 1000);
-    console.log(dy);
-
-    console.log(await vBase.balanceOf(owner.address));
+    // get_dy, exchange test (should not fail)
+    await pool['get_dy(int128,int128,uint256)'](1, 0, 1000);
     await pool['exchange(int128,int128,uint256,uint256)'](1, 0, 1000, 0);
-    console.log(await vBase.balanceOf(owner.address));
   });
 });

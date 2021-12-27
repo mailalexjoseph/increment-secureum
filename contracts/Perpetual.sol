@@ -166,8 +166,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
             // NOTE: this doesn't work
             // assumption: vBase is the 1st token, vQuote is the 2nd one
-            int128 firstCoin = 1;
-            int128 secondCoin = 0;
+            uint256 firstCoin = 1;
+            uint256 secondCoin = 0;
             quoteBought = market.exchange(firstCoin, secondCoin, 100000, 0);
         } else if (direction == LibPerpetual.Side.Short) {
             vBase.mint(amount);
@@ -339,9 +339,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vBase.mint(vBaseAmount);
 
         // supply liquidity to curve pool
-        uint256 min_mint_amount = 0; // set to zero for now
-        uint256[2] memory mint_amounts = [vBaseAmount, vQuoteAmount];
-        market.add_liquidity(mint_amounts, min_mint_amount); //  first token in curve pool is vBase & second token is vQuote
+        //uint256 min_mint_amount = 0; // set to zero for now
+        //uint256[2] memory mint_amounts = [vBaseAmount, vQuoteAmount];
+        market.add_liquidity([vBaseAmount, vQuoteAmount], 0); //  first token in curve pool is vBase & second token is vQuote
 
         // increment balances
         liquidityProvided[sender] += amount; // with 6 decimals
@@ -359,7 +359,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(liquidityProvided[msg.sender] >= amount, "Not enough liquidity provided");
 
         // withdraw from curve pool
-        uint256 withdrawAmount = (amount * market.totalSupply()) / totalLiquidityProvided; // can this round to zero?
+        uint256 withdrawAmount = amount * market.get_virtual_price();
 
         // remove liquidity from th epool
         uint256[2] memory amountReturned;

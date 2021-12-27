@@ -121,6 +121,6 @@ describe('Perpetual', () => {
       // );
     });
 
-    it('Should open short position (swap some minted vBase for vQuote, create TraderPosition, emit OpenPosition)', async () => {});
+    // it('Should open short position (swap some minted vBase for vQuote, create TraderPosition, emit OpenPosition)', async () => {});
   });
 });

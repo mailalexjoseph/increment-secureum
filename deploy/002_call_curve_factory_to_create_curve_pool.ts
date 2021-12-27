@@ -1,11 +1,7 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {ethers} from 'hardhat';
-
+import {utils} from 'ethers';
 import {logDeployments} from '../helpers/misc-utils';
-import {getCurveFactoryAddress} from '../helpers/contracts-deployments';
-import curveFactoryAbi from '../contracts/dependencies/curve-factory-v2.json';
-import {ZERO_ADDRESS} from '../helpers/constants';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -25,7 +21,20 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await hre.deployments.deploy('CryptoSwap', {
     from: deployer,
-    args: [deployer, deployer, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5],
+    args: [
+      deployer /* owner*/,
+      deployer /* admin_fee_receiver*/,
+      5000 * 2 ** 2 * 10000 /* A */,
+      utils.parseEther('0.0001') /*  gamma*/,
+      utils.parseEther('0.0005') /*  mid_fee*/,
+      utils.parseEther('0.0045') /*  out_fee*/,
+      utils.parseUnits('10', 10) /*  allowed_extra_profit*/,
+      utils.parseEther('0.005') /*  fee_gamma*/,
+      utils.parseEther('0.0000055') /*  adjustment_step*/,
+      utils.parseUnits('5', 9) /*  admin_fee*/,
+      600 /*  ma_half_time*/,
+      utils.parseEther('1.2') /*  initial_price*/, // TODO: dont hardcode initial price
+    ],
     log: true,
   });
 
