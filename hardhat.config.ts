@@ -125,6 +125,12 @@ const config: HardhatUserConfig = {
   vyper: {
     version: '0.3.0',
   },
+  external: {
+    contracts: [
+      {
+        artifacts: 'contracts-vyper',
+      },
+    ],
+  },
 };
-
 export default config;
