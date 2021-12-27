@@ -95,7 +95,7 @@ export async function logDeployments(): Promise<void> {
   const allDeployments = await deployments.all();
 
   for (const [contractName, contractData] of Object.entries(allDeployments)) {
-    console.log(`${contractName} is deployed to ${contractData.address}`);
+    console.log(`At ${contractData.address} we deployed ${contractName}`);
   }
 
   /*console.log('Accounts are', {
