@@ -20,7 +20,7 @@ import {
   TypedEvent,
   TypedListener,
   OnEvent,
-} from '../../typechain/common';
+} from './common';
 
 export interface CryptoSwapInterface extends utils.Interface {
   functions: {
