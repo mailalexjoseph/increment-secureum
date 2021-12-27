@@ -1,6 +1,6 @@
 import {ethers} from 'hardhat';
-import curveFactoryAbi from '../../contract-dependencies/curve/curve-factory-v2.json';
-import curveSwapAbi from '../../contract-dependencies/curve/curve-swap-v2.json';
+import curveFactoryAbi from '../../contracts-vyper/abi/curve-factory-v2.json';
+import curveSwapAbi from '../../contracts-vyper/abi/curve-swap-v2.json';
 
 const CURVE_FACTORY_MAINNET_ADDRESS =
   '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
