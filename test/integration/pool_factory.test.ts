@@ -1,6 +1,6 @@
 import {ethers} from 'hardhat';
 import curveFactoryAbi from '../../contracts-vyper/abi/curve-factory-v2.json';
-import curveSwapAbi from '../../contracts-vyper/abi/curve-swap-v2.json';
+import curveCryptoSwapAbi from '../../contracts-vyper/abi/curve-crypto-swap-v2.json';
 
 const CURVE_FACTORY_MAINNET_ADDRESS =
   '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
@@ -49,7 +49,7 @@ describe('Pool test', () => {
     ](vBase.address, vQuote.address);
 
     // the one used in 0x5F890841f657d90E081bAbdB532A05996Af79Fe6
-    const poolAbi = JSON.stringify(curveSwapAbi);
+    const poolAbi = JSON.stringify(curveCryptoSwapAbi);
     const pool = new ethers.Contract(poolAddress, poolAbi, owner);
 
     // add liquidity
@@ -63,8 +63,22 @@ describe('Pool test', () => {
       0
     );
 
-    // get_dy, exchange test (should not fail)
-    await pool['get_dy(int128,int128,uint256)'](1, 0, 1000);
-    await pool['exchange(int128,int128,uint256,uint256)'](1, 0, 1000, 0);
+    // // get_dy, exchange test (should not fail)
+    const getDyRes = await pool['get_dy(uint256,uint256,uint256)'](1, 0, 1000);
+    console.log(`-----`);
+    console.log(`get_dy result`);
+    console.log(getDyRes.toString());
+    console.log(`-----`);
+
+    const exchangeRes = await pool['exchange(uint256,uint256,uint256,uint256)'](
+      1,
+      0,
+      1000,
+      0
+    );
+    console.log(`-----`);
+    console.log(`exchange result`);
+    console.log(exchangeRes.toString());
+    console.log(`-----`);
   });
 });
