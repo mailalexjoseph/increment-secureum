@@ -36,8 +36,7 @@ describe('Increment App: Liquidity', function () {
       ).to.be.revertedWith('Zero amount');
     });
 
-    it.only('Should allow to deposit positive', async function () {
-      console.log(user.market.functions);
+    it('Should allow to deposit positive', async function () {
       await expect(
         user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
       )
@@ -187,7 +186,6 @@ describe('Increment App: Liquidity', function () {
           liquidityAmount,
           user.usdc.address
         );
-        console.log('result of withdrawal is', result);
       });
 
       it('Should allow to withdraw liquidity', async function () {
@@ -203,7 +201,6 @@ describe('Increment App: Liquidity', function () {
           liquidityAmount,
           user.usdc.address
         );
-        console.log('result of withdrawal is', result);
       });
       // it('Should allow to withdraw liquidity', async function () {
       //   const userBalanceStart = await user.usdc.balanceOf(user.address);

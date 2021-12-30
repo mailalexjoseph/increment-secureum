@@ -1,7 +1,7 @@
 // typechain objects
-import {CryptoSwapERC} from '../../contracts-vyper/typechain/CryptoSwapERC';
+import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
-import {CryptoSwapERC__factory} from '../../contracts-vyper/typechain/factories/CryptoSwapERC__factory';
+import {CryptoSwap__factory} from '../../contracts-vyper/typechain/factories/CryptoSwap__factory';
 import {CurveTokenV5__factory} from '../../contracts-vyper/typechain/factories/CurveTokenV5__factory';
 import {VBase, VQuote} from '../../typechain';
 import {VBase__factory, VQuote__factory} from '../../typechain';
@@ -22,7 +22,7 @@ describe('Cryptoswap: Unit tests', function () {
   // contract and accounts
   let deployer: Signer;
   let deployerAccount: tEthereumAddress;
-  let cryptoswap: CryptoSwapERC, market: CryptoSwapERC;
+  let cryptoswap: CryptoSwap, market: CryptoSwap;
   let vBase: VBase, vQuote: VQuote;
   let curveToken: CurveTokenV5;
 
@@ -60,7 +60,7 @@ describe('Cryptoswap: Unit tests', function () {
     curveToken = await CurveTokenV5Factory.deploy('vEUR/vUSD', 'EURUSD');
 
     // deploy curve pool
-    const FundingFactory = new CryptoSwapERC__factory(deployer);
+    const FundingFactory = new CryptoSwap__factory(deployer);
 
     // deploy cryptoswap
     [
@@ -147,8 +147,6 @@ describe('Cryptoswap: Unit tests', function () {
     expect(await vQuote.allowance(deployerAccount, market.address)).be.equal(
       mintAmount
     );
-    console.log(await vBase.balanceOf(deployerAccount));
-    console.log(await vBase.allowance(deployerAccount, market.address));
 
     // pre-check assert statement
 
