@@ -109,3 +109,33 @@ export interface IVaultConfiguration {
 export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
 
 export type OracleConstructorArguments = [tEthereumAddress];
+
+export type CryptoSwapConstructorArguments = [
+  tEthereumAddress,
+  tEthereumAddress,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  tEthereumAddress,
+  [tEthereumAddress, tEthereumAddress]
+];
+
+// owner: address,
+// admin_fee_receiver: address,
+// A: uint256,
+// gamma: uint256,
+// mid_fee: uint256,
+// out_fee: uint256,
+// allowed_extra_profit: uint256,
+// fee_gamma: uint256,
+// adjustment_step: uint256,
+// admin_fee: uint256,
+// ma_half_time: uint256,
+// initial_price: uint256

@@ -12,130 +12,125 @@ import {
   PopulatedTransaction,
   Signer,
   utils,
-} from 'ethers';
-import {FunctionFragment, Result, EventFragment} from '@ethersproject/abi';
-import {Listener, Provider} from '@ethersproject/providers';
-import {
-  TypedEventFilter,
-  TypedEvent,
-  TypedListener,
-  OnEvent,
-} from './common';
+} from "ethers";
+import { FunctionFragment, Result, EventFragment } from "@ethersproject/abi";
+import { Listener, Provider } from "@ethersproject/providers";
+import { TypedEventFilter, TypedEvent, TypedListener, OnEvent } from "./common";
 
-export interface CryptoSwapInterface extends utils.Interface {
+export interface CryptoSwapERCInterface extends utils.Interface {
   functions: {
-    'token()': FunctionFragment;
-    'coins(uint256)': FunctionFragment;
-    'A()': FunctionFragment;
-    'gamma()': FunctionFragment;
-    'fee()': FunctionFragment;
-    'get_virtual_price()': FunctionFragment;
-    'exchange(uint256,uint256,uint256,uint256)': FunctionFragment;
-    'get_dy(uint256,uint256,uint256)': FunctionFragment;
-    'add_liquidity(uint256[2],uint256)': FunctionFragment;
-    'remove_liquidity(uint256,uint256[2])': FunctionFragment;
-    'calc_token_amount(uint256[2])': FunctionFragment;
-    'calc_withdraw_one_coin(uint256,uint256)': FunctionFragment;
-    'remove_liquidity_one_coin(uint256,uint256,uint256)': FunctionFragment;
-    'claim_admin_fees()': FunctionFragment;
-    'ramp_A_gamma(uint256,uint256,uint256)': FunctionFragment;
-    'stop_ramp_A_gamma()': FunctionFragment;
-    'commit_new_parameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)': FunctionFragment;
-    'apply_new_parameters()': FunctionFragment;
-    'revert_new_parameters()': FunctionFragment;
-    'commit_transfer_ownership(address)': FunctionFragment;
-    'apply_transfer_ownership()': FunctionFragment;
-    'revert_transfer_ownership()': FunctionFragment;
-    'kill_me()': FunctionFragment;
-    'unkill_me()': FunctionFragment;
-    'set_admin_fee_receiver(address)': FunctionFragment;
-    'price_scale()': FunctionFragment;
-    'price_oracle()': FunctionFragment;
-    'last_prices()': FunctionFragment;
-    'last_prices_timestamp()': FunctionFragment;
-    'initial_A_gamma()': FunctionFragment;
-    'future_A_gamma()': FunctionFragment;
-    'initial_A_gamma_time()': FunctionFragment;
-    'future_A_gamma_time()': FunctionFragment;
-    'allowed_extra_profit()': FunctionFragment;
-    'future_allowed_extra_profit()': FunctionFragment;
-    'fee_gamma()': FunctionFragment;
-    'future_fee_gamma()': FunctionFragment;
-    'adjustment_step()': FunctionFragment;
-    'future_adjustment_step()': FunctionFragment;
-    'ma_half_time()': FunctionFragment;
-    'future_ma_half_time()': FunctionFragment;
-    'mid_fee()': FunctionFragment;
-    'out_fee()': FunctionFragment;
-    'admin_fee()': FunctionFragment;
-    'future_mid_fee()': FunctionFragment;
-    'future_out_fee()': FunctionFragment;
-    'future_admin_fee()': FunctionFragment;
-    'balances(uint256)': FunctionFragment;
-    'D()': FunctionFragment;
-    'owner()': FunctionFragment;
-    'future_owner()': FunctionFragment;
-    'xcp_profit()': FunctionFragment;
-    'xcp_profit_a()': FunctionFragment;
-    'virtual_price()': FunctionFragment;
-    'is_killed()': FunctionFragment;
-    'kill_deadline()': FunctionFragment;
-    'transfer_ownership_deadline()': FunctionFragment;
-    'admin_actions_deadline()': FunctionFragment;
-    'admin_fee_receiver()': FunctionFragment;
+    "token()": FunctionFragment;
+    "coins(uint256)": FunctionFragment;
+    "A()": FunctionFragment;
+    "gamma()": FunctionFragment;
+    "fee()": FunctionFragment;
+    "get_virtual_price()": FunctionFragment;
+    "exchange(uint256,uint256,uint256,uint256)": FunctionFragment;
+    "get_dy(uint256,uint256,uint256)": FunctionFragment;
+    "add_liquidity(uint256[2],uint256)": FunctionFragment;
+    "remove_liquidity(uint256,uint256[2])": FunctionFragment;
+    "calc_token_amount(uint256[2])": FunctionFragment;
+    "calc_withdraw_one_coin(uint256,uint256)": FunctionFragment;
+    "remove_liquidity_one_coin(uint256,uint256,uint256)": FunctionFragment;
+    "claim_admin_fees()": FunctionFragment;
+    "ramp_A_gamma(uint256,uint256,uint256)": FunctionFragment;
+    "stop_ramp_A_gamma()": FunctionFragment;
+    "commit_new_parameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)": FunctionFragment;
+    "apply_new_parameters()": FunctionFragment;
+    "revert_new_parameters()": FunctionFragment;
+    "commit_transfer_ownership(address)": FunctionFragment;
+    "apply_transfer_ownership()": FunctionFragment;
+    "revert_transfer_ownership()": FunctionFragment;
+    "kill_me()": FunctionFragment;
+    "unkill_me()": FunctionFragment;
+    "set_admin_fee_receiver(address)": FunctionFragment;
+    "price_scale()": FunctionFragment;
+    "price_oracle()": FunctionFragment;
+    "last_prices()": FunctionFragment;
+    "last_prices_timestamp()": FunctionFragment;
+    "initial_A_gamma()": FunctionFragment;
+    "future_A_gamma()": FunctionFragment;
+    "initial_A_gamma_time()": FunctionFragment;
+    "future_A_gamma_time()": FunctionFragment;
+    "allowed_extra_profit()": FunctionFragment;
+    "future_allowed_extra_profit()": FunctionFragment;
+    "fee_gamma()": FunctionFragment;
+    "future_fee_gamma()": FunctionFragment;
+    "adjustment_step()": FunctionFragment;
+    "future_adjustment_step()": FunctionFragment;
+    "ma_half_time()": FunctionFragment;
+    "future_ma_half_time()": FunctionFragment;
+    "mid_fee()": FunctionFragment;
+    "out_fee()": FunctionFragment;
+    "admin_fee()": FunctionFragment;
+    "future_mid_fee()": FunctionFragment;
+    "future_out_fee()": FunctionFragment;
+    "future_admin_fee()": FunctionFragment;
+    "balances(uint256)": FunctionFragment;
+    "D()": FunctionFragment;
+    "owner()": FunctionFragment;
+    "future_owner()": FunctionFragment;
+    "xcp_profit()": FunctionFragment;
+    "xcp_profit_a()": FunctionFragment;
+    "virtual_price()": FunctionFragment;
+    "is_killed()": FunctionFragment;
+    "kill_deadline()": FunctionFragment;
+    "transfer_ownership_deadline()": FunctionFragment;
+    "admin_actions_deadline()": FunctionFragment;
+    "admin_fee_receiver()": FunctionFragment;
   };
 
-  encodeFunctionData(functionFragment: 'token', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'coins', values: [BigNumberish]): string;
-  encodeFunctionData(functionFragment: 'A', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'gamma', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'fee', values?: undefined): string;
+  encodeFunctionData(functionFragment: "token", values?: undefined): string;
+  encodeFunctionData(functionFragment: "coins", values: [BigNumberish]): string;
+  encodeFunctionData(functionFragment: "A", values?: undefined): string;
+  encodeFunctionData(functionFragment: "gamma", values?: undefined): string;
+  encodeFunctionData(functionFragment: "fee", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'get_virtual_price',
+    functionFragment: "get_virtual_price",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'exchange',
+    functionFragment: "exchange",
     values: [BigNumberish, BigNumberish, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'get_dy',
+    functionFragment: "get_dy",
     values: [BigNumberish, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'add_liquidity',
+    functionFragment: "add_liquidity",
     values: [[BigNumberish, BigNumberish], BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'remove_liquidity',
+    functionFragment: "remove_liquidity",
     values: [BigNumberish, [BigNumberish, BigNumberish]]
   ): string;
   encodeFunctionData(
-    functionFragment: 'calc_token_amount',
+    functionFragment: "calc_token_amount",
     values: [[BigNumberish, BigNumberish]]
   ): string;
   encodeFunctionData(
-    functionFragment: 'calc_withdraw_one_coin',
+    functionFragment: "calc_withdraw_one_coin",
     values: [BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'remove_liquidity_one_coin',
+    functionFragment: "remove_liquidity_one_coin",
     values: [BigNumberish, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'claim_admin_fees',
+    functionFragment: "claim_admin_fees",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'ramp_A_gamma',
+    functionFragment: "ramp_A_gamma",
     values: [BigNumberish, BigNumberish, BigNumberish]
   ): string;
   encodeFunctionData(
-    functionFragment: 'stop_ramp_A_gamma',
+    functionFragment: "stop_ramp_A_gamma",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'commit_new_parameters',
+    functionFragment: "commit_new_parameters",
     values: [
       BigNumberish,
       BigNumberish,
@@ -147,355 +142,355 @@ export interface CryptoSwapInterface extends utils.Interface {
     ]
   ): string;
   encodeFunctionData(
-    functionFragment: 'apply_new_parameters',
+    functionFragment: "apply_new_parameters",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'revert_new_parameters',
+    functionFragment: "revert_new_parameters",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'commit_transfer_ownership',
+    functionFragment: "commit_transfer_ownership",
     values: [string]
   ): string;
   encodeFunctionData(
-    functionFragment: 'apply_transfer_ownership',
+    functionFragment: "apply_transfer_ownership",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'revert_transfer_ownership',
+    functionFragment: "revert_transfer_ownership",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: 'kill_me', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'unkill_me', values?: undefined): string;
+  encodeFunctionData(functionFragment: "kill_me", values?: undefined): string;
+  encodeFunctionData(functionFragment: "unkill_me", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'set_admin_fee_receiver',
+    functionFragment: "set_admin_fee_receiver",
     values: [string]
   ): string;
   encodeFunctionData(
-    functionFragment: 'price_scale',
+    functionFragment: "price_scale",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'price_oracle',
+    functionFragment: "price_oracle",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'last_prices',
+    functionFragment: "last_prices",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'last_prices_timestamp',
+    functionFragment: "last_prices_timestamp",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'initial_A_gamma',
+    functionFragment: "initial_A_gamma",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_A_gamma',
+    functionFragment: "future_A_gamma",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'initial_A_gamma_time',
+    functionFragment: "initial_A_gamma_time",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_A_gamma_time',
+    functionFragment: "future_A_gamma_time",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'allowed_extra_profit',
+    functionFragment: "allowed_extra_profit",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_allowed_extra_profit',
+    functionFragment: "future_allowed_extra_profit",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: 'fee_gamma', values?: undefined): string;
+  encodeFunctionData(functionFragment: "fee_gamma", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'future_fee_gamma',
-    values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'adjustment_step',
+    functionFragment: "future_fee_gamma",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_adjustment_step',
+    functionFragment: "adjustment_step",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'ma_half_time',
+    functionFragment: "future_adjustment_step",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_ma_half_time',
-    values?: undefined
-  ): string;
-  encodeFunctionData(functionFragment: 'mid_fee', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'out_fee', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'admin_fee', values?: undefined): string;
-  encodeFunctionData(
-    functionFragment: 'future_mid_fee',
+    functionFragment: "ma_half_time",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_out_fee',
+    functionFragment: "future_ma_half_time",
+    values?: undefined
+  ): string;
+  encodeFunctionData(functionFragment: "mid_fee", values?: undefined): string;
+  encodeFunctionData(functionFragment: "out_fee", values?: undefined): string;
+  encodeFunctionData(functionFragment: "admin_fee", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "future_mid_fee",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'future_admin_fee',
+    functionFragment: "future_out_fee",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'balances',
+    functionFragment: "future_admin_fee",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "balances",
     values: [BigNumberish]
   ): string;
-  encodeFunctionData(functionFragment: 'D', values?: undefined): string;
-  encodeFunctionData(functionFragment: 'owner', values?: undefined): string;
+  encodeFunctionData(functionFragment: "D", values?: undefined): string;
+  encodeFunctionData(functionFragment: "owner", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'future_owner',
+    functionFragment: "future_owner",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'xcp_profit',
+    functionFragment: "xcp_profit",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'xcp_profit_a',
+    functionFragment: "xcp_profit_a",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'virtual_price',
+    functionFragment: "virtual_price",
     values?: undefined
   ): string;
-  encodeFunctionData(functionFragment: 'is_killed', values?: undefined): string;
+  encodeFunctionData(functionFragment: "is_killed", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: 'kill_deadline',
-    values?: undefined
-  ): string;
-  encodeFunctionData(
-    functionFragment: 'transfer_ownership_deadline',
+    functionFragment: "kill_deadline",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'admin_actions_deadline',
+    functionFragment: "transfer_ownership_deadline",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: 'admin_fee_receiver',
+    functionFragment: "admin_actions_deadline",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "admin_fee_receiver",
     values?: undefined
   ): string;
 
-  decodeFunctionResult(functionFragment: 'token', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'coins', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'A', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'gamma', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'fee', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "token", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "coins", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "A", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "gamma", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "fee", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'get_virtual_price',
+    functionFragment: "get_virtual_price",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'exchange', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'get_dy', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "exchange", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "get_dy", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'add_liquidity',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: 'remove_liquidity',
+    functionFragment: "add_liquidity",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'calc_token_amount',
+    functionFragment: "remove_liquidity",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'calc_withdraw_one_coin',
+    functionFragment: "calc_token_amount",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'remove_liquidity_one_coin',
+    functionFragment: "calc_withdraw_one_coin",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'claim_admin_fees',
+    functionFragment: "remove_liquidity_one_coin",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'ramp_A_gamma',
+    functionFragment: "claim_admin_fees",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'stop_ramp_A_gamma',
+    functionFragment: "ramp_A_gamma",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'commit_new_parameters',
+    functionFragment: "stop_ramp_A_gamma",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'apply_new_parameters',
+    functionFragment: "commit_new_parameters",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'revert_new_parameters',
+    functionFragment: "apply_new_parameters",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'commit_transfer_ownership',
+    functionFragment: "revert_new_parameters",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'apply_transfer_ownership',
+    functionFragment: "commit_transfer_ownership",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'revert_transfer_ownership',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: 'kill_me', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'unkill_me', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'set_admin_fee_receiver',
+    functionFragment: "apply_transfer_ownership",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'price_scale',
+    functionFragment: "revert_transfer_ownership",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "kill_me", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "unkill_me", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "set_admin_fee_receiver",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'price_oracle',
+    functionFragment: "price_scale",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'last_prices',
+    functionFragment: "price_oracle",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'last_prices_timestamp',
+    functionFragment: "last_prices",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'initial_A_gamma',
+    functionFragment: "last_prices_timestamp",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_A_gamma',
+    functionFragment: "initial_A_gamma",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'initial_A_gamma_time',
+    functionFragment: "future_A_gamma",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_A_gamma_time',
+    functionFragment: "initial_A_gamma_time",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'allowed_extra_profit',
+    functionFragment: "future_A_gamma_time",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_allowed_extra_profit',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: 'fee_gamma', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'future_fee_gamma',
+    functionFragment: "allowed_extra_profit",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'adjustment_step',
+    functionFragment: "future_allowed_extra_profit",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "fee_gamma", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "future_fee_gamma",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_adjustment_step',
+    functionFragment: "adjustment_step",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'ma_half_time',
+    functionFragment: "future_adjustment_step",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_ma_half_time',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: 'mid_fee', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'out_fee', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'admin_fee', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'future_mid_fee',
+    functionFragment: "ma_half_time",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_out_fee',
+    functionFragment: "future_ma_half_time",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "mid_fee", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "out_fee", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "admin_fee", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "future_mid_fee",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'future_admin_fee',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: 'balances', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'D', data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: 'owner', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'future_owner',
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(functionFragment: 'xcp_profit', data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: 'xcp_profit_a',
+    functionFragment: "future_out_fee",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'virtual_price',
+    functionFragment: "future_admin_fee",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: 'is_killed', data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "balances", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "D", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "owner", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: 'kill_deadline',
+    functionFragment: "future_owner",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "xcp_profit", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "xcp_profit_a",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'transfer_ownership_deadline',
+    functionFragment: "virtual_price",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "is_killed", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "kill_deadline",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'admin_actions_deadline',
+    functionFragment: "transfer_ownership_deadline",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: 'admin_fee_receiver',
+    functionFragment: "admin_actions_deadline",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "admin_fee_receiver",
     data: BytesLike
   ): Result;
 
   events: {
-    'TokenExchange(address,uint256,uint256,uint256,uint256)': EventFragment;
-    'AddLiquidity(address,uint256[2],uint256,uint256)': EventFragment;
-    'RemoveLiquidity(address,uint256[2],uint256)': EventFragment;
-    'RemoveLiquidityOne(address,uint256,uint256,uint256)': EventFragment;
-    'CommitNewAdmin(uint256,address)': EventFragment;
-    'NewAdmin(address)': EventFragment;
-    'CommitNewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)': EventFragment;
-    'NewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)': EventFragment;
-    'RampAgamma(uint256,uint256,uint256,uint256,uint256,uint256)': EventFragment;
-    'StopRampA(uint256,uint256,uint256)': EventFragment;
-    'ClaimAdminFee(address,uint256)': EventFragment;
+    "TokenExchange(address,uint256,uint256,uint256,uint256)": EventFragment;
+    "AddLiquidity(address,uint256[2],uint256,uint256)": EventFragment;
+    "RemoveLiquidity(address,uint256[2],uint256)": EventFragment;
+    "RemoveLiquidityOne(address,uint256,uint256,uint256)": EventFragment;
+    "CommitNewAdmin(uint256,address)": EventFragment;
+    "NewAdmin(address)": EventFragment;
+    "CommitNewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)": EventFragment;
+    "NewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)": EventFragment;
+    "RampAgamma(uint256,uint256,uint256,uint256,uint256,uint256)": EventFragment;
+    "StopRampA(uint256,uint256,uint256)": EventFragment;
+    "ClaimAdminFee(address,uint256)": EventFragment;
   };
 
-  getEvent(nameOrSignatureOrTopic: 'TokenExchange'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'AddLiquidity'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'RemoveLiquidity'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'RemoveLiquidityOne'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'CommitNewAdmin'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'NewAdmin'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'CommitNewParameters'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'NewParameters'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'RampAgamma'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'StopRampA'): EventFragment;
-  getEvent(nameOrSignatureOrTopic: 'ClaimAdminFee'): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "TokenExchange"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "AddLiquidity"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "RemoveLiquidity"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "RemoveLiquidityOne"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "CommitNewAdmin"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NewAdmin"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "CommitNewParameters"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "NewParameters"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "RampAgamma"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "StopRampA"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "ClaimAdminFee"): EventFragment;
 }
 
 export type TokenExchangeEvent = TypedEvent<
@@ -549,12 +544,12 @@ export type RemoveLiquidityOneEventFilter =
 
 export type CommitNewAdminEvent = TypedEvent<
   [BigNumber, string],
-  {deadline: BigNumber; admin: string}
+  { deadline: BigNumber; admin: string }
 >;
 
 export type CommitNewAdminEventFilter = TypedEventFilter<CommitNewAdminEvent>;
 
-export type NewAdminEvent = TypedEvent<[string], {admin: string}>;
+export type NewAdminEvent = TypedEvent<[string], { admin: string }>;
 
 export type NewAdminEventFilter = TypedEventFilter<NewAdminEvent>;
 
@@ -615,24 +610,24 @@ export type RampAgammaEventFilter = TypedEventFilter<RampAgammaEvent>;
 
 export type StopRampAEvent = TypedEvent<
   [BigNumber, BigNumber, BigNumber],
-  {current_A: BigNumber; current_gamma: BigNumber; time: BigNumber}
+  { current_A: BigNumber; current_gamma: BigNumber; time: BigNumber }
 >;
 
 export type StopRampAEventFilter = TypedEventFilter<StopRampAEvent>;
 
 export type ClaimAdminFeeEvent = TypedEvent<
   [string, BigNumber],
-  {admin: string; tokens: BigNumber}
+  { admin: string; tokens: BigNumber }
 >;
 
 export type ClaimAdminFeeEventFilter = TypedEventFilter<ClaimAdminFeeEvent>;
 
-export interface CryptoSwap extends BaseContract {
+export interface CryptoSwapERC extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: CryptoSwapInterface;
+  interface: CryptoSwapERCInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -671,7 +666,7 @@ export interface CryptoSwap extends BaseContract {
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     get_dy(
@@ -684,13 +679,13 @@ export interface CryptoSwap extends BaseContract {
     add_liquidity(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     remove_liquidity(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     calc_token_amount(
@@ -708,22 +703,22 @@ export interface CryptoSwap extends BaseContract {
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     claim_admin_fees(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     ramp_A_gamma(
       future_A: BigNumberish,
       future_gamma: BigNumberish,
       future_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     stop_ramp_A_gamma(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     commit_new_parameters(
@@ -734,41 +729,41 @@ export interface CryptoSwap extends BaseContract {
       _new_allowed_extra_profit: BigNumberish,
       _new_adjustment_step: BigNumberish,
       _new_ma_half_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     apply_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     revert_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     commit_transfer_ownership(
       _owner: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     apply_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     revert_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     kill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     unkill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     set_admin_fee_receiver(
       _admin_fee_receiver: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
     price_scale(overrides?: CallOverrides): Promise<[BigNumber]>;
@@ -864,7 +859,7 @@ export interface CryptoSwap extends BaseContract {
     j: BigNumberish,
     dx: BigNumberish,
     min_dy: BigNumberish,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   get_dy(
@@ -877,13 +872,13 @@ export interface CryptoSwap extends BaseContract {
   add_liquidity(
     amounts: [BigNumberish, BigNumberish],
     min_mint_amount: BigNumberish,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   remove_liquidity(
     _amount: BigNumberish,
     min_amounts: [BigNumberish, BigNumberish],
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   calc_token_amount(
@@ -901,22 +896,22 @@ export interface CryptoSwap extends BaseContract {
     token_amount: BigNumberish,
     i: BigNumberish,
     min_amount: BigNumberish,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   claim_admin_fees(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   ramp_A_gamma(
     future_A: BigNumberish,
     future_gamma: BigNumberish,
     future_time: BigNumberish,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   stop_ramp_A_gamma(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   commit_new_parameters(
@@ -927,41 +922,41 @@ export interface CryptoSwap extends BaseContract {
     _new_allowed_extra_profit: BigNumberish,
     _new_adjustment_step: BigNumberish,
     _new_ma_half_time: BigNumberish,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   apply_new_parameters(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   revert_new_parameters(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   commit_transfer_ownership(
     _owner: string,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   apply_transfer_ownership(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   revert_transfer_ownership(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   kill_me(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   unkill_me(
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   set_admin_fee_receiver(
     _admin_fee_receiver: string,
-    overrides?: Overrides & {from?: string | Promise<string>}
+    overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
   price_scale(overrides?: CallOverrides): Promise<BigNumber>;
@@ -1204,7 +1199,7 @@ export interface CryptoSwap extends BaseContract {
   };
 
   filters: {
-    'TokenExchange(address,uint256,uint256,uint256,uint256)'(
+    "TokenExchange(address,uint256,uint256,uint256,uint256)"(
       buyer?: string | null,
       sold_id?: null,
       tokens_sold?: null,
@@ -1219,7 +1214,7 @@ export interface CryptoSwap extends BaseContract {
       tokens_bought?: null
     ): TokenExchangeEventFilter;
 
-    'AddLiquidity(address,uint256[2],uint256,uint256)'(
+    "AddLiquidity(address,uint256[2],uint256,uint256)"(
       provider?: string | null,
       token_amounts?: null,
       fee?: null,
@@ -1232,7 +1227,7 @@ export interface CryptoSwap extends BaseContract {
       token_supply?: null
     ): AddLiquidityEventFilter;
 
-    'RemoveLiquidity(address,uint256[2],uint256)'(
+    "RemoveLiquidity(address,uint256[2],uint256)"(
       provider?: string | null,
       token_amounts?: null,
       token_supply?: null
@@ -1243,7 +1238,7 @@ export interface CryptoSwap extends BaseContract {
       token_supply?: null
     ): RemoveLiquidityEventFilter;
 
-    'RemoveLiquidityOne(address,uint256,uint256,uint256)'(
+    "RemoveLiquidityOne(address,uint256,uint256,uint256)"(
       provider?: string | null,
       token_amount?: null,
       coin_index?: null,
@@ -1256,7 +1251,7 @@ export interface CryptoSwap extends BaseContract {
       coin_amount?: null
     ): RemoveLiquidityOneEventFilter;
 
-    'CommitNewAdmin(uint256,address)'(
+    "CommitNewAdmin(uint256,address)"(
       deadline?: BigNumberish | null,
       admin?: string | null
     ): CommitNewAdminEventFilter;
@@ -1265,10 +1260,10 @@ export interface CryptoSwap extends BaseContract {
       admin?: string | null
     ): CommitNewAdminEventFilter;
 
-    'NewAdmin(address)'(admin?: string | null): NewAdminEventFilter;
+    "NewAdmin(address)"(admin?: string | null): NewAdminEventFilter;
     NewAdmin(admin?: string | null): NewAdminEventFilter;
 
-    'CommitNewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)'(
+    "CommitNewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)"(
       deadline?: BigNumberish | null,
       admin_fee?: null,
       mid_fee?: null,
@@ -1289,7 +1284,7 @@ export interface CryptoSwap extends BaseContract {
       ma_half_time?: null
     ): CommitNewParametersEventFilter;
 
-    'NewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)'(
+    "NewParameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256)"(
       admin_fee?: null,
       mid_fee?: null,
       out_fee?: null,
@@ -1308,7 +1303,7 @@ export interface CryptoSwap extends BaseContract {
       ma_half_time?: null
     ): NewParametersEventFilter;
 
-    'RampAgamma(uint256,uint256,uint256,uint256,uint256,uint256)'(
+    "RampAgamma(uint256,uint256,uint256,uint256,uint256,uint256)"(
       initial_A?: null,
       future_A?: null,
       initial_gamma?: null,
@@ -1325,7 +1320,7 @@ export interface CryptoSwap extends BaseContract {
       future_time?: null
     ): RampAgammaEventFilter;
 
-    'StopRampA(uint256,uint256,uint256)'(
+    "StopRampA(uint256,uint256,uint256)"(
       current_A?: null,
       current_gamma?: null,
       time?: null
@@ -1336,7 +1331,7 @@ export interface CryptoSwap extends BaseContract {
       time?: null
     ): StopRampAEventFilter;
 
-    'ClaimAdminFee(address,uint256)'(
+    "ClaimAdminFee(address,uint256)"(
       admin?: string | null,
       tokens?: null
     ): ClaimAdminFeeEventFilter;
@@ -1364,7 +1359,7 @@ export interface CryptoSwap extends BaseContract {
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     get_dy(
@@ -1377,13 +1372,13 @@ export interface CryptoSwap extends BaseContract {
     add_liquidity(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     remove_liquidity(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     calc_token_amount(
@@ -1401,22 +1396,22 @@ export interface CryptoSwap extends BaseContract {
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     claim_admin_fees(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     ramp_A_gamma(
       future_A: BigNumberish,
       future_gamma: BigNumberish,
       future_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     stop_ramp_A_gamma(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     commit_new_parameters(
@@ -1427,41 +1422,41 @@ export interface CryptoSwap extends BaseContract {
       _new_allowed_extra_profit: BigNumberish,
       _new_adjustment_step: BigNumberish,
       _new_ma_half_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     apply_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     revert_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     commit_transfer_ownership(
       _owner: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     apply_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     revert_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     kill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     unkill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     set_admin_fee_receiver(
       _admin_fee_receiver: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
     price_scale(overrides?: CallOverrides): Promise<BigNumber>;
@@ -1554,7 +1549,7 @@ export interface CryptoSwap extends BaseContract {
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     get_dy(
@@ -1567,13 +1562,13 @@ export interface CryptoSwap extends BaseContract {
     add_liquidity(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     remove_liquidity(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     calc_token_amount(
@@ -1591,22 +1586,22 @@ export interface CryptoSwap extends BaseContract {
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     claim_admin_fees(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     ramp_A_gamma(
       future_A: BigNumberish,
       future_gamma: BigNumberish,
       future_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     stop_ramp_A_gamma(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     commit_new_parameters(
@@ -1617,41 +1612,41 @@ export interface CryptoSwap extends BaseContract {
       _new_allowed_extra_profit: BigNumberish,
       _new_adjustment_step: BigNumberish,
       _new_ma_half_time: BigNumberish,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     apply_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     revert_new_parameters(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     commit_transfer_ownership(
       _owner: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     apply_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     revert_transfer_ownership(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     kill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     unkill_me(
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     set_admin_fee_receiver(
       _admin_fee_receiver: string,
-      overrides?: Overrides & {from?: string | Promise<string>}
+      overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
     price_scale(overrides?: CallOverrides): Promise<PopulatedTransaction>;

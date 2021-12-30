@@ -123,7 +123,7 @@ const config: HardhatUserConfig = {
     timeout: 0,
   },
   vyper: {
-    version: '0.3.0',
+    version: '0.3.1',
   },
   external: {
     contracts: [

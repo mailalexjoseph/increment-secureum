@@ -36,7 +36,7 @@ describe('Increment App: Liquidity', function () {
       ).to.be.revertedWith('Zero amount');
     });
 
-    it('Should allow to deposit positive', async function () {
+    it.only('Should allow to deposit positive', async function () {
       console.log(user.market.functions);
       await expect(
         user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
