@@ -17,7 +17,7 @@ import { FunctionFragment, Result, EventFragment } from "@ethersproject/abi";
 import { Listener, Provider } from "@ethersproject/providers";
 import { TypedEventFilter, TypedEvent, TypedListener, OnEvent } from "./common";
 
-export interface CryptoSwapERCInterface extends utils.Interface {
+export interface CryptoSwapInterface extends utils.Interface {
   functions: {
     "token()": FunctionFragment;
     "coins(uint256)": FunctionFragment;
@@ -622,12 +622,12 @@ export type ClaimAdminFeeEvent = TypedEvent<
 
 export type ClaimAdminFeeEventFilter = TypedEventFilter<ClaimAdminFeeEvent>;
 
-export interface CryptoSwapERC extends BaseContract {
+export interface CryptoSwap extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: CryptoSwapERCInterface;
+  interface: CryptoSwapInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
