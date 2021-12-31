@@ -1,7 +1,7 @@
 {
   "_format": "hh-vyper-artifact-1",
   "contractName": "CurveTokenV5",
-  "sourceName": "contracts/contracts-vyper/src/CurveTokenV5.vy",
+  "sourceName": "contracts/contracts-vyper/CurveTokenV5.vy",
   "abi": [
     {
       "name": "Approval",

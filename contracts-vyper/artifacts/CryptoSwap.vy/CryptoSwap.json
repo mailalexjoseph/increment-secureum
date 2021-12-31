@@ -1,7 +1,7 @@
 {
   "_format": "hh-vyper-artifact-1",
   "contractName": "CryptoSwap",
-  "sourceName": "contracts/contracts-vyper/src/CryptoSwap.vy",
+  "sourceName": "contracts/contracts-vyper/CryptoSwap.vy",
   "abi": [
     {
       "name": "TokenExchange",
