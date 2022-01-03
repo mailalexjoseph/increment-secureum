@@ -3,13 +3,14 @@ import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 import {CryptoSwap__factory} from '../../contracts-vyper/typechain/factories/CryptoSwap__factory';
 import {CurveTokenV5__factory} from '../../contracts-vyper/typechain/factories/CurveTokenV5__factory';
-import {VBase, VQuote} from '../../typechain';
+import {IERC20, VBase, VQuote, VirtualToken} from '../../typechain';
 import {VBase__factory, VQuote__factory} from '../../typechain';
 
 // utils
 import {Signer} from 'ethers';
 import {ethers} from 'hardhat';
 import env from 'hardhat';
+import {rDiv, rMul} from '../integration/helpers/utils/calculations';
 
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {fundAccountsHardhat} from '../../helpers/misc-utils';
@@ -17,6 +18,18 @@ import {tEthereumAddress, BigNumber} from '../../helpers/types';
 
 import chaiModule = require('../chai-setup');
 const {expect} = chaiModule;
+
+const MIN_MINT_AMOUNT = ethers.BigNumber.from(0);
+
+async function mintAndApprove(
+  token: VirtualToken,
+  amount: BigNumber,
+  spender: tEthereumAddress
+): Promise<void> {
+  expect(await token.signer.getAddress()).to.be.equal(await token.owner());
+  await token.mint(amount);
+  await token.approve(spender, amount);
+}
 
 describe('Cryptoswap: Unit tests', function () {
   // contract and accounts
@@ -63,6 +76,7 @@ describe('Cryptoswap: Unit tests', function () {
     const FundingFactory = new CryptoSwap__factory(deployer);
 
     // deploy cryptoswap
+    const initialPrice = ethers.utils.parseEther('1.2');
     [
       owner,
       admin_fee_receiver,
@@ -80,9 +94,10 @@ describe('Cryptoswap: Unit tests', function () {
       _coins,
     ] = getCryptoSwapConstructorArgs(
       deployerAccount,
+      initialPrice,
       curveToken.address,
-      vBase.address,
-      vQuote.address
+      vQuote.address,
+      vBase.address
     );
 
     cryptoswap = await FundingFactory.deploy(
@@ -109,8 +124,8 @@ describe('Cryptoswap: Unit tests', function () {
 
   it('Initialize parameters correctly', async function () {
     // coins
-    expect(await market.coins(0)).to.be.equal(vBase.address);
-    expect(await market.coins(1)).to.be.equal(vQuote.address);
+    expect(await market.coins(0)).to.be.equal(vQuote.address);
+    expect(await market.coins(1)).to.be.equal(vBase.address);
     expect(await curveToken.minter()).to.be.equal(market.address);
 
     // constructor parameters
@@ -130,34 +145,107 @@ describe('Cryptoswap: Unit tests', function () {
     expect(await market.price_scale()).to.be.equal(initial_price);
     expect(await market.price_oracle()).to.be.equal(initial_price);
     expect(await market.last_prices()).to.be.equal(initial_price);
+
+    // global parameters
+    expect(await market.is_killed()).to.be.false;
   });
 
-  it('Should provide liquidity', async function () {
+  it('Can provide liquidity', async function () {
     // mint tokens
-    const mintAmount = ethers.utils.parseEther('10');
-    await vBase.mint(mintAmount);
-    await vQuote.mint(mintAmount);
-    await vBase.approve(market.address, mintAmount);
-    await vQuote.approve(market.address, mintAmount);
-    expect(await vBase.balanceOf(deployerAccount)).be.equal(mintAmount);
-    expect(await vQuote.balanceOf(deployerAccount)).be.equal(mintAmount);
-    expect(await vBase.allowance(deployerAccount, market.address)).be.equal(
-      mintAmount
-    );
+    const quoteAmount = ethers.utils.parseEther('10');
+    const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+    await mintAndApprove(vQuote, quoteAmount, market.address);
+    await mintAndApprove(vBase, baseAmount, market.address);
+
+    expect(await vQuote.balanceOf(deployerAccount)).be.equal(quoteAmount);
     expect(await vQuote.allowance(deployerAccount, market.address)).be.equal(
-      mintAmount
+      quoteAmount
+    );
+    expect(await vBase.balanceOf(deployerAccount)).be.equal(baseAmount);
+    expect(await vBase.allowance(deployerAccount, market.address)).be.equal(
+      baseAmount
     );
 
-    // pre-check assert statement
+    // provide liquidity
+    await expect(
+      cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT)
+    )
+      .to.emit(cryptoswap, 'AddLiquidity')
+      .withArgs(deployerAccount, [quoteAmount, baseAmount], 0, 0);
 
-    // assert not self.is_killed  # dev: the pool is killed
-    expect(await market.is_killed()).to.be.false;
-    expect(await market.is_killed()).to.be.false;
+    expect(await market.balances(0)).to.be.equal(quoteAmount);
+    expect(await market.balances(1)).to.be.equal(baseAmount);
+    expect(await vBase.balanceOf(cryptoswap.address)).to.be.equal(baseAmount);
+    expect(await vQuote.balanceOf(cryptoswap.address)).to.be.equal(quoteAmount);
+    expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
+  });
+  it('Can not provide zero liquidity', async function () {
+    // provide liquidity
+    await expect(cryptoswap.add_liquidity([0, 0], 0)).to.be.revertedWith('');
+    /*
+    "" == "Error: Transaction reverted without a reason string"
+    (see. https://ethereum.stackexchange.com/questions/48627/how-to-catch-revert-error-in-truffle-test-javascript)
+    */
+  });
+  it('Can withdraw liquidity', async function () {
+    // mint tokens
+    const quoteAmount = ethers.utils.parseEther('10');
+    const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+    await mintAndApprove(vBase, baseAmount, market.address);
+    await mintAndApprove(vQuote, quoteAmount, market.address);
 
-    //github.com/ethers-io/ethers.js/issues/368
-    await cryptoswap.add_liquidity(
-      [mintAmount.div(2), mintAmount.div(2)],
-      ethers.BigNumber.from(0)
+    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+
+    const lpTokenBalance = await curveToken.balanceOf(deployerAccount);
+    expect(lpTokenBalance).to.be.above(0);
+
+    // TODO: Why do we get this (leftover) balance?
+    const remainingBalances = [
+      ethers.BigNumber.from('9999999999999999998'), // 9.9999 with 18 decimals
+      ethers.BigNumber.from('8333333333333333332'),
+    ];
+    await expect(cryptoswap.remove_liquidity(lpTokenBalance, [0, 0]))
+      .to.emit(cryptoswap, 'RemoveLiquidity')
+      .withArgs(deployerAccount, remainingBalances, 0);
+  });
+  it('Can not withdraw 0 liquidity', async function () {
+    // mint tokens
+    const quoteAmount = ethers.utils.parseEther('10');
+    const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+    await mintAndApprove(vBase, baseAmount, market.address);
+    await mintAndApprove(vQuote, quoteAmount, market.address);
+
+    await await cryptoswap.add_liquidity(
+      [quoteAmount, baseAmount],
+      MIN_MINT_AMOUNT
     );
+    // remove liquidity
+    await expect(
+      cryptoswap.remove_liquidity(0, [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT])
+    ).to.be.revertedWith('');
+    /*
+    "" == "Error: Transaction reverted without a reason string"
+    (see. https://ethereum.stackexchange.com/questions/48627/how-to-catch-revert-error-in-truffle-test-javascript)
+    */
+  });
+  it('Can deposit liquidity twice', async function () {
+    // mint tokens
+    const quoteAmount = ethers.utils.parseEther('10');
+    const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+    await mintAndApprove(vBase, baseAmount.mul(4), market.address);
+    await mintAndApprove(vQuote, quoteAmount.mul(4), market.address);
+
+    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+
+    expect(await market.balances(0)).to.be.equal(quoteAmount.mul(2));
+    expect(await market.balances(1)).to.be.equal(baseAmount.mul(2));
+    expect(await vBase.balanceOf(cryptoswap.address)).to.be.equal(
+      baseAmount.mul(2)
+    );
+    expect(await vQuote.balanceOf(cryptoswap.address)).to.be.equal(
+      quoteAmount.mul(2)
+    );
+    expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
   });
 });
