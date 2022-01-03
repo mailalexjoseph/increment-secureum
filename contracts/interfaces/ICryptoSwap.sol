@@ -5,6 +5,8 @@ pragma solidity 0.8.4;
 interface ICryptoSwap {
     function get_virtual_price() external view returns (uint256);
 
+    function price_oracle() external view returns (uint256);
+
     function balances(uint256 i) external view returns (uint256);
 
     // Swap token i to j with amount dx and min amount min_dy

@@ -165,9 +165,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             // quoteBought = market.get_dy(1, 0, amount);
 
             // NOTE: this doesn't work
-            // assumption: vBase is the 1st token, vQuote is the 2nd one
-            uint256 firstCoin = 1;
-            uint256 secondCoin = 0;
+            // assumption: vQuote is the 1st token, vBase is the 2nd one
+            uint256 firstCoin = 0;
+            uint256 secondCoin = 1;
             quoteBought = market.exchange(firstCoin, secondCoin, 100000, 0);
         } else if (direction == LibPerpetual.Side.Short) {
             vBase.mint(amount);
@@ -300,9 +300,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return upcomingFundingPayment;
     }
 
-    // @notice Return the current market price (e.g. EUR/USD = 1.2 <=> 1 EUR = 1.2 USD <=> 10 EUR = 12 USD)
+    // @notice Return the current market price
     function marketPrice() public view returns (uint256) {
-        return LibMath.wadDiv(market.balances(1), market.balances(0)); // vBase / vQuote
+        return market.price_oracle(); // vBase / vQuote
     }
 
     function indexPrice() public view returns (int256) {
@@ -340,8 +340,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // supply liquidity to curve pool
         //uint256 min_mint_amount = 0; // set to zero for now
-        //uint256[2] memory mint_amounts = [vBaseAmount, vQuoteAmount];
-        market.add_liquidity([vBaseAmount, vQuoteAmount], 0); //  first token in curve pool is vBase & second token is vQuote
+        market.add_liquidity([vQuoteAmount, vBaseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
         // increment balances
         liquidityProvided[sender] += amount; // with 6 decimals

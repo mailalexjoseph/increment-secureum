@@ -9,7 +9,11 @@ import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
 } from '../../helpers/misc-utils';
-
+import {
+  getCryptoSwapConstructorArgs,
+  getChainlinkPrice,
+} from '../../helpers/contracts-deployments';
+import {rDiv} from './helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 
 const {getSigner} = ethers;
@@ -67,9 +71,9 @@ describe('Increment App: Liquidity', function () {
       // before you deposit
       const vEURBefore = await user.vEUR.balanceOf(user.market.address);
       const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
-      const vEURlpBalance = await user.market.balances(0);
-      const vUSDlpBalance = await user.market.balances(1);
-      const price = await user.oracle.getAssetPrice(user.perpetual.address);
+      const vEURlpBalance = await user.market.balances(1);
+      const vUSDlpBalance = await user.market.balances(0);
+      const price = await getChainlinkPrice(env, 'EUR_USD');
       const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
       expect(vEURBefore).to.be.equal(vEURlpBalance);
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
@@ -85,13 +89,13 @@ describe('Increment App: Liquidity', function () {
         vUSDBefore.add(liquidityWadAmount.div(2))
       );
       expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(
-        vEURBefore.add(liquidityWadAmount.div(2).mul(PRECISON).div(price))
+        vEURBefore.add(rDiv(liquidityWadAmount.div(2), price))
       );
       expect(await user.market.balances(0)).to.be.equal(
-        vEURlpBalance.add(liquidityWadAmount.div(2).mul(PRECISON).div(price))
+        vUSDlpBalance.add(liquidityWadAmount.div(2))
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vUSDlpBalance.add(liquidityWadAmount.div(2))
+        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), price))
       );
     });
 
@@ -102,9 +106,9 @@ describe('Increment App: Liquidity', function () {
       // before you deposit
       const vEURBefore = await user.vEUR.balanceOf(user.market.address);
       const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
-      const vEURlpBalance = await user.market.balances(0);
-      const vUSDlpBalance = await user.market.balances(1);
-      const price = await user.perpetual.marketPrice();
+      const vEURlpBalance = await user.market.balances(1);
+      const vUSDlpBalance = await user.market.balances(0);
+      const price = await getChainlinkPrice(env, 'EUR_USD');
       const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
       expect(vEURBefore).to.be.equal(vEURlpBalance);
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
@@ -120,12 +124,12 @@ describe('Increment App: Liquidity', function () {
         vUSDBefore.add(liquidityWadAmount.div(2))
       );
       expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(
-        vEURBefore.add(liquidityWadAmount.div(2).mul(PRECISON).div(price))
-      );
-      expect(await user.market.balances(0)).to.be.equal(
-        vEURlpBalance.add(liquidityWadAmount.div(2).mul(PRECISON).div(price))
+        vEURBefore.add(rDiv(liquidityWadAmount.div(2), price))
       );
       expect(await user.market.balances(1)).to.be.equal(
+        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), price))
+      );
+      expect(await user.market.balances(0)).to.be.equal(
         vUSDlpBalance.add(liquidityWadAmount.div(2))
       );
     });
@@ -181,7 +185,8 @@ describe('Increment App: Liquidity', function () {
           );
         expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
 
-        // try withdrawal from pool
+        // TODO: Catch correct revert
+        // try withdrawal from pool:
         const result = await user.perpetual.withdrawLiquidity(
           liquidityAmount,
           user.usdc.address

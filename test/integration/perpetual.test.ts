@@ -96,7 +96,7 @@ describe('Perpetual', () => {
 
     // note: add a test to check what happens if we try to do an exchange while the pool is empty :p
 
-    it('Should open long position (swap some minted vQuote for vBase, create TraderPosition, emit OpenPosition)', async () => {
+    it.skip('Should open long position (swap some minted vQuote for vBase, create TraderPosition, emit OpenPosition)', async () => {
       // set-up
       await setUpPoolLiquidity(bob, depositAmount);
       // console.log('balance(0)');

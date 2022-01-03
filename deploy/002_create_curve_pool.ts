@@ -3,6 +3,8 @@ import {DeployFunction} from 'hardhat-deploy/types';
 import {logDeployments} from '../helpers/misc-utils';
 import {getCryptoSwapConstructorArgs} from '../helpers/contracts-deployments';
 import {ethers} from 'hardhat';
+import {BigNumber} from 'ethers';
+import {getChainlinkPrice} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -14,15 +16,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
+  // get chainlink price
+  const initialPrice = await getChainlinkPrice(hre, 'EUR_USD');
+
   // deploy CryptoSwap
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
   const curveLPtoken = await ethers.getContract('CurveTokenV5', deployer);
   const cryptoSwapConstructorArgs = getCryptoSwapConstructorArgs(
     deployer,
+    initialPrice,
     curveLPtoken.address,
-    vEUR.address,
-    vUSD.address
+    vUSD.address,
+    vEUR.address
   );
   await hre.deployments.deploy('CryptoSwap', {
     from: deployer,
