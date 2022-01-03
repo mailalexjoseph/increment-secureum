@@ -2,7 +2,10 @@
 # (c) Curve.Fi, 2021
 # Pool for two crypto assets
 
-# changed version!!!
+# changed version (vyper version)!!!
+# https://github.com/curvefi/curve-crypto-contract/blob/master/deployment-logs/2021-11-01.%20EURS%20on%20mainnet/CryptoSwap.vy
+# Swap address: 0x98a7F18d4E56Cfe84E3D081B40001B3d5bD3eB8B
+# Token address: 0x3D229E1B4faab62F621eF2F6A610961f7BD7b23B
 
 # Expected coins:
 # eur*/3crv
