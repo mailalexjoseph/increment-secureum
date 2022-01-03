@@ -62,12 +62,31 @@ export function getChainlinkOracle(
   return OracleConfig.ChainlinkOracles[ethereumNetwork][name];
 }
 
+export async function getChainlinkPrice(
+  hre: HardhatRuntimeEnvironment,
+  pair: string
+): Promise<BigNumber> {
+  /* We have to use the chainlink price here since we use the oracle price to distribute the initial liquidity
+  in the perpetual contracts. In case the price changes during deployment, the deployment could (potentially) fail.
+  */
+  const oracle = await hre.ethers.getContractAt(
+    'AggregatorV3Interface',
+    getChainlinkOracle(hre, pair)
+  );
+  const answer = await oracle.latestRoundData();
+  const decimals = await oracle.decimals();
+  const priceAsString = hre.ethers.utils.formatUnits(answer.answer, decimals);
+  console.log(`Price: ${priceAsString}`);
+  return hre.ethers.utils.parseEther(priceAsString);
+}
+
 // TODO: put into /market folder
 export function getCryptoSwapConstructorArgs(
   deployer: tEthereumAddress,
+  initialPrice: BigNumber,
   lpToken: tEthereumAddress,
-  coinA: tEthereumAddress,
-  coinB: tEthereumAddress
+  quoteToken: tEthereumAddress,
+  baseToken: tEthereumAddress
 ): CryptoSwapConstructorArguments {
   const FEE_RECEIVER = '0xeCb456EA5365865EbAb8a2661B0c503410e9B347'; // from: https://github.com/curvefi/curve-crypto-contract/blob/f66b0c7b33232b431a813b9201e47a35c70db1ab/scripts/deploy_mainnet_eurs_pool.py#L18
   const cryptoSwapConstructorArgs: CryptoSwapConstructorArguments = [
@@ -84,9 +103,9 @@ export function getCryptoSwapConstructorArgs(
     utils.parseEther('0.0000055') /*  adjustment_step*/,
     utils.parseUnits('5', 9) /*  admin_fee*/,
     BigNumber.from(600) /*  ma_half_time*/,
-    utils.parseEther('1.2') /*  initial_price*/, // TODO: dont hardcode initial price
+    initialPrice /*  initial_price*/, // TODO: dont hardcode initial price
     lpToken,
-    [coinA, coinB],
+    [quoteToken, baseToken],
   ];
   return cryptoSwapConstructorArgs;
 }
