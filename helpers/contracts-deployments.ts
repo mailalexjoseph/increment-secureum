@@ -96,8 +96,8 @@ export function getCryptoSwapConstructorArgs(
       .mul(2 ** 2)
       .mul(10000) /* A */,
     utils.parseEther('0.0001') /*  gamma*/,
-    utils.parseEther('0.0005') /*  mid_fee*/,
-    utils.parseEther('0.0045') /*  out_fee*/,
+    utils.parseUnits('0.0005', 10) /*  mid_fee*/,
+    utils.parseUnits('0.0045', 10) /*  out_fee*/,
     utils.parseUnits('10', 10) /*  allowed_extra_profit*/,
     utils.parseEther('0.005') /*  fee_gamma*/,
     utils.parseEther('0.0000055') /*  adjustment_step*/,
