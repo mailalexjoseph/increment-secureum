@@ -1,14 +1,17 @@
 import {BigNumber, Signer} from 'ethers';
 import {TestLibFunding} from '../../typechain';
 import {TestLibFunding__factory} from '../../typechain';
+
 import {ethers} from 'hardhat';
+
+import {
+  asBigNumber,
+  rMul,
+  rDiv,
+} from '../integration/helpers/utils/calculations';
 
 import chaiModule = require('../chai-setup');
 const {expect} = chaiModule;
-
-// utils
-const asBigNumber = (number: string) => ethers.utils.parseEther(number);
-//const asDecimal = (number: BigNumber) => ethers.utils.formatEther(number);
 
 // time-utils
 const minutes = (number: number) => number * 60;
@@ -21,13 +24,6 @@ const getLatestTimestamp = async () => {
   const block = await ethers.provider.getBlock(blockNumber);
   return block.timestamp;
 };
-
-// constants
-const WAY = ethers.utils.parseEther('1');
-
-// math  util functions
-const rMul = (a: BigNumber, b: BigNumber) => a.mul(b).div(WAY);
-const rDiv = (a: BigNumber, b: BigNumber) => a.mul(WAY).div(b);
 
 // math econ functions
 const calcTradePremium = (marketPrice: BigNumber, indexPrice: BigNumber) =>
