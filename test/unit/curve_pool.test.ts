@@ -3,15 +3,15 @@ import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 import {CryptoSwap__factory} from '../../contracts-vyper/typechain/factories/CryptoSwap__factory';
 import {CurveTokenV5__factory} from '../../contracts-vyper/typechain/factories/CurveTokenV5__factory';
-import {IERC20, VBase, VQuote, VirtualToken} from '../../typechain';
+import {VBase, VQuote, VirtualToken} from '../../typechain';
 import {VBase__factory, VQuote__factory} from '../../typechain';
 
 // utils
 import {Signer} from 'ethers';
 import {ethers} from 'hardhat';
 import env from 'hardhat';
-import {rDiv, rMul} from '../integration/helpers/utils/calculations';
-
+import {rDiv} from '../integration/helpers/utils/calculations';
+import {LOGget_dy} from '../integration/helpers/CurveUtils';
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {fundAccountsHardhat} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
@@ -31,11 +31,28 @@ async function mintAndApprove(
   await token.approve(spender, amount);
 }
 
+async function fundCurvePool(
+  market: CryptoSwap,
+  vBase: VBase,
+  vQuote: VQuote
+): Promise<void> {
+  // mint tokens
+  const quoteAmount = ethers.utils.parseEther('10');
+  const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+  await mintAndApprove(vBase, baseAmount.mul(4), market.address);
+  await mintAndApprove(vQuote, quoteAmount.mul(4), market.address);
+
+  await market['add_liquidity(uint256[2],uint256)'](
+    [quoteAmount, baseAmount],
+    MIN_MINT_AMOUNT
+  );
+}
+
 describe('Cryptoswap: Unit tests', function () {
   // contract and accounts
   let deployer: Signer;
   let deployerAccount: tEthereumAddress;
-  let cryptoswap: CryptoSwap, market: CryptoSwap;
+  let market: CryptoSwap;
   let vBase: VBase, vQuote: VQuote;
   let curveToken: CurveTokenV5;
 
@@ -99,8 +116,7 @@ describe('Cryptoswap: Unit tests', function () {
       vQuote.address,
       vBase.address
     );
-
-    cryptoswap = await FundingFactory.deploy(
+    const Cryptoswap = await FundingFactory.deploy(
       owner,
       admin_fee_receiver,
       A,
@@ -116,10 +132,10 @@ describe('Cryptoswap: Unit tests', function () {
       _token,
       _coins
     );
-    market = cryptoswap.connect(deployer);
+    market = Cryptoswap.connect(deployer);
 
     // set curve as minter
-    await curveToken.connect(deployer).set_minter(cryptoswap.address);
+    await curveToken.connect(deployer).set_minter(market.address);
   });
 
   it('Initialize parameters correctly', async function () {
@@ -168,20 +184,25 @@ describe('Cryptoswap: Unit tests', function () {
 
     // provide liquidity
     await expect(
-      cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT)
+      market['add_liquidity(uint256[2],uint256)'](
+        [quoteAmount, baseAmount],
+        MIN_MINT_AMOUNT
+      )
     )
-      .to.emit(cryptoswap, 'AddLiquidity')
+      .to.emit(market, 'AddLiquidity')
       .withArgs(deployerAccount, [quoteAmount, baseAmount], 0, 0);
 
     expect(await market.balances(0)).to.be.equal(quoteAmount);
     expect(await market.balances(1)).to.be.equal(baseAmount);
-    expect(await vBase.balanceOf(cryptoswap.address)).to.be.equal(baseAmount);
-    expect(await vQuote.balanceOf(cryptoswap.address)).to.be.equal(quoteAmount);
+    expect(await vBase.balanceOf(market.address)).to.be.equal(baseAmount);
+    expect(await vQuote.balanceOf(market.address)).to.be.equal(quoteAmount);
     expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
   });
   it('Can not provide zero liquidity', async function () {
     // provide liquidity
-    await expect(cryptoswap.add_liquidity([0, 0], 0)).to.be.revertedWith('');
+    await expect(
+      market['add_liquidity(uint256[2],uint256)']([0, 0], 0)
+    ).to.be.revertedWith('');
     /*
     "" == "Error: Transaction reverted without a reason string"
     (see. https://ethereum.stackexchange.com/questions/48627/how-to-catch-revert-error-in-truffle-test-javascript)
@@ -194,7 +215,10 @@ describe('Cryptoswap: Unit tests', function () {
     await mintAndApprove(vBase, baseAmount, market.address);
     await mintAndApprove(vQuote, quoteAmount, market.address);
 
-    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+    await market['add_liquidity(uint256[2],uint256)'](
+      [quoteAmount, baseAmount],
+      MIN_MINT_AMOUNT
+    );
 
     const lpTokenBalance = await curveToken.balanceOf(deployerAccount);
     expect(lpTokenBalance).to.be.above(0);
@@ -204,8 +228,10 @@ describe('Cryptoswap: Unit tests', function () {
       ethers.BigNumber.from('9999999999999999998'), // 9.9999 with 18 decimals
       ethers.BigNumber.from('8333333333333333332'),
     ];
-    await expect(cryptoswap.remove_liquidity(lpTokenBalance, [0, 0]))
-      .to.emit(cryptoswap, 'RemoveLiquidity')
+    await expect(
+      market['remove_liquidity(uint256,uint256[2])'](lpTokenBalance, [0, 0])
+    )
+      .to.emit(market, 'RemoveLiquidity')
       .withArgs(deployerAccount, remainingBalances, 0);
   });
   it('Can not withdraw 0 liquidity', async function () {
@@ -215,13 +241,16 @@ describe('Cryptoswap: Unit tests', function () {
     await mintAndApprove(vBase, baseAmount, market.address);
     await mintAndApprove(vQuote, quoteAmount, market.address);
 
-    await await cryptoswap.add_liquidity(
+    await await market['add_liquidity(uint256[2],uint256)'](
       [quoteAmount, baseAmount],
       MIN_MINT_AMOUNT
     );
     // remove liquidity
     await expect(
-      cryptoswap.remove_liquidity(0, [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT])
+      market['remove_liquidity(uint256,uint256[2])'](0, [
+        MIN_MINT_AMOUNT,
+        MIN_MINT_AMOUNT,
+      ])
     ).to.be.revertedWith('');
     /*
     "" == "Error: Transaction reverted without a reason string"
@@ -235,17 +264,32 @@ describe('Cryptoswap: Unit tests', function () {
     await mintAndApprove(vBase, baseAmount.mul(4), market.address);
     await mintAndApprove(vQuote, quoteAmount.mul(4), market.address);
 
-    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
-    await cryptoswap.add_liquidity([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+    await market['add_liquidity(uint256[2],uint256)'](
+      [quoteAmount, baseAmount],
+      MIN_MINT_AMOUNT
+    );
+    await market['add_liquidity(uint256[2],uint256)'](
+      [quoteAmount, baseAmount],
+      MIN_MINT_AMOUNT
+    );
 
     expect(await market.balances(0)).to.be.equal(quoteAmount.mul(2));
     expect(await market.balances(1)).to.be.equal(baseAmount.mul(2));
-    expect(await vBase.balanceOf(cryptoswap.address)).to.be.equal(
+    expect(await vBase.balanceOf(market.address)).to.be.equal(
       baseAmount.mul(2)
     );
-    expect(await vQuote.balanceOf(cryptoswap.address)).to.be.equal(
+    expect(await vQuote.balanceOf(market.address)).to.be.equal(
       quoteAmount.mul(2)
     );
     expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
+  });
+  it('Can call dy', async function () {
+    await fundCurvePool(market, vBase, vQuote);
+    const dx = ethers.utils.parseEther('1');
+
+    const expectedResult = await LOGget_dy(market, 0, 1, dx);
+    const result = await market.get_dy(0, 1, dx);
+    expect(result).to.be.equal(expectedResult);
+    console.log('expectedResult', expectedResult.toString());
   });
 });
