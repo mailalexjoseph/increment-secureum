@@ -1,16 +1,12 @@
+# from:
+# https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/two/CurveCryptoSwap2.vy
+
 # @version 0.3.1
 # (c) Curve.Fi, 2021
 # Pool for two crypto assets
 
-# changed version (vyper version)!!!
-# https://github.com/curvefi/curve-crypto-contract/blob/master/deployment-logs/2021-11-01.%20EURS%20on%20mainnet/CryptoSwap.vy
-# Swap address: 0x98a7F18d4E56Cfe84E3D081B40001B3d5bD3eB8B
-# Token address: 0x3D229E1B4faab62F621eF2F6A610961f7BD7b23B
-
 # Expected coins:
-# eur*/3crv
-# crypto/tricrypto1
-# All are proper ERC20s, so let's use a standard interface and save bytespace
+# eth/whatever
 
 interface CurveToken:
     def totalSupply() -> uint256: view
@@ -23,6 +19,7 @@ interface ERC20:
     def transferFrom(_from: address, _to: address, _value: uint256) -> bool: nonpayable
     def decimals() -> uint256: view
     def balanceOf(_user: address) -> uint256: view
+
 
 # Events
 event TokenExchange:
@@ -97,12 +94,11 @@ N_COINS: constant(int128) = 2
 PRECISION: constant(uint256) = 10 ** 18  # The precision to convert to
 A_MULTIPLIER: constant(uint256) = 10000
 
-# These addresses are replaced by the deployer
-token: immutable(address) # changed
-coins: immutable(address[N_COINS]) # changed
+token: immutable(address)
+coins: immutable(address[N_COINS])
 
 price_scale: public(uint256)   # Internal price scale
-price_oracle: public(uint256)  # Price target given by MA
+_price_oracle: uint256  # Price target given by MA
 
 last_prices: public(uint256)
 last_prices_timestamp: public(uint256)
@@ -172,7 +168,6 @@ MAX_A: constant(uint256) = N_COINS**N_COINS * A_MULTIPLIER * 100000
 # PRICE_PRECISION_MUL: constant(uint256) = 1
 PRECISIONS: immutable(uint256[N_COINS])
 
-
 EXP_PRECISION: constant(uint256) = 10**10
 
 
@@ -210,7 +205,7 @@ def __init__(
     self.admin_fee = admin_fee
 
     self.price_scale = initial_price
-    self.price_oracle = initial_price
+    self._price_oracle = initial_price
     self.last_prices = initial_price
     self.last_prices_timestamp = block.timestamp
     self.ma_half_time = ma_half_time
@@ -224,7 +219,8 @@ def __init__(
     token = _token
     coins = _coins
     PRECISIONS = [10 ** (18 - ERC20(_coins[0]).decimals()),
-              10 ** (18 - ERC20(_coins[1]).decimals())]
+                  10 ** (18 - ERC20(_coins[1]).decimals())]
+
 
 ### Math functions
 @internal
@@ -586,8 +582,30 @@ def _claim_admin_fees():
 
 
 @internal
+@view
+def internal_price_oracle() -> uint256:
+    price_oracle: uint256 = self._price_oracle
+    last_prices_timestamp: uint256 = self.last_prices_timestamp
+
+    if last_prices_timestamp < block.timestamp:
+        ma_half_time: uint256 = self.ma_half_time
+        last_prices: uint256 = self.last_prices
+        alpha: uint256 = self.halfpow((block.timestamp - last_prices_timestamp) * 10**18 / ma_half_time)
+        return (last_prices * (10**18 - alpha) + price_oracle * alpha) / 10**18
+
+    else:
+        return price_oracle
+
+
+@external
+@view
+def price_oracle() -> uint256:
+    return self.internal_price_oracle()
+
+
+@internal
 def tweak_price(A_gamma: uint256[2],_xp: uint256[N_COINS], p_i: uint256, new_D: uint256):
-    price_oracle: uint256 = self.price_oracle
+    price_oracle: uint256 = self._price_oracle
     last_prices: uint256 = self.last_prices
     price_scale: uint256 = self.price_scale
     last_prices_timestamp: uint256 = self.last_prices_timestamp
@@ -598,7 +616,7 @@ def tweak_price(A_gamma: uint256[2],_xp: uint256[N_COINS], p_i: uint256, new_D: 
         ma_half_time: uint256 = self.ma_half_time
         alpha: uint256 = self.halfpow((block.timestamp - last_prices_timestamp) * 10**18 / ma_half_time)
         price_oracle = (last_prices * (10**18 - alpha) + price_oracle * alpha) / 10**18
-        self.price_oracle = price_oracle
+        self._price_oracle = price_oracle
         self.last_prices_timestamp = block.timestamp
 
     D_unadjusted: uint256 = new_D  # Withdrawal methods know new D already
@@ -640,21 +658,21 @@ def tweak_price(A_gamma: uint256[2],_xp: uint256[N_COINS], p_i: uint256, new_D: 
 
     self.xcp_profit = xcp_profit
 
+    norm: uint256 = price_oracle * 10**18 / price_scale
+    if norm > 10**18:
+        norm -= 10**18
+    else:
+        norm = 10**18 - norm
+    adjustment_step: uint256 = max(self.adjustment_step, norm / 10)
+
     needs_adjustment: bool = self.not_adjusted
     # if not needs_adjustment and (virtual_price-10**18 > (xcp_profit-10**18)/2 + self.allowed_extra_profit):
     # (re-arrange for gas efficiency)
-    if not needs_adjustment and (virtual_price * 2 - 10**18 > xcp_profit + 2*self.allowed_extra_profit):
+    if not needs_adjustment and (virtual_price * 2 - 10**18 > xcp_profit + 2*self.allowed_extra_profit) and (norm > adjustment_step) and (old_virtual_price > 0):
         needs_adjustment = True
         self.not_adjusted = True
 
     if needs_adjustment:
-        adjustment_step: uint256 = self.adjustment_step
-        norm: uint256 = price_oracle * 10**18 / price_scale
-        if norm > 10**18:
-            norm -= 10**18
-        else:
-            norm = 10**18 - norm
-
         if norm > adjustment_step and old_virtual_price > 0:
             p_new = (price_scale * (norm - adjustment_step) + adjustment_step * price_oracle) / norm
 
@@ -691,11 +709,15 @@ def tweak_price(A_gamma: uint256[2],_xp: uint256[N_COINS], p_i: uint256, new_D: 
     self.D = D_unadjusted
     self.virtual_price = virtual_price
 
+    # norm appeared < adjustment_step after
+    if needs_adjustment:
+        self.not_adjusted = False
+        self._claim_admin_fees()
 
 
-@external
-@nonreentrant('lock')
-def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256) -> uint256:
+@internal
+def _exchange(sender: address, i: uint256, j: uint256, dx: uint256, min_dy: uint256,
+              receiver: address, callbacker: address, callback_sig: Bytes[4]) -> uint256:
     assert not self.is_killed  # dev: the pool is killed
     assert i != j  # dev: coin index out of range
     assert i < N_COINS  # dev: coin index out of range
@@ -708,7 +730,6 @@ def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256) -> uint256:
     dy: uint256 = 0
 
     _coins: address[N_COINS] = coins
-    assert ERC20(_coins[i]).transferFrom(msg.sender, self, dx)
 
     y: uint256 = xp[j]
     x0: uint256 = xp[i]
@@ -752,7 +773,26 @@ def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256) -> uint256:
     y -= dy
 
     self.balances[j] = y
-    assert ERC20(_coins[j]).transfer(msg.sender, dy)
+
+    # Transfer input and output at the same time
+    if callback_sig == b"\x00\x00\x00\x00":
+        assert ERC20(_coins[i]).transferFrom(sender, self, dx)
+    else:
+        c: address = _coins[i]
+        b: uint256 = ERC20(c).balanceOf(self)
+        raw_call(callbacker,
+                 concat(
+                    callback_sig,
+                    convert(sender, bytes32),
+                    convert(receiver, bytes32),
+                    convert(c, bytes32),
+                    convert(dx, bytes32),
+                    convert(dy, bytes32)
+                 )
+        )
+        assert ERC20(c).balanceOf(self) - b == dx  # dev: callback didn't give us coins
+
+    assert ERC20(_coins[j]).transfer(receiver, dy)
 
     y *= prec_j
     if j > 0:
@@ -770,9 +810,27 @@ def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256) -> uint256:
 
     self.tweak_price(A_gamma, xp, p, 0)
 
-    log TokenExchange(msg.sender, i, dx, j, dy)
+    log TokenExchange(sender, i, dx, j, dy)
 
     return dy
+
+
+@external
+@nonreentrant('lock')
+def exchange(i: uint256, j: uint256, dx: uint256, min_dy: uint256,
+             receiver: address = msg.sender) -> uint256:
+    """
+    Exchange using WETH by default
+    """
+    return self._exchange(msg.sender, i, j, dx, min_dy, receiver, ZERO_ADDRESS, b'\x00\x00\x00\x00')
+
+
+@external
+@nonreentrant('lock')
+def exchange_extended(i: uint256, j: uint256, dx: uint256, min_dy: uint256,
+                      sender: address, receiver: address, cb: Bytes[4]) -> uint256:
+    assert cb != b'\x00\x00\x00\x00'  # dev: No callback specified
+    return self._exchange(sender, i, j, dx, min_dy, receiver, msg.sender, cb)
 
 
 @external
@@ -825,8 +883,9 @@ def _calc_token_fee(amounts: uint256[N_COINS], xp: uint256[N_COINS]) -> uint256:
 
 @external
 @nonreentrant('lock')
-def add_liquidity(amounts: uint256[N_COINS], min_mint_amount: uint256) -> uint256:
+def add_liquidity(amounts: uint256[N_COINS], min_mint_amount: uint256, receiver: address = msg.sender) -> uint256:
     assert not self.is_killed  # dev: the pool is killed
+    assert amounts[0] > 0 or amounts[1] > 0  # dev: no coins to add
 
     A_gamma: uint256[2] = self._A_gamma()
 
@@ -878,7 +937,7 @@ def add_liquidity(amounts: uint256[N_COINS], min_mint_amount: uint256) -> uint25
         d_token_fee = self._calc_token_fee(amountsp, xp) * d_token / 10**10 + 1
         d_token -= d_token_fee
         token_supply += d_token
-        CurveToken(token).mint(msg.sender, d_token)
+        CurveToken(token).mint(receiver, d_token)
 
         # Calculate price
         # p_i * (dx_i - dtoken / token_supply * xx_i) = sum{k!=i}(p_k * (dtoken / token_supply * xx_k - dx_k))
@@ -907,18 +966,18 @@ def add_liquidity(amounts: uint256[N_COINS], min_mint_amount: uint256) -> uint25
         self.D = D
         self.virtual_price = 10**18
         self.xcp_profit = 10**18
-        CurveToken(token).mint(msg.sender, d_token)
+        CurveToken(token).mint(receiver, d_token)
 
     assert d_token >= min_mint_amount, "Slippage"
 
-    log AddLiquidity(msg.sender, amounts, d_token_fee, token_supply)
+    log AddLiquidity(receiver, amounts, d_token_fee, token_supply)
 
     return d_token
 
 
 @external
 @nonreentrant('lock')
-def remove_liquidity(_amount: uint256, min_amounts: uint256[N_COINS]):
+def remove_liquidity(_amount: uint256, min_amounts: uint256[N_COINS], receiver: address = msg.sender):
     """
     This withdrawal method is very safe, does no complex math
     """
@@ -933,7 +992,7 @@ def remove_liquidity(_amount: uint256, min_amounts: uint256[N_COINS]):
         assert d_balance >= min_amounts[i]
         self.balances[i] = balances[i] - d_balance
         balances[i] = d_balance  # now it's the amounts going out
-        assert ERC20(_coins[i]).transfer(msg.sender, d_balance)
+        assert ERC20(_coins[i]).transfer(receiver, d_balance)
 
     D: uint256 = self.D
     self.D = D - D * amount / total_supply
@@ -1020,7 +1079,7 @@ def calc_withdraw_one_coin(token_amount: uint256, i: uint256) -> uint256:
 
 @external
 @nonreentrant('lock')
-def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uint256) -> uint256:
+def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uint256, receiver: address = msg.sender) -> uint256:
     assert not self.is_killed  # dev: the pool is killed
 
     A_gamma: uint256[2] = self._A_gamma()
@@ -1040,7 +1099,7 @@ def remove_liquidity_one_coin(token_amount: uint256, i: uint256, min_amount: uin
     CurveToken(token).burnFrom(msg.sender, token_amount)
 
     _coins: address[N_COINS] = coins
-    assert ERC20(_coins[i]).transfer(msg.sender, dy)
+    assert ERC20(_coins[i]).transfer(receiver, dy)
 
     self.tweak_price(A_gamma, xp, p, D)
 
@@ -1260,3 +1319,64 @@ def unkill_me():
 def set_admin_fee_receiver(_admin_fee_receiver: address):
     assert msg.sender == self.owner  # dev: only owner
     self.admin_fee_receiver = _admin_fee_receiver
+
+
+@internal
+@pure
+def sqrt_int(x: uint256) -> uint256:
+    """
+    Originating from: https://github.com/vyperlang/vyper/issues/1266
+    """
+
+    if x == 0:
+        return 0
+
+    z: uint256 = (x + 10**18) / 2
+    y: uint256 = x
+
+    for i in range(256):
+        if z == y:
+            return y
+        y = z
+        z = (x * 10**18 / z + z) / 2
+
+    raise "Did not converge"
+
+
+@external
+@view
+def lp_price() -> uint256:
+    """
+    Approximate LP token price
+    """
+    return 2 * self.virtual_price * self.sqrt_int(self.internal_price_oracle()) / 10**18
+
+############################ test functions ###############################
+
+# original fct at line 475
+@view
+@external
+def A_gamma_test() -> uint256[2]:
+  return self._A_gamma()
+
+# original fct at line 260
+@view
+@ external
+def newton_D_test(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) -> uint256:
+  return self.newton_D(ANN, gamma, x_unsorted)
+
+# original fct @ line 332
+@external
+@view # have to change to view
+def newton_y_test(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256:
+  return self.newton_y(ANN, gamma, x, D, i)
+
+@external
+@view
+def xp_test() -> uint256[N_COINS]:
+  return self.xp()
+
+@external
+@view
+def fee_test(xp: uint256[N_COINS]) -> uint256:
+  return self._fee(xp)

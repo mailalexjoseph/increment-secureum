@@ -1,6 +1,6 @@
 # from: https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/CurveTokenV5.vy
 
-# @version 0.3.1
+# @version 0.3.0
 """
 @title Curve LP Token
 @author Curve.Fi

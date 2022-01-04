@@ -25,7 +25,9 @@ export interface CryptoSwapInterface extends utils.Interface {
     "gamma()": FunctionFragment;
     "fee()": FunctionFragment;
     "get_virtual_price()": FunctionFragment;
+    "price_oracle()": FunctionFragment;
     "exchange(uint256,uint256,uint256,uint256)": FunctionFragment;
+    "exchange_extended(uint256,uint256,uint256,uint256,address,address,bytes)": FunctionFragment;
     "get_dy(uint256,uint256,uint256)": FunctionFragment;
     "add_liquidity(uint256[2],uint256)": FunctionFragment;
     "remove_liquidity(uint256,uint256[2])": FunctionFragment;
@@ -44,8 +46,13 @@ export interface CryptoSwapInterface extends utils.Interface {
     "kill_me()": FunctionFragment;
     "unkill_me()": FunctionFragment;
     "set_admin_fee_receiver(address)": FunctionFragment;
+    "lp_price()": FunctionFragment;
+    "A_gamma_test()": FunctionFragment;
+    "newton_D_test(uint256,uint256,uint256[2])": FunctionFragment;
+    "newton_y_test(uint256,uint256,uint256[2],uint256,uint256)": FunctionFragment;
+    "xp_test()": FunctionFragment;
+    "fee_test(uint256[2])": FunctionFragment;
     "price_scale()": FunctionFragment;
-    "price_oracle()": FunctionFragment;
     "last_prices()": FunctionFragment;
     "last_prices_timestamp()": FunctionFragment;
     "initial_A_gamma()": FunctionFragment;
@@ -90,8 +97,24 @@ export interface CryptoSwapInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
+    functionFragment: "price_oracle",
+    values?: undefined
+  ): string;
+  encodeFunctionData(
     functionFragment: "exchange",
     values: [BigNumberish, BigNumberish, BigNumberish, BigNumberish]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "exchange_extended",
+    values: [
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      BigNumberish,
+      string,
+      string,
+      BytesLike
+    ]
   ): string;
   encodeFunctionData(
     functionFragment: "get_dy",
@@ -167,12 +190,32 @@ export interface CryptoSwapInterface extends utils.Interface {
     functionFragment: "set_admin_fee_receiver",
     values: [string]
   ): string;
+  encodeFunctionData(functionFragment: "lp_price", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "price_scale",
+    functionFragment: "A_gamma_test",
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "price_oracle",
+    functionFragment: "newton_D_test",
+    values: [BigNumberish, BigNumberish, [BigNumberish, BigNumberish]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "newton_y_test",
+    values: [
+      BigNumberish,
+      BigNumberish,
+      [BigNumberish, BigNumberish],
+      BigNumberish,
+      BigNumberish
+    ]
+  ): string;
+  encodeFunctionData(functionFragment: "xp_test", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "fee_test",
+    values: [[BigNumberish, BigNumberish]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "price_scale",
     values?: undefined
   ): string;
   encodeFunctionData(
@@ -292,7 +335,15 @@ export interface CryptoSwapInterface extends utils.Interface {
     functionFragment: "get_virtual_price",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(
+    functionFragment: "price_oracle",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "exchange", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "exchange_extended",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(functionFragment: "get_dy", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "add_liquidity",
@@ -356,12 +407,23 @@ export interface CryptoSwapInterface extends utils.Interface {
     functionFragment: "set_admin_fee_receiver",
     data: BytesLike
   ): Result;
+  decodeFunctionResult(functionFragment: "lp_price", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "price_scale",
+    functionFragment: "A_gamma_test",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
-    functionFragment: "price_oracle",
+    functionFragment: "newton_D_test",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "newton_y_test",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(functionFragment: "xp_test", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "fee_test", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "price_scale",
     data: BytesLike
   ): Result;
   decodeFunctionResult(
@@ -661,11 +723,33 @@ export interface CryptoSwap extends BaseContract {
 
     get_virtual_price(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-    exchange(
+    price_oracle(overrides?: CallOverrides): Promise<[BigNumber]>;
+
+    "exchange(uint256,uint256,uint256,uint256)"(
       i: BigNumberish,
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "exchange(uint256,uint256,uint256,uint256,address)"(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    exchange_extended(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      sender: string,
+      receiver: string,
+      cb: BytesLike,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -676,15 +760,29 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[BigNumber]>;
 
-    add_liquidity(
+    "add_liquidity(uint256[2],uint256)"(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    remove_liquidity(
+    "add_liquidity(uint256[2],uint256,address)"(
+      amounts: [BigNumberish, BigNumberish],
+      min_mint_amount: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "remove_liquidity(uint256,uint256[2])"(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "remove_liquidity(uint256,uint256[2],address)"(
+      _amount: BigNumberish,
+      min_amounts: [BigNumberish, BigNumberish],
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -699,10 +797,18 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<[BigNumber]>;
 
-    remove_liquidity_one_coin(
+    "remove_liquidity_one_coin(uint256,uint256,uint256)"(
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
+    "remove_liquidity_one_coin(uint256,uint256,uint256,address)"(
+      token_amount: BigNumberish,
+      i: BigNumberish,
+      min_amount: BigNumberish,
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -766,9 +872,34 @@ export interface CryptoSwap extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    price_scale(overrides?: CallOverrides): Promise<[BigNumber]>;
+    lp_price(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-    price_oracle(overrides?: CallOverrides): Promise<[BigNumber]>;
+    A_gamma_test(overrides?: CallOverrides): Promise<[[BigNumber, BigNumber]]>;
+
+    newton_D_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x_unsorted: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+
+    newton_y_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x: [BigNumberish, BigNumberish],
+      D: BigNumberish,
+      i: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+
+    xp_test(overrides?: CallOverrides): Promise<[[BigNumber, BigNumber]]>;
+
+    fee_test(
+      xp: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
+
+    price_scale(overrides?: CallOverrides): Promise<[BigNumber]>;
 
     last_prices(overrides?: CallOverrides): Promise<[BigNumber]>;
 
@@ -854,11 +985,33 @@ export interface CryptoSwap extends BaseContract {
 
   get_virtual_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-  exchange(
+  price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+
+  "exchange(uint256,uint256,uint256,uint256)"(
     i: BigNumberish,
     j: BigNumberish,
     dx: BigNumberish,
     min_dy: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "exchange(uint256,uint256,uint256,uint256,address)"(
+    i: BigNumberish,
+    j: BigNumberish,
+    dx: BigNumberish,
+    min_dy: BigNumberish,
+    receiver: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  exchange_extended(
+    i: BigNumberish,
+    j: BigNumberish,
+    dx: BigNumberish,
+    min_dy: BigNumberish,
+    sender: string,
+    receiver: string,
+    cb: BytesLike,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -869,15 +1022,29 @@ export interface CryptoSwap extends BaseContract {
     overrides?: CallOverrides
   ): Promise<BigNumber>;
 
-  add_liquidity(
+  "add_liquidity(uint256[2],uint256)"(
     amounts: [BigNumberish, BigNumberish],
     min_mint_amount: BigNumberish,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  remove_liquidity(
+  "add_liquidity(uint256[2],uint256,address)"(
+    amounts: [BigNumberish, BigNumberish],
+    min_mint_amount: BigNumberish,
+    receiver: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "remove_liquidity(uint256,uint256[2])"(
     _amount: BigNumberish,
     min_amounts: [BigNumberish, BigNumberish],
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "remove_liquidity(uint256,uint256[2],address)"(
+    _amount: BigNumberish,
+    min_amounts: [BigNumberish, BigNumberish],
+    receiver: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -892,10 +1059,18 @@ export interface CryptoSwap extends BaseContract {
     overrides?: CallOverrides
   ): Promise<BigNumber>;
 
-  remove_liquidity_one_coin(
+  "remove_liquidity_one_coin(uint256,uint256,uint256)"(
     token_amount: BigNumberish,
     i: BigNumberish,
     min_amount: BigNumberish,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
+  "remove_liquidity_one_coin(uint256,uint256,uint256,address)"(
+    token_amount: BigNumberish,
+    i: BigNumberish,
+    min_amount: BigNumberish,
+    receiver: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -959,9 +1134,34 @@ export interface CryptoSwap extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  price_scale(overrides?: CallOverrides): Promise<BigNumber>;
+  lp_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-  price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+  A_gamma_test(overrides?: CallOverrides): Promise<[BigNumber, BigNumber]>;
+
+  newton_D_test(
+    ANN: BigNumberish,
+    gamma: BigNumberish,
+    x_unsorted: [BigNumberish, BigNumberish],
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  newton_y_test(
+    ANN: BigNumberish,
+    gamma: BigNumberish,
+    x: [BigNumberish, BigNumberish],
+    D: BigNumberish,
+    i: BigNumberish,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  xp_test(overrides?: CallOverrides): Promise<[BigNumber, BigNumber]>;
+
+  fee_test(
+    xp: [BigNumberish, BigNumberish],
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
+
+  price_scale(overrides?: CallOverrides): Promise<BigNumber>;
 
   last_prices(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1040,11 +1240,33 @@ export interface CryptoSwap extends BaseContract {
 
     get_virtual_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-    exchange(
+    price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "exchange(uint256,uint256,uint256,uint256)"(
       i: BigNumberish,
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "exchange(uint256,uint256,uint256,uint256,address)"(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      receiver: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    exchange_extended(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      sender: string,
+      receiver: string,
+      cb: BytesLike,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
@@ -1055,15 +1277,29 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    add_liquidity(
+    "add_liquidity(uint256[2],uint256)"(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    remove_liquidity(
+    "add_liquidity(uint256[2],uint256,address)"(
+      amounts: [BigNumberish, BigNumberish],
+      min_mint_amount: BigNumberish,
+      receiver: string,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "remove_liquidity(uint256,uint256[2])"(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    "remove_liquidity(uint256,uint256[2],address)"(
+      _amount: BigNumberish,
+      min_amounts: [BigNumberish, BigNumberish],
+      receiver: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -1078,10 +1314,18 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    remove_liquidity_one_coin(
+    "remove_liquidity_one_coin(uint256,uint256,uint256)"(
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    "remove_liquidity_one_coin(uint256,uint256,uint256,address)"(
+      token_amount: BigNumberish,
+      i: BigNumberish,
+      min_amount: BigNumberish,
+      receiver: string,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
@@ -1129,9 +1373,34 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<void>;
 
-    price_scale(overrides?: CallOverrides): Promise<BigNumber>;
+    lp_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-    price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+    A_gamma_test(overrides?: CallOverrides): Promise<[BigNumber, BigNumber]>;
+
+    newton_D_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x_unsorted: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    newton_y_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x: [BigNumberish, BigNumberish],
+      D: BigNumberish,
+      i: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    xp_test(overrides?: CallOverrides): Promise<[BigNumber, BigNumber]>;
+
+    fee_test(
+      xp: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    price_scale(overrides?: CallOverrides): Promise<BigNumber>;
 
     last_prices(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1354,11 +1623,33 @@ export interface CryptoSwap extends BaseContract {
 
     get_virtual_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-    exchange(
+    price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "exchange(uint256,uint256,uint256,uint256)"(
       i: BigNumberish,
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "exchange(uint256,uint256,uint256,uint256,address)"(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    exchange_extended(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      sender: string,
+      receiver: string,
+      cb: BytesLike,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1369,15 +1660,29 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    add_liquidity(
+    "add_liquidity(uint256[2],uint256)"(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    remove_liquidity(
+    "add_liquidity(uint256[2],uint256,address)"(
+      amounts: [BigNumberish, BigNumberish],
+      min_mint_amount: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "remove_liquidity(uint256,uint256[2])"(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "remove_liquidity(uint256,uint256[2],address)"(
+      _amount: BigNumberish,
+      min_amounts: [BigNumberish, BigNumberish],
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1392,10 +1697,18 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    remove_liquidity_one_coin(
+    "remove_liquidity_one_coin(uint256,uint256,uint256)"(
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
+    "remove_liquidity_one_coin(uint256,uint256,uint256,address)"(
+      token_amount: BigNumberish,
+      i: BigNumberish,
+      min_amount: BigNumberish,
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1459,9 +1772,34 @@ export interface CryptoSwap extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    price_scale(overrides?: CallOverrides): Promise<BigNumber>;
+    lp_price(overrides?: CallOverrides): Promise<BigNumber>;
 
-    price_oracle(overrides?: CallOverrides): Promise<BigNumber>;
+    A_gamma_test(overrides?: CallOverrides): Promise<BigNumber>;
+
+    newton_D_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x_unsorted: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    newton_y_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x: [BigNumberish, BigNumberish],
+      D: BigNumberish,
+      i: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    xp_test(overrides?: CallOverrides): Promise<BigNumber>;
+
+    fee_test(
+      xp: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
+
+    price_scale(overrides?: CallOverrides): Promise<BigNumber>;
 
     last_prices(overrides?: CallOverrides): Promise<BigNumber>;
 
@@ -1544,11 +1882,33 @@ export interface CryptoSwap extends BaseContract {
 
     get_virtual_price(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    exchange(
+    price_oracle(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    "exchange(uint256,uint256,uint256,uint256)"(
       i: BigNumberish,
       j: BigNumberish,
       dx: BigNumberish,
       min_dy: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "exchange(uint256,uint256,uint256,uint256,address)"(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    exchange_extended(
+      i: BigNumberish,
+      j: BigNumberish,
+      dx: BigNumberish,
+      min_dy: BigNumberish,
+      sender: string,
+      receiver: string,
+      cb: BytesLike,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1559,15 +1919,29 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    add_liquidity(
+    "add_liquidity(uint256[2],uint256)"(
       amounts: [BigNumberish, BigNumberish],
       min_mint_amount: BigNumberish,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    remove_liquidity(
+    "add_liquidity(uint256[2],uint256,address)"(
+      amounts: [BigNumberish, BigNumberish],
+      min_mint_amount: BigNumberish,
+      receiver: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "remove_liquidity(uint256,uint256[2])"(
       _amount: BigNumberish,
       min_amounts: [BigNumberish, BigNumberish],
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "remove_liquidity(uint256,uint256[2],address)"(
+      _amount: BigNumberish,
+      min_amounts: [BigNumberish, BigNumberish],
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1582,10 +1956,18 @@ export interface CryptoSwap extends BaseContract {
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    remove_liquidity_one_coin(
+    "remove_liquidity_one_coin(uint256,uint256,uint256)"(
       token_amount: BigNumberish,
       i: BigNumberish,
       min_amount: BigNumberish,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
+    "remove_liquidity_one_coin(uint256,uint256,uint256,address)"(
+      token_amount: BigNumberish,
+      i: BigNumberish,
+      min_amount: BigNumberish,
+      receiver: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
@@ -1649,9 +2031,34 @@ export interface CryptoSwap extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    price_scale(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+    lp_price(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    price_oracle(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+    A_gamma_test(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    newton_D_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x_unsorted: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    newton_y_test(
+      ANN: BigNumberish,
+      gamma: BigNumberish,
+      x: [BigNumberish, BigNumberish],
+      D: BigNumberish,
+      i: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    xp_test(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    fee_test(
+      xp: [BigNumberish, BigNumberish],
+      overrides?: CallOverrides
+    ): Promise<PopulatedTransaction>;
+
+    price_scale(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     last_prices(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
