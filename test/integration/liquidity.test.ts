@@ -9,10 +9,7 @@ import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
 } from '../../helpers/misc-utils';
-import {
-  getCryptoSwapConstructorArgs,
-  getChainlinkPrice,
-} from '../../helpers/contracts-deployments';
+import {getChainlinkPrice} from '../../helpers/contracts-deployments';
 import {rDiv} from './helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 
@@ -23,8 +20,6 @@ import env = require('hardhat');
 describe('Increment App: Liquidity', function () {
   let user: User, bob: User;
   let liquidityAmount: BigNumber;
-
-  const PRECISON = ethers.utils.parseEther('1');
 
   beforeEach('Set up', async () => {
     ({user, bob} = await setup());
@@ -161,7 +156,7 @@ describe('Increment App: Liquidity', function () {
         ).to.be.revertedWith('Not enough liquidity provided');
       });
 
-      it('Should revert withdrawal if not enough liquidity in the pool', async function () {
+      it.skip('Should revert withdrawal if not enough liquidity in the pool', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,
@@ -193,7 +188,7 @@ describe('Increment App: Liquidity', function () {
         );
       });
 
-      it('Should allow to withdraw liquidity', async function () {
+      it.skip('Should allow to withdraw liquidity', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,

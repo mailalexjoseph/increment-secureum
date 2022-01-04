@@ -48,8 +48,8 @@ export async function LOGget_dy(
   console.log('future_A_gamma_time', future_A_gamma_time.toString());
   if (future_A_gamma_time.gt(0)) {
     // line: 849
-    // const xp_tmp = await market.xp_test();
-    // D = await market.newton_D_test(A_gamma[0], A_gamma[1], xp_tmp);
+    const xp_tmp = await market.xp_test();
+    D = await market.newton_D_test(A_gamma[0], A_gamma[1], xp_tmp);
     throw new Error('Not tested yet');
   }
 

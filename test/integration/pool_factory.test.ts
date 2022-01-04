@@ -9,8 +9,6 @@ const ZERO_ADDRESS = ethers.utils.getAddress(
 );
 const oneUnit = ethers.utils.parseEther('1');
 
-const unlimitedGasParams = {gasPrice: 100000, gasLimit: 100000};
-
 /// @note The current factory contract can only deploy v1 pools (21/12/2021)
 /// @notice Script was written based on (https://discord.com/channels/729808684359876718/729812922649542758/921088270270595153)
 /// @dev: Should we just delete this test for now?

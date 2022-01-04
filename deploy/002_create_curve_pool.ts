@@ -1,9 +1,7 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {logDeployments} from '../helpers/misc-utils';
 import {getCryptoSwapConstructorArgs} from '../helpers/contracts-deployments';
 import {ethers} from 'hardhat';
-import {BigNumber} from 'ethers';
 import {getChainlinkPrice} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {

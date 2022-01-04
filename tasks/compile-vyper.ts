@@ -1,6 +1,5 @@
 import fs from 'fs';
 import path from 'path';
-import {HardhatPluginError} from 'hardhat/plugins';
 
 import {task, subtask} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
@@ -31,7 +30,7 @@ task('compile-vyper', 'Compiles vyper contracts and copy to folder')
     await hre.run('typechain');
   });
 
-task('copy-contracts', 'Copy the contract files to the contracts folder')
+subtask('copy-contracts', 'Copy the contract files to the contracts folder')
   .addParam('directory', 'The directory where the vyper contracts are located')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     const inFullPath = path.resolve(
@@ -67,7 +66,7 @@ task('copy-contracts', 'Copy the contract files to the contracts folder')
     });
   });
 
-task(
+subtask(
   'remove-contract-copies',
   'Remove the vyper contracts from the contracts folder'
 )
@@ -79,7 +78,7 @@ task(
     });
   });
 
-task('copy-artifacts', 'Copy the artifacts to contracts-vyper folder')
+subtask('copy-artifacts', 'Copy the artifacts to contracts-vyper folder')
   .addParam('directory', 'The directory where the vyper contracts are located')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     _copyFolderSync(
@@ -94,7 +93,10 @@ task('copy-artifacts', 'Copy the artifacts to contracts-vyper folder')
     );
   });
 
-task('remove-artifacts', 'Remove the vyper artifacts from the artifacts folder')
+subtask(
+  'remove-artifacts',
+  'Remove the vyper artifacts from the artifacts folder'
+)
   .addParam('directory', 'The directory where the vyper contracts are located')
   .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
     // clean up
@@ -107,9 +109,12 @@ task('remove-artifacts', 'Remove the vyper artifacts from the artifacts folder')
     );
   });
 
-task('copy-typechain', 'Copy the typechain objects to contracts-vyper folder')
+subtask(
+  'copy-typechain',
+  'Copy the typechain objects to contracts-vyper folder'
+)
   .addParam('directory', 'The directory where the vyper contracts are located')
-  .setAction(async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+  .setAction(async (taskArgs) => {
     // get all vyper artifacts
     fs.readdirSync(path.join(taskArgs.directory, './artifacts')).forEach(
       (file) => {
@@ -147,7 +152,7 @@ task('copy-typechain', 'Copy the typechain objects to contracts-vyper folder')
 
 // @note Copies folder recursively
 // https://stackoverflow.com/questions/13786160/copy-folder-recursively-in-node-js/26038979
-function _copyFolderSync(from: any, to: any) {
+function _copyFolderSync(from: string, to: string) {
   if (!fs.existsSync(to)) fs.mkdirSync(to);
   fs.readdirSync(from).forEach((element) => {
     if (fs.lstatSync(path.join(from, element)).isFile()) {
