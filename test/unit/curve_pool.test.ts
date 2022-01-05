@@ -11,7 +11,10 @@ import {Signer} from 'ethers';
 import {ethers} from 'hardhat';
 import env from 'hardhat';
 import {rDiv} from '../integration/helpers/utils/calculations';
-import {TEST_get_dy} from '../integration/helpers/CurveUtils';
+import {
+  TEST_get_dy,
+  TEST_get_remove_liquidity,
+} from '../integration/helpers/CurveUtils';
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {fundAccountsHardhat} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
@@ -215,7 +218,9 @@ describe('Cryptoswap: Unit tests', function () {
       expect(await market.balances(1)).to.be.equal(baseAmount);
       expect(await vBase.balanceOf(market.address)).to.be.equal(baseAmount);
       expect(await vQuote.balanceOf(market.address)).to.be.equal(quoteAmount);
-      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
+      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(
+        await market.calc_token_amount([quoteAmount, baseAmount])
+      );
     });
 
     it('Can not provide zero liquidity', async function () {
@@ -304,7 +309,9 @@ describe('Cryptoswap: Unit tests', function () {
       expect(await vQuote.balanceOf(market.address)).to.be.equal(
         quoteAmount.mul(2)
       );
-      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
+      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(
+        await market.calc_token_amount([quoteAmount, baseAmount])
+      );
     });
   });
   describe('Trading', function () {
@@ -389,13 +396,11 @@ describe('Cryptoswap: Unit tests', function () {
       );
     });
   });
-  describe('Trading & Liquidity Provision', function () {
-    it.only('Can provide liquidity after some trading', async function () {
-      // init
+  describe('Liquidity & Trading', function () {
+    it('Can provide liquidity after some trading', async function () {
+      /* init */
       await fundCurvePool(market, vBase, vQuote);
       await buyVBaseAndBurn(market, vBase, vQuote);
-
-      console.log('has finished init');
 
       /* provide liquidity */
 
@@ -435,7 +440,64 @@ describe('Cryptoswap: Unit tests', function () {
       expect(await vQuote.balanceOf(market.address)).to.be.equal(
         balanceQuoteBefore.add(quoteAmount)
       );
-      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(0); // TODO: Calculate correct amount of minted lp tokens
+      expect(await curveToken.balanceOf(deployerAccount)).to.be.above(
+        await market.calc_token_amount([quoteAmount, baseAmount])
+      );
+    });
+    it('Can withdraw liquidity after some trading', async function () {
+      /* init */
+      await fundCurvePool(market, vBase, vQuote);
+      await buyVBaseAndBurn(market, vBase, vQuote);
+
+      /* provide liquidity */
+
+      // mint tokens
+      const quoteAmount = ethers.utils.parseEther('10');
+      const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+      await mintAndApprove(vQuote, quoteAmount, market.address);
+      await mintAndApprove(vBase, baseAmount, market.address);
+
+      // provide liquidity
+      await market['add_liquidity(uint256[2],uint256)'](
+        [quoteAmount, baseAmount],
+        MIN_MINT_AMOUNT
+      );
+
+      /* withdraw liquidity */
+      // check balances before withdrawal
+      const balanceVQuoteBeforeUser = await vQuote.balanceOf(deployerAccount);
+      const balanceVBaseBeforeUser = await vBase.balanceOf(deployerAccount);
+      const balanceVQuoteBeforeMarket = await vQuote.balanceOf(market.address);
+      const balanceVBaseBeforeMarket = await vBase.balanceOf(market.address);
+      expect(balanceVQuoteBeforeUser).to.be.equal(0);
+      expect(balanceVBaseBeforeUser).to.be.equal(0);
+
+      // withdraw liquidity
+      const withdrawableAmount = await curveToken.balanceOf(deployerAccount);
+      const eWithdrawAmount = await TEST_get_remove_liquidity(
+        market,
+        withdrawableAmount,
+        [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+      );
+      await market['remove_liquidity(uint256,uint256[2])'](withdrawableAmount, [
+        MIN_MINT_AMOUNT,
+        MIN_MINT_AMOUNT,
+      ]);
+
+      // check balances after withdrawal
+      const balanceVQuoteAfterUser = await vQuote.balanceOf(deployerAccount);
+      const balanceVBaseAfterUser = await vBase.balanceOf(deployerAccount);
+      const balanceVQuoteAfterMarket = await vQuote.balanceOf(market.address);
+      const balanceVBaseAfterMarket = await vBase.balanceOf(market.address);
+
+      expect(balanceVBaseBeforeMarket).to.be.equal(
+        balanceVBaseAfterMarket.add(balanceVBaseAfterUser)
+      );
+      expect(balanceVQuoteBeforeMarket).to.be.equal(
+        balanceVQuoteAfterMarket.add(balanceVQuoteAfterUser)
+      );
+      expect(eWithdrawAmount[0]).to.be.equal(balanceVQuoteAfterUser);
+      expect(eWithdrawAmount[1]).to.be.equal(balanceVBaseAfterUser);
     });
   });
 });
