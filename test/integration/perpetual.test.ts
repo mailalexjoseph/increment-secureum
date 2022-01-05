@@ -8,11 +8,7 @@ import {rMul, rDiv} from './helpers/utils/calculations';
 import {setup, funding, User} from './helpers/setup';
 import {setUpPoolLiquidity} from './helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
-
-const enum Side {
-  Long,
-  Short,
-}
+import {Side} from './helpers/utils/types';
 
 /*
  * To avoid significant hurdle in instanting all the dependencies of Perpetual (oracle, etc)
