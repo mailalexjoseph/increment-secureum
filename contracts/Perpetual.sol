@@ -36,6 +36,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 public constant FEE = 3e16; // 3%
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE;
+    uint256 public constant VQUOTE_INDEX = 0;
+    uint256 public constant VBASE_INDEX = 1;
 
     // dependencies
     ICryptoSwap public override market;
@@ -111,6 +113,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Open position, long or short
+    /// @notice Prices are quoted in vQuote: https://www.delta.exchange/blog/support/what-is-an-inverse-futures-contract
     /// @param amount Amount of virtual tokens to be bought
     /// @param direction Side of the position to open, long or short
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN
@@ -122,12 +125,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // Checks
         require(amount > 0, "The amount can't be null");
-        require(user.notional == 0, "Trader position is not allowed to have a position already open");
+        require(user.notional == 0, "Cannot open a position with one already opened");
 
         int256 prospectiveMargin = LibMath.wadDiv(vault.getReserveValue(sender), amount.toInt256());
-        require(prospectiveMargin >= MIN_MARGIN_AT_CREATION, "Not enough funds in the vault for this position");
+        require(
+            prospectiveMargin >= MIN_MARGIN_AT_CREATION,
+            "Not enough funds in the vault for the margin of this position"
+        );
 
-        // updateFundingRate();
+        updateFundingRate();
 
         // Buy virtual tokens for the position
         uint256 quoteBought = _openPositionOnMarket(amount, direction);
@@ -147,31 +153,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteBought = 0;
 
+        // long: swap vQuote for vBase
+        // short: swap vBase for vQuote
         if (direction == LibPerpetual.Side.Long) {
             vQuote.mint(amount);
-            // NOTE: this works
-            // quoteBought = market.balances(1);
-
-            // NOTE: this works
-            // // create tokens to be supplied to the pool
-            // vQuote.mint(amount);
-            // vBase.mint(amount);
-            // // supply liquidity to curve pool
-            // uint256 min_mint_amount = 0;
-            // uint256[2] memory mint_amounts = [amount, amount];
-            // market.add_liquidity(mint_amounts, min_mint_amount);
-
-            // NOTE: this doesn't work
-            // quoteBought = market.get_dy(1, 0, amount);
-
-            // NOTE: this doesn't work
-            // assumption: vQuote is the 1st token, vBase is the 2nd one
-            uint256 firstCoin = 0;
-            uint256 secondCoin = 1;
-            quoteBought = market.exchange(firstCoin, secondCoin, 100000, 0);
+            quoteBought = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
         } else if (direction == LibPerpetual.Side.Short) {
             vBase.mint(amount);
-            quoteBought = market.exchange(0, 1, amount, 0);
+            quoteBought = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
         }
 
         return quoteBought;

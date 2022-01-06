@@ -53,27 +53,31 @@ describe('Perpetual', () => {
   );
 
   describe('Open trader position', () => {
+    it('Should fail if the pool has no liquidity in it', async () => {
+      await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
+      // no error message as the code fails with the pool
+      await expect(
+        alice.perpetual.openPosition(depositAmount.div(2), Side.Long)
+      ).to.be.reverted;
+    });
+
     it('Should fail if the amount is null', async () => {
       await expect(
         alice.perpetual.openPosition(0, Side.Long)
       ).to.be.revertedWith("The amount can't be null");
     });
 
-    // it('Should fail if user already has an open position on this market', async () => {
-    //   await alice.perpetual.deposit(depositAmount, alice.usdc.address);
+    it('Should fail if user already has an open position on this market', async () => {
+      // set-up
+      await setUpPoolLiquidity(bob, depositAmount);
+      await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
+      await alice.perpetual.openPosition(depositAmount.div(2), Side.Long);
 
-    //   await alice.perpetual.__testOnly_setUserTraderPositionNotional(
-    //     alice.address,
-    //     depositAmount
-    //   );
-
-    //   // create a trader position for Alice, well with margin requirements
-    //   await expect(
-    //     alice.perpetual.openPosition(depositAmount, Side.Long)
-    //   ).to.be.revertedWith(
-    //     'Trader position is not allowed to have a position already open'
-    //   );
-    // });
+      // try to create a new trader position for Alice
+      await expect(
+        alice.perpetual.openPosition(depositAmount, Side.Long)
+      ).to.be.revertedWith('Cannot open a position with one already opened');
+    });
 
     it('Should fail if user does not have enough funds deposited in the vault', async () => {
       await alice.perpetual.deposit(depositAmount, alice.usdc.address);
@@ -87,34 +91,47 @@ describe('Perpetual', () => {
 
       await expect(
         alice.perpetual.openPosition(exceedingAmount, Side.Long)
-      ).to.be.revertedWith('Not enough funds in the vault for this position');
+      ).to.be.revertedWith(
+        'Not enough funds in the vault for the margin of this position'
+      );
     });
 
-    // note: add a test to check what happens if we try to do an exchange while the pool is empty :p
-
-    it.skip('Should open long position (swap some minted vQuote for vBase, create TraderPosition, emit OpenPosition)', async () => {
+    it('Should open long position (swap some minted vQuote for vBase, create TraderPosition, emit OpenPosition)', async () => {
       // set-up
       await setUpPoolLiquidity(bob, depositAmount);
-      // console.log('balance(0)');
-      // console.log((await alice.market.balances(0)).toString());
-      // console.log('balance(1)');
-      // console.log((await alice.market.balances(1)).toString());
-      // const expectedQuoteBought = await alice.market.get_dy(1, 0, 0);
-
-      // flow
       await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
+
+      // expected values
       const nextBlockTimestamp = await setNextBlockTimestamp(env);
+      const expectedQuoteBought = '44166136';
+      const positionNotionalAmount = depositAmount.div(2).toString();
+
       await expect(
         alice.perpetual.openPosition(depositAmount.div(2), Side.Long)
-      ).to.emit(alice.perpetual, 'OpenPosition');
-      // Note: for some reason the quoteBougth amount is different locally than in github
-      // .withArgs(
-      //   alice.address,
-      //   nextBlockTimestamp,
-      //   Side.Long,
-      //   depositAmount.div(2),
-      //   99560
-      // );
+      )
+        .to.emit(alice.perpetual, 'OpenPosition')
+        .withArgs(
+          alice.address,
+          nextBlockTimestamp,
+          Side.Long,
+          positionNotionalAmount,
+          expectedQuoteBought // might break if parameters of Perpetual are changed
+        );
+
+      const alicePosition = await alice.perpetual.getUserPosition(
+        alice.address
+      );
+      expect(alicePosition.positionSize.toString()).to.equal(
+        expectedQuoteBought
+      );
+      expect(alicePosition.notional.toString()).to.equal(
+        positionNotionalAmount
+      );
+      expect(alicePosition.profit.toNumber()).to.equal(0);
+      expect(alicePosition.side).to.equal(Side.Long);
+      expect(alicePosition.timeStamp.toNumber()).to.equal(nextBlockTimestamp);
+      // cumFundingRate is set at 0 because there's no activity before in this test
+      expect(alicePosition.cumFundingRate.toNumber()).to.equal(0);
     });
 
     // it('Should open short position (swap some minted vBase for vQuote, create TraderPosition, emit OpenPosition)', async () => {});
