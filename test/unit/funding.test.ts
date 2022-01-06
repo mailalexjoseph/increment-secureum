@@ -1,6 +1,7 @@
-import {BigNumber, Signer} from 'ethers';
+import {BigNumber} from 'ethers';
 import {TestLibFunding} from '../../typechain';
 import {TestLibFunding__factory} from '../../typechain';
+import {getNamedAccounts} from 'hardhat';
 
 import {ethers} from 'hardhat';
 
@@ -11,6 +12,7 @@ import {
 } from '../integration/helpers/utils/calculations';
 
 import chaiModule = require('../chai-setup');
+import {setupUser} from '../../helpers/misc-utils';
 const {expect} = chaiModule;
 
 // time-utils
@@ -47,11 +49,13 @@ const calcFundingRate = (
     .mul(BigNumber.from(timePassed))
     .div(BigNumber.from(days(1)));
 
+type User = {address: string} & {
+  funding: TestLibFunding;
+};
+
 describe('Funding libary: Unit tests', function () {
   // contract and accounts
-  let deployer: Signer;
-  let fundingContract: TestLibFunding;
-  let funding: TestLibFunding;
+  let user: User;
 
   // position parameters
   let cumTradePremium: BigNumber,
@@ -73,19 +77,26 @@ describe('Funding libary: Unit tests', function () {
   const SENSITIVITY = asBigNumber('1');
 
   beforeEach(async () => {
-    [deployer] = await ethers.getSigners();
-    const FundingFactory = new TestLibFunding__factory(deployer);
-    fundingContract = await FundingFactory.deploy();
-    funding = fundingContract.connect(deployer);
+    // get contract
+    const [deployerSigner] = await ethers.getSigners();
+    const FundingFactory = new TestLibFunding__factory(deployerSigner);
+    const fundingContract = await FundingFactory.deploy();
+
+    // get accounts
+
+    const {deployer} = await getNamedAccounts();
+    user = await setupUser(deployer, {funding: fundingContract});
 
     // default parameters
     startTime = await getLatestTimestamp();
     TWAP_FREQUENCY = minutes(15);
+
+    expect(user.address).to.be.equal(await deployerSigner.getAddress());
   });
 
   describe('Can handle first transaction', async function () {
     it('Expected initialized state', async () => {
-      const position = await funding.getGlobalPosition();
+      const position = await user.funding.getGlobalPosition();
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
       expect(position.timeOfLastTrade).to.be.equal(0);
       expect(position.timeStamp).to.be.equal(0);
@@ -93,14 +104,14 @@ describe('Funding libary: Unit tests', function () {
       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
     });
     it('Should handle first transaction', async () => {
-      await funding.calculateFunding(
+      await user.funding.calculateFunding(
         asBigNumber('1'),
         asBigNumber('1'),
         startTime,
         minutes(15)
       );
       // check wether results are to be expected
-      const position = await funding.getGlobalPosition();
+      const position = await user.funding.getGlobalPosition();
       //console.log(position);
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
       expect(position.timeOfLastTrade).to.be.equal(startTime);
@@ -118,7 +129,7 @@ describe('Funding libary: Unit tests', function () {
       premium = asBigNumber('0');
       cumFundingRate = asBigNumber('0');
 
-      await funding.setGlobalPosition(
+      await user.funding.setGlobalPosition(
         cumTradePremium,
         timeOfLastTrade,
         timeStamp,
@@ -130,13 +141,13 @@ describe('Funding libary: Unit tests', function () {
       marketPrice = asBigNumber('1');
       indexPrice = asBigNumber('1.1');
       currentTime = startTime + minutes(5);
-      await funding.calculateFunding(
+      await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
         currentTime,
         TWAP_FREQUENCY
       );
-      const position = await funding.getGlobalPosition();
+      const position = await user.funding.getGlobalPosition();
 
       // calculate expected values of functions
       const eTradePremium: BigNumber = calcTradePremium(
@@ -161,13 +172,13 @@ describe('Funding libary: Unit tests', function () {
       marketPrice = asBigNumber('1');
       indexPrice = asBigNumber('1.1');
       currentTime = startTime + TWAP_FREQUENCY + 1; // after funding rate window
-      await funding.calculateFunding(
+      await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
         currentTime,
         TWAP_FREQUENCY
       );
-      const position = await funding.getGlobalPosition();
+      const position = await user.funding.getGlobalPosition();
 
       // calculate expected values of functions
       const eTradePremium: BigNumber = calcTradePremium(
@@ -209,7 +220,7 @@ describe('Funding libary: Unit tests', function () {
 
       currentTime = startTime + minutes(5); // before end of funding rate window
       const timeOfTradeOne = currentTime; // before end of funding rate window
-      await funding.calculateFunding(
+      await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
         currentTime,
@@ -229,7 +240,7 @@ describe('Funding libary: Unit tests', function () {
 
       /************* SECOND TRADE ***************/
       currentTime = startTime + TWAP_FREQUENCY + 1; // after end of funding rate window
-      await funding.calculateFunding(
+      await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
         currentTime,
@@ -249,7 +260,7 @@ describe('Funding libary: Unit tests', function () {
 
       /************* CHECK RSLTs ***************/
 
-      const position = await funding.getGlobalPosition();
+      const position = await user.funding.getGlobalPosition();
       // console.log('Time difference', currentTime - startTime);
       // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
