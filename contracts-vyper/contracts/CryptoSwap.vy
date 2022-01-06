@@ -1371,11 +1371,13 @@ def newton_D_test(ANN: uint256, gamma: uint256, x_unsorted: uint256[N_COINS]) ->
 def newton_y_test(ANN: uint256, gamma: uint256, x: uint256[N_COINS], D: uint256, i: uint256) -> uint256:
   return self.newton_y(ANN, gamma, x, D, i)
 
+# original fct @ line 447
 @external
 @view
 def xp_test() -> uint256[N_COINS]:
   return self.xp()
 
+# orinal fct @ line
 @external
 @view
 def fee_test(xp: uint256[N_COINS]) -> uint256:
