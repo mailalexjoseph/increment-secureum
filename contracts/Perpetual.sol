@@ -136,6 +136,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         updateFundingRate();
 
         // Buy virtual tokens for the position
+        // TODO: rename `quoteBought` in `vTokenBought`
         uint256 quoteBought = _openPositionOnMarket(amount, direction);
 
         // Update trader position
@@ -150,6 +151,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return quoteBought;
     }
 
+    /// @notice Create virtual tokens and sell them in the pool
     function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
         uint256 quoteBought = 0;
 
@@ -171,25 +173,27 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
+        require(user.notional != 0, "No position currently opened");
+
         updateFundingRate();
 
-        // get information about position
         _closePosition(user, global);
+
         // apply changes to collateral
         vault.settleProfit(_msgSender(), user.profit);
     }
 
+    /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
     function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
         uint256 amount = (user.positionSize).toUint256();
         LibPerpetual.Side direction = user.side;
 
-        // settle funding rate
-        _settle(user, global);
-
-        // sell derivative tokens
         uint256 quoteSold = _closePositionOnMarket(amount, direction);
+
+        // update user.profit using funding payment info in the `global` struct
+        settleFundingRate(user, global);
 
         // set trader position
         user.profit += _calculatePnL(user.notional, quoteSold.toInt256());
@@ -197,15 +201,28 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.positionSize = 0;
     }
 
-    // @notice Calculate the funding rate for the next block
+    /// @notice Sell back virtual tokens and burn the ones received
+    function _closePositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
+        uint256 vTokenExchanged = 0;
 
+        if (direction == LibPerpetual.Side.Long) {
+            vTokenExchanged = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
+            vQuote.burn(vTokenExchanged);
+        } else {
+            vTokenExchanged = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
+            vBase.burn(vTokenExchanged);
+        }
+
+        return vTokenExchanged;
+    }
+
+    /// @notice Calculate the funding rate for the next block
     function updateFundingRate() public {
         // TODO: improve funding rate calculations
 
         ////////////////////////////////// @TOOO wrap this into some library
-        uint256 currentTime = block.timestamp;
-
         LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
         //  if first trade of block
@@ -227,25 +244,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return soldPrice - boughtPrice;
     }
 
-    /// notional sell derivative tokens on (external) market
-    function _closePositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
-        uint256 quoteSold = 0;
-        if (direction == LibPerpetual.Side.Long) {
-            // quoteSold = market.mintVQuote(amount);
-        } else {
-            // quoteSold = market.burnVQuote(amount);
-        }
-        return quoteSold;
-    }
-
-    /// @notice Settle funding rate
-    function settle(address account) public override {
-        LibPerpetual.TraderPosition storage user = userPosition[account];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-        _settle(user, global);
-    }
-
-    function _settle(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global) internal {
+    function settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
+        internal
+    {
         if (user.notional != 0 && user.timeStamp < global.timeStamp) {
             // update user variables when position opened before last update
             int256 upcomingFundingPayment = getFundingPayments(user, global);
@@ -427,6 +428,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.TraderPosition storage user = userPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
         int256 notionalAmount = user.notional;
+
+        //TODO: add check to ensure that user is indeed under MIN_MARGIN before doing the liquidation
 
         // get information about position
         _closePosition(user, global);

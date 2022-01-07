@@ -18,7 +18,7 @@ import {Side} from './helpers/utils/types';
  * two is that TestPerpetual includes some setter functions to edit part of the internal
  * state of Perpetual which isn't exposed otherwise.
  */
-describe('Perpetual', () => {
+describe.only('Perpetual', () => {
   let alice: User;
   let bob: User;
   let depositAmount: BigNumber;
@@ -96,26 +96,28 @@ describe('Perpetual', () => {
       );
     });
 
-    it('Should open long position (swap some minted vQuote for vBase, create TraderPosition, emit OpenPosition)', async () => {
+    async function _openAndCheckPosition(
+      direction: Side,
+      expectedQuoteBought: string
+    ) {
       // set-up
       await setUpPoolLiquidity(bob, depositAmount);
       await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
 
       // expected values
       const nextBlockTimestamp = await setNextBlockTimestamp(env);
-      const expectedQuoteBought = '44166136';
       const positionNotionalAmount = depositAmount.div(2).toString();
 
       await expect(
-        alice.perpetual.openPosition(depositAmount.div(2), Side.Long)
+        alice.perpetual.openPosition(depositAmount.div(2), direction)
       )
         .to.emit(alice.perpetual, 'OpenPosition')
         .withArgs(
           alice.address,
           nextBlockTimestamp,
-          Side.Long,
+          direction,
           positionNotionalAmount,
-          expectedQuoteBought // might break if parameters of Perpetual are changed
+          expectedQuoteBought
         );
 
       const alicePosition = await alice.perpetual.getUserPosition(
@@ -128,12 +130,63 @@ describe('Perpetual', () => {
         positionNotionalAmount
       );
       expect(alicePosition.profit.toNumber()).to.equal(0);
-      expect(alicePosition.side).to.equal(Side.Long);
+      expect(alicePosition.side).to.equal(direction);
       expect(alicePosition.timeStamp.toNumber()).to.equal(nextBlockTimestamp);
       // cumFundingRate is set at 0 because there's no activity before in this test
       expect(alicePosition.cumFundingRate.toNumber()).to.equal(0);
+    }
+
+    it('Should open LONG position', async () => {
+      const expectedQuoteBought = '44166136'; // this hardcoded value might break easily
+      _openAndCheckPosition(Side.Long, expectedQuoteBought);
     });
 
-    // it('Should open short position (swap some minted vBase for vQuote, create TraderPosition, emit OpenPosition)', async () => {});
+    it('Should open SHORT position', async () => {
+      const expectedQuoteBought = '56547854'; // this hardcoded value might break easily
+      _openAndCheckPosition(Side.Short, expectedQuoteBought);
+    });
+
+    it('Should work if trader opens position after having closed one', async () => {
+      // Alice opens and closes a position (without withdrawing her collateral)
+      await setUpPoolLiquidity(bob, depositAmount);
+      await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
+      await alice.perpetual.openPosition(depositAmount.div(2), Side.Long);
+      await alice.perpetual.closePosition();
+
+      // expected values
+      const nextBlockTimestamp = await setNextBlockTimestamp(env);
+      const positionNotionalAmount = depositAmount.div(2).toString();
+
+      await expect(
+        alice.perpetual.openPosition(depositAmount.div(2), Side.Long)
+      )
+        .to.emit(alice.perpetual, 'OpenPosition')
+        .withArgs(
+          alice.address,
+          nextBlockTimestamp,
+          Side.Long,
+          positionNotionalAmount,
+          '44166134' // this hardcoded value might break easily
+        );
+    });
+  });
+
+  describe('Close trade position', () => {
+    it('Should fail if callee has no opened position at the moment', async () => {
+      await expect(alice.perpetual.closePosition()).to.be.revertedWith(
+        'No position currently opened'
+      );
+    });
+
+    it('Should work if callee has an opened position', async () => {
+      // set-up
+      await setUpPoolLiquidity(bob, depositAmount);
+      await alice.perpetual.deposit(depositAmount.div(2), alice.usdc.address);
+      await alice.perpetual.openPosition(depositAmount.div(2), Side.Long);
+
+      await alice.perpetual.closePosition();
+    });
+
+    //TODO: add tests to assert the impact of the funding rate on the profit
   });
 });

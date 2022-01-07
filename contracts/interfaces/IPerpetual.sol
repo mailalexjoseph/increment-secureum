@@ -70,8 +70,6 @@ interface IPerpetual {
 
     function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
 
-    function settle(address account) external;
-
     function marginRatio(address account) external view returns (int256);
 
     function marginIsValid(address account) external view returns (bool);
