@@ -1,6 +1,7 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
+import {getPerpetualVersionToUse} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -19,13 +20,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     vault.address,
   ];
 
-  await hre.deployments.deploy('Perpetual', {
+  const perpetualVersionToUse = getPerpetualVersionToUse(hre);
+  await hre.deployments.deploy(perpetualVersionToUse, {
     from: deployer,
     args: perpetualArgs,
     log: true,
   });
 
-  console.log('We have deployed the perpetual');
+  console.log('We have deployed Perpetual');
 };
 
 func.tags = ['Perpetual'];

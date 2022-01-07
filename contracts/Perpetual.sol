@@ -22,7 +22,6 @@ import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import {LibFunding} from "./lib/LibFunding.sol";
 
-import {MockStableSwap} from "./mocks/MockStableSwap.sol";
 import "hardhat/console.sol";
 
 contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
@@ -47,15 +46,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     IVault public override vault;
 
     // global state
-    LibPerpetual.GlobalPosition private globalPosition;
-    LibPerpetual.Price[] private prices;
+    LibPerpetual.GlobalPosition internal globalPosition;
+    LibPerpetual.Price[] internal prices;
     uint256 public totalLiquidityProvided;
 
     // liquidity provider state
-    mapping(address => uint256) private liquidityProvided;
+    mapping(address => uint256) internal liquidityProvided;
 
     // user state
-    mapping(address => LibPerpetual.TraderPosition) private userPosition;
+    mapping(address => LibPerpetual.TraderPosition) internal userPosition;
 
     constructor(
         IOracle _oracle,

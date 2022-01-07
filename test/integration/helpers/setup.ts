@@ -21,7 +21,7 @@ import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
 import {
   ERC20,
   Oracle,
-  Perpetual,
+  TestPerpetual,
   Vault,
   VirtualToken,
 } from '../../../typechain';
@@ -29,7 +29,7 @@ import {BigNumber} from '../../../helpers/types';
 import {CryptoSwap} from '../../../contracts-vyper/typechain/CryptoSwap';
 
 export type User = {address: string} & {
-  perpetual: Perpetual;
+  perpetual: TestPerpetual;
   vault: Vault;
   usdc: ERC20;
   vEUR: VirtualToken;
@@ -59,8 +59,8 @@ const getContracts = async (deployerAccount: string) => {
     market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
     oracle: <Oracle>await ethers.getContract('Oracle', deployerAccount),
     vault: <Vault>await ethers.getContract('Vault', deployerAccount),
-    perpetual: <Perpetual>(
-      await ethers.getContract('Perpetual', deployerAccount)
+    perpetual: <TestPerpetual>(
+      await ethers.getContract('TestPerpetual', deployerAccount)
     ),
     usdc: <ERC20>(
       await ethers.getContractAt(

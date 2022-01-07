@@ -62,6 +62,15 @@ export function getChainlinkOracle(
   return OracleConfig.ChainlinkOracles[ethereumNetwork][name];
 }
 
+export function getPerpetualVersionToUse(
+  hre: HardhatRuntimeEnvironment
+): string {
+  if (getEthereumNetworkFromHRE(hre) === eEthereumNetwork.hardhat) {
+    return 'TestPerpetual';
+  }
+  return 'Perpetual';
+}
+
 export async function getChainlinkPrice(
   hre: HardhatRuntimeEnvironment,
   pair: string
