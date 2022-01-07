@@ -18,7 +18,7 @@ import {Side} from './helpers/utils/types';
  * two is that TestPerpetual includes some setter functions to edit part of the internal
  * state of Perpetual which isn't exposed otherwise.
  */
-describe.only('Perpetual', () => {
+describe('Perpetual', () => {
   let alice: User;
   let bob: User;
   let depositAmount: BigNumber;
@@ -138,12 +138,12 @@ describe.only('Perpetual', () => {
 
     it('Should open LONG position', async () => {
       const expectedQuoteBought = '44166136'; // this hardcoded value might break easily
-      _openAndCheckPosition(Side.Long, expectedQuoteBought);
+      await _openAndCheckPosition(Side.Long, expectedQuoteBought);
     });
 
     it('Should open SHORT position', async () => {
-      const expectedQuoteBought = '56547854'; // this hardcoded value might break easily
-      _openAndCheckPosition(Side.Short, expectedQuoteBought);
+      const expectedQuoteBought = '49974949'; // this hardcoded value might break easily
+      await _openAndCheckPosition(Side.Short, expectedQuoteBought);
     });
 
     it('Should work if trader opens position after having closed one', async () => {

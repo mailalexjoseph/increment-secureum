@@ -136,36 +136,37 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         updateFundingRate();
 
         // Buy virtual tokens for the position
-        // TODO: rename `quoteBought` in `vTokenBought`
-        uint256 quoteBought = _openPositionOnMarket(amount, direction);
+        uint256 vTokenBought = _openPositionOnMarket(amount, direction);
 
         // Update trader position
         user.notional = amount.toInt256();
-        user.positionSize = quoteBought.toInt256();
+        user.positionSize = vTokenBought.toInt256();
         user.profit = 0;
         user.side = direction;
         user.timeStamp = global.timeStamp; // note: timestamp of the last update of the cumFundingRate
         user.cumFundingRate = global.cumFundingRate;
 
-        emit OpenPosition(sender, uint128(block.timestamp), direction, amount, quoteBought);
-        return quoteBought;
+        emit OpenPosition(sender, uint128(block.timestamp), direction, amount, vTokenBought);
+        return vTokenBought;
     }
 
     /// @notice Create virtual tokens and sell them in the pool
     function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
-        uint256 quoteBought = 0;
+        uint256 vTokenBought = 0;
 
         // long: swap vQuote for vBase
         // short: swap vBase for vQuote
         if (direction == LibPerpetual.Side.Long) {
             vQuote.mint(amount);
-            quoteBought = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
+            vTokenBought = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
         } else if (direction == LibPerpetual.Side.Short) {
-            vBase.mint(amount);
-            quoteBought = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
-        }
+            uint256 baseOnQuotePrice = indexPrice().toUint256();
+            uint256 vBaseAmount = LibMath.wadDiv(amount, baseOnQuotePrice);
 
-        return quoteBought;
+            vBase.mint(vBaseAmount);
+            vTokenBought = market.exchange(VBASE_INDEX, VQUOTE_INDEX, vBaseAmount, 0);
+        }
+        return vTokenBought;
     }
 
     /// @notice Closes position from account holder
@@ -190,30 +191,35 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 amount = (user.positionSize).toUint256();
         LibPerpetual.Side direction = user.side;
 
-        uint256 quoteSold = _closePositionOnMarket(amount, direction);
+        uint256 vQuoteProceeds = _closePositionOnMarket(amount, direction);
 
         // update user.profit using funding payment info in the `global` struct
         settleFundingRate(user, global);
 
         // set trader position
-        user.profit += _calculatePnL(user.notional, quoteSold.toInt256());
+        user.profit += _calculatePnL(user.notional, vQuoteProceeds.toInt256());
         user.notional = 0;
         user.positionSize = 0;
     }
 
     /// @notice Sell back virtual tokens and burn the ones received
     function _closePositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
-        uint256 vTokenExchanged = 0;
+        uint256 vQuoteProceeds = 0;
 
         if (direction == LibPerpetual.Side.Long) {
-            vTokenExchanged = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
-            vQuote.burn(vTokenExchanged);
+            uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
+            vQuote.burn(vQuoteReceived);
+
+            vQuoteProceeds = vQuoteReceived;
         } else {
-            vTokenExchanged = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
-            vBase.burn(vTokenExchanged);
+            uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
+            vBase.burn(vBaseReceived);
+
+            uint256 baseOnQuotePrice = indexPrice().toUint256();
+            vQuoteProceeds = LibMath.wadMul(vBaseReceived, baseOnQuotePrice);
         }
 
-        return vTokenExchanged;
+        return vQuoteProceeds;
     }
 
     /// @notice Calculate the funding rate for the next block
