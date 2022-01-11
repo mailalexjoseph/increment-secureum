@@ -7,11 +7,12 @@ import {VBase, VQuote, VirtualToken} from '../../typechain';
 import {VBase__factory, VQuote__factory} from '../../typechain';
 
 // utils
+import {asBigNumber, rDiv} from '../integration/helpers/utils/calculations';
 import {ethers, getUnnamedAccounts} from 'hardhat';
-import {rDiv} from '../integration/helpers/utils/calculations';
 import {
   TEST_get_dy,
   TEST_get_remove_liquidity,
+  TEST_get_dy_fees,
 } from '../integration/helpers/CurveUtils';
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {setupUsers} from '../../helpers/misc-utils';
@@ -29,25 +30,43 @@ type User = {address: string} & {
   curveToken: CurveTokenV5;
 };
 
-async function buyVBaseAndBurn(
+async function mintAndBuyToken(
   market: CryptoSwap,
-  vBase: VBase,
-  vQuote: VQuote,
+  inToken: VirtualToken,
+  inIndex: number,
+  amount: BigNumber,
   from: tEthereumAddress
 ): Promise<void> {
-  const quoteAmount = ethers.utils.parseEther('10');
-  await mintAndApprove(vQuote, quoteAmount, from, market.address);
+  await mintAndApprove(inToken, amount, from, market.address);
 
-  await market['exchange(uint256,uint256,uint256,uint256)'](
-    0,
-    1,
-    quoteAmount,
-    MIN_MINT_AMOUNT
-  );
-  // burn all vBase from user
-  vBase.burn(await vBase.balanceOf(from));
+  await _buyToken(market, inIndex, amount);
 }
 
+async function approveAndBuyToken(
+  market: CryptoSwap,
+  inToken: VirtualToken,
+  inIndex: number,
+  amount: BigNumber
+) {
+  await inToken.approve(market.address, amount);
+  await _buyToken(market, inIndex, amount);
+}
+
+async function _buyToken(
+  market: CryptoSwap,
+  inIndex: number,
+  amount: BigNumber
+) {
+  if (inIndex > 1) throw new Error('out of range');
+
+  const outIndex = inIndex === 0 ? 1 : 0;
+  await market['exchange(uint256,uint256,uint256,uint256)'](
+    inIndex,
+    outIndex,
+    amount,
+    MIN_MINT_AMOUNT
+  );
+}
 async function fundCurvePool(
   market: CryptoSwap,
   vBase: VBase,
@@ -56,7 +75,7 @@ async function fundCurvePool(
   quoteAmount: BigNumber
 ): Promise<void> {
   // mint tokens
-  const baseAmount = await mintCurveTokens(
+  const baseAmount = await prepareCurveTokens(
     market,
     vBase,
     vQuote,
@@ -69,17 +88,18 @@ async function fundCurvePool(
   );
 }
 
-async function mintCurveTokens(
+async function prepareCurveTokens(
   market: CryptoSwap,
   vBase: VBase,
   vQuote: VQuote,
   from: tEthereumAddress,
   quoteAmount: BigNumber
 ): Promise<BigNumber> {
-  // mint tokens
   const baseAmount = rDiv(quoteAmount, await market.price_oracle());
+
   await mintAndApprove(vBase, baseAmount, from, market.address);
   await mintAndApprove(vQuote, quoteAmount, from, market.address);
+
   return baseAmount;
 }
 
@@ -92,16 +112,36 @@ async function mintAndApprove(
   const [minter] = await ethers.getSigners();
   expect(minter.address).to.be.equal(await token.owner());
   await token.connect(minter).mint(amount);
+
   await token.connect(minter).transfer(from, amount);
   await token.approve(spender, amount);
+}
+
+async function logMarket(market: CryptoSwap, vBase: VBase, vQuote: VQuote) {
+  console.log(
+    'virtual price',
+    ethers.utils.formatEther(await market.virtual_price())
+  );
+  console.log(
+    'price oracle',
+    ethers.utils.formatEther(await market.price_oracle())
+  );
+  console.log(
+    'vQuote balance',
+    ethers.utils.formatEther(await vQuote.balanceOf(market.address))
+  );
+  console.log(
+    'vBase balance',
+    ethers.utils.formatEther(await vBase.balanceOf(market.address))
+  );
 }
 
 describe('Cryptoswap: Unit tests', function () {
   // contract and accounts
   let deployer: User,
-    liquidityProviderOne: User,
+    lPOne: User,
     traderOne: User,
-    liquidityProviderTwo: User,
+    lPTwo: User,
     traderTwo: User;
 
   let marketA: tEthereumAddress,
@@ -125,8 +165,7 @@ describe('Cryptoswap: Unit tests', function () {
     _coins: [tEthereumAddress, tEthereumAddress];
 
   beforeEach(async () => {
-    const [LIQUIDITYPROVIDERONE, LIQUIDITYPROVIDERTWO, TRADERONE, TRADERTWO] =
-      await getUnnamedAccounts();
+    const [LPONE, LPTWO, TRADERONE, TRADERTWO] = await getUnnamedAccounts();
 
     // fund account with ether
     // await fundAccountsHardhat([DEPLOYER], env);
@@ -146,7 +185,7 @@ describe('Cryptoswap: Unit tests', function () {
     const FundingFactory = new CryptoSwap__factory(DEPLOYER);
 
     // deploy cryptoswap
-    const initialPrice = ethers.utils.parseEther('1.2');
+    const initialPrice = asBigNumber('1.2');
     [
       owner,
       admin_fee_receiver,
@@ -188,20 +227,8 @@ describe('Cryptoswap: Unit tests', function () {
     );
 
     // setup users
-    [
-      deployer,
-      liquidityProviderOne,
-      liquidityProviderTwo,
-      traderOne,
-      traderTwo,
-    ] = await setupUsers(
-      [
-        await DEPLOYER.getAddress(),
-        LIQUIDITYPROVIDERONE,
-        LIQUIDITYPROVIDERTWO,
-        TRADERONE,
-        TRADERTWO,
-      ],
+    [deployer, lPOne, lPTwo, traderOne, traderTwo] = await setupUsers(
+      [await DEPLOYER.getAddress(), LPONE, LPTWO, TRADERONE, TRADERTWO],
       {
         vBase: vBase,
         vQuote: vQuote,
@@ -255,82 +282,47 @@ describe('Cryptoswap: Unit tests', function () {
   describe('Liquidity', function () {
     it('Can provide liquidity', async function () {
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
 
-      expect(
-        await liquidityProviderOne.vQuote.balanceOf(
-          liquidityProviderOne.address
-        )
-      ).be.equal(quoteAmount);
-      expect(
-        await liquidityProviderOne.vQuote.allowance(
-          liquidityProviderOne.address,
-          marketA
-        )
-      ).be.equal(quoteAmount);
-      expect(
-        await liquidityProviderOne.vBase.balanceOf(liquidityProviderOne.address)
-      ).be.equal(baseAmount);
-      expect(
-        await liquidityProviderOne.vBase.allowance(
-          liquidityProviderOne.address,
-          marketA
-        )
-      ).be.equal(baseAmount);
+      expect(await lPOne.vQuote.balanceOf(lPOne.address)).be.equal(quoteAmount);
+      expect(await lPOne.vQuote.allowance(lPOne.address, marketA)).be.equal(
+        quoteAmount
+      );
+      expect(await lPOne.vBase.balanceOf(lPOne.address)).be.equal(baseAmount);
+      expect(await lPOne.vBase.allowance(lPOne.address, marketA)).be.equal(
+        baseAmount
+      );
 
       // provide liquidity
       await expect(
-        liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+        lPOne.market['add_liquidity(uint256[2],uint256)'](
           [quoteAmount, baseAmount],
           MIN_MINT_AMOUNT
         )
       )
-        .to.emit(liquidityProviderOne.market, 'AddLiquidity')
-        .withArgs(
-          liquidityProviderOne.address,
-          [quoteAmount, baseAmount],
-          0,
-          0
-        );
+        .to.emit(lPOne.market, 'AddLiquidity')
+        .withArgs(lPOne.address, [quoteAmount, baseAmount], 0, 0);
 
-      expect(await liquidityProviderOne.market.balances(0)).to.be.equal(
-        quoteAmount
-      );
-      expect(await liquidityProviderOne.market.balances(1)).to.be.equal(
-        baseAmount
-      );
-      expect(await liquidityProviderOne.vBase.balanceOf(marketA)).to.be.equal(
-        baseAmount
-      );
-      expect(await liquidityProviderOne.vQuote.balanceOf(marketA)).to.be.equal(
-        quoteAmount
-      );
-      expect(
-        await liquidityProviderOne.curveToken.balanceOf(
-          liquidityProviderOne.address
-        )
-      ).to.be.above(
-        await liquidityProviderOne.market.calc_token_amount([
-          quoteAmount,
-          baseAmount,
-        ])
+      expect(await lPOne.market.balances(0)).to.be.equal(quoteAmount);
+      expect(await lPOne.market.balances(1)).to.be.equal(baseAmount);
+      expect(await lPOne.vBase.balanceOf(marketA)).to.be.equal(baseAmount);
+      expect(await lPOne.vQuote.balanceOf(marketA)).to.be.equal(quoteAmount);
+      expect(await lPOne.curveToken.balanceOf(lPOne.address)).to.be.above(
+        await lPOne.market.calc_token_amount([quoteAmount, baseAmount])
       );
     });
 
     it('Can not provide zero liquidity', async function () {
       // provide liquidity
       await expect(
-        liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
-          [0, 0],
-          0
-        )
+        lPOne.market['add_liquidity(uint256[2],uint256)']([0, 0], 0)
       ).to.be.revertedWith('');
       /*
     "" == "Error: Transaction reverted without a reason string"
@@ -340,23 +332,21 @@ describe('Cryptoswap: Unit tests', function () {
 
     it('Can withdraw liquidity', async function () {
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
 
-      await liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
 
-      const lpTokenBalance = await liquidityProviderOne.curveToken.balanceOf(
-        liquidityProviderOne.address
-      );
+      const lpTokenBalance = await lPOne.curveToken.balanceOf(lPOne.address);
       expect(lpTokenBalance).to.be.above(0);
 
       // TODO: Why do we get this (leftover) balance?
@@ -365,32 +355,33 @@ describe('Cryptoswap: Unit tests', function () {
         ethers.BigNumber.from('8333333333333333332'),
       ];
       await expect(
-        liquidityProviderOne.market['remove_liquidity(uint256,uint256[2])'](
+        lPOne.market['remove_liquidity(uint256,uint256[2])'](
           lpTokenBalance,
           [0, 0]
         )
       )
-        .to.emit(liquidityProviderOne.market, 'RemoveLiquidity')
-        .withArgs(liquidityProviderOne.address, remainingBalances, 0);
+        .to.emit(lPOne.market, 'RemoveLiquidity')
+        .withArgs(lPOne.address, remainingBalances, 0);
     });
 
     it('Can not withdraw 0 liquidity', async function () {
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
 
-      await await liquidityProviderOne.market[
-        'add_liquidity(uint256[2],uint256)'
-      ]([quoteAmount, baseAmount], MIN_MINT_AMOUNT);
+      await await lPOne.market['add_liquidity(uint256[2],uint256)'](
+        [quoteAmount, baseAmount],
+        MIN_MINT_AMOUNT
+      );
       // remove liquidity
       await expect(
-        liquidityProviderOne.market['remove_liquidity(uint256,uint256[2])'](0, [
+        lPOne.market['remove_liquidity(uint256,uint256[2])'](0, [
           MIN_MINT_AMOUNT,
           MIN_MINT_AMOUNT,
         ])
@@ -403,75 +394,84 @@ describe('Cryptoswap: Unit tests', function () {
 
     it('Can deposit liquidity twice', async function () {
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = rDiv(
-        quoteAmount,
-        await liquidityProviderOne.market.price_oracle()
-      );
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = rDiv(quoteAmount, await lPOne.market.price_oracle());
       await mintAndApprove(
-        liquidityProviderOne.vQuote,
+        lPOne.vQuote,
         quoteAmount.mul(2),
-        liquidityProviderOne.address,
+        lPOne.address,
         marketA
       );
       await mintAndApprove(
-        liquidityProviderOne.vBase,
+        lPOne.vBase,
         quoteAmount.mul(2),
-        liquidityProviderOne.address,
+        lPOne.address,
         marketA
       );
 
-      await liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
-      await liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
 
-      expect(await liquidityProviderOne.market.balances(0)).to.be.equal(
-        quoteAmount.mul(2)
-      );
-      expect(await liquidityProviderOne.market.balances(1)).to.be.equal(
+      expect(await lPOne.market.balances(0)).to.be.equal(quoteAmount.mul(2));
+      expect(await lPOne.market.balances(1)).to.be.equal(baseAmount.mul(2));
+      expect(await lPOne.vBase.balanceOf(marketA)).to.be.equal(
         baseAmount.mul(2)
       );
-      expect(await liquidityProviderOne.vBase.balanceOf(marketA)).to.be.equal(
-        baseAmount.mul(2)
-      );
-      expect(await liquidityProviderOne.vQuote.balanceOf(marketA)).to.be.equal(
+      expect(await lPOne.vQuote.balanceOf(marketA)).to.be.equal(
         quoteAmount.mul(2)
       );
     });
   });
   describe('Trading', function () {
-    it('Can call dy', async function () {
+    it('Can call dy on quoteToken', async function () {
       await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
       );
 
-      const dx = ethers.utils.parseEther('1');
+      const dx = asBigNumber('1');
       await mintAndApprove(traderOne.vQuote, dx, traderOne.address, marketA);
       const expectedResult = await TEST_get_dy(traderOne.market, 0, 1, dx);
       const result = await traderOne.market.get_dy(0, 1, dx);
       expect(result).to.be.equal(expectedResult);
     });
 
-    it('Can exchange quote for base token', async function () {
+    it('Can call dy on baseToken', async function () {
       await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
+      );
+
+      const dx = asBigNumber('1');
+      await mintAndApprove(traderOne.vBase, dx, traderOne.address, marketA);
+      const expectedResult = await TEST_get_dy(traderOne.market, 1, 0, dx);
+      const result = await traderOne.market.get_dy(1, 0, dx);
+      expect(result).to.be.equal(expectedResult);
+    });
+
+    it('Can exchange quote for base token, emit event', async function () {
+      await fundCurvePool(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
       );
 
       // mint tokens to trade
-      const sellQuoteAmount = ethers.utils.parseEther('1');
+      const sellQuoteAmount = asBigNumber('1');
       await mintAndApprove(
         traderOne.vQuote,
         sellQuoteAmount,
@@ -497,12 +497,16 @@ describe('Cryptoswap: Unit tests', function () {
         1,
         sellQuoteAmount
       );
-      await traderOne.market['exchange(uint256,uint256,uint256,uint256)'](
-        0,
-        1,
-        sellQuoteAmount,
-        MIN_MINT_AMOUNT
-      );
+      await expect(
+        traderOne.market['exchange(uint256,uint256,uint256,uint256)'](
+          0,
+          1,
+          sellQuoteAmount,
+          MIN_MINT_AMOUNT
+        )
+      )
+        .to.emit(traderOne.market, 'TokenExchange')
+        .withArgs(traderOne.address, 0, sellQuoteAmount, 1, eBuyBaseAmount);
 
       // check balances after trade
       const balancesVQuoteAfter = await traderOne.vQuote.balanceOf(
@@ -520,17 +524,17 @@ describe('Cryptoswap: Unit tests', function () {
       );
     });
 
-    it('Can exchange base for quote token', async function () {
+    it('Can exchange base for quote token, emit event', async function () {
       await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
       );
 
       // mint tokens to trade
-      const sellBaseAmount = ethers.utils.parseEther('1');
+      const sellBaseAmount = asBigNumber('1');
       await mintAndApprove(
         traderOne.vBase,
         sellBaseAmount,
@@ -556,12 +560,16 @@ describe('Cryptoswap: Unit tests', function () {
         0,
         sellBaseAmount
       );
-      await traderOne.market['exchange(uint256,uint256,uint256,uint256)'](
-        1,
-        0,
-        sellBaseAmount,
-        MIN_MINT_AMOUNT
-      );
+      await expect(
+        traderOne.market['exchange(uint256,uint256,uint256,uint256)'](
+          1,
+          0,
+          sellBaseAmount,
+          MIN_MINT_AMOUNT
+        )
+      )
+        .to.emit(traderOne.market, 'TokenExchange')
+        .withArgs(traderOne.address, 1, sellBaseAmount, 0, eBuyQuoteAmount);
 
       // check balances after trade
       const balancesVQuoteAfter = await traderOne.vQuote.balanceOf(
@@ -578,166 +586,181 @@ describe('Cryptoswap: Unit tests', function () {
         eBuyQuoteAmount
       );
     });
+    it('Can buy base tokens twice', async function () {
+      await fundCurvePool(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
+      );
+
+      const dx = asBigNumber('1');
+
+      // first trade
+      await mintAndBuyToken(
+        traderOne.market,
+        traderOne.vBase,
+        1,
+        dx,
+        traderOne.address
+      );
+
+      const balancesVQuoteBefore = await traderOne.vQuote.balanceOf(
+        traderOne.address
+      );
+
+      // second trade
+      const eBuyQuoteAmount = await traderOne.market.get_dy(1, 0, dx);
+      await mintAndBuyToken(
+        traderOne.market,
+        traderOne.vBase,
+        1,
+        dx,
+        traderOne.address
+      );
+
+      // check balances after trade
+      const balancesVQuoteAfter = await traderOne.vQuote.balanceOf(
+        traderOne.address
+      );
+      expect(balancesVQuoteAfter).to.be.equal(
+        balancesVQuoteBefore.add(eBuyQuoteAmount)
+      );
+    });
   });
   describe('Liquidity & Trading', function () {
     it('Can provide liquidity after some trading', async function () {
       /* init */
       await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
       );
-      await buyVBaseAndBurn(
+
+      await mintAndBuyToken(
         traderOne.market,
         traderOne.vBase,
-        traderOne.vQuote,
+        1,
+        asBigNumber('1'),
         traderOne.address
       );
 
       /* provide liquidity */
 
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
 
-      expect(
-        await liquidityProviderOne.vQuote.balanceOf(
-          liquidityProviderOne.address
-        )
-      ).be.equal(quoteAmount);
-      expect(
-        await liquidityProviderOne.vQuote.allowance(
-          liquidityProviderOne.address,
-          marketA
-        )
-      ).be.equal(quoteAmount);
-      expect(
-        await liquidityProviderOne.vBase.balanceOf(liquidityProviderOne.address)
-      ).be.equal(baseAmount);
-      expect(
-        await liquidityProviderOne.vBase.allowance(
-          liquidityProviderOne.address,
-          marketA
-        )
-      ).be.equal(baseAmount);
+      expect(await lPOne.vQuote.balanceOf(lPOne.address)).be.equal(quoteAmount);
+      expect(await lPOne.vQuote.allowance(lPOne.address, marketA)).be.equal(
+        quoteAmount
+      );
+      expect(await lPOne.vBase.balanceOf(lPOne.address)).be.equal(baseAmount);
+      expect(await lPOne.vBase.allowance(lPOne.address, marketA)).be.equal(
+        baseAmount
+      );
 
-      const balanceQuoteBefore = await liquidityProviderOne.market.balances(0);
-      const balanceBaseBefore = await liquidityProviderOne.market.balances(1);
+      const balanceQuoteBefore = await lPOne.market.balances(0);
+      const balanceBaseBefore = await lPOne.market.balances(1);
 
       // provide liquidity
-      await liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
 
-      expect(await liquidityProviderOne.market.balances(0)).to.be.equal(
+      expect(await lPOne.market.balances(0)).to.be.equal(
         balanceQuoteBefore.add(quoteAmount)
       );
-      expect(await liquidityProviderOne.market.balances(1)).to.be.equal(
+      expect(await lPOne.market.balances(1)).to.be.equal(
         balanceBaseBefore.add(baseAmount)
       );
-      expect(await liquidityProviderOne.vBase.balanceOf(marketA)).to.be.equal(
+      expect(await lPOne.vBase.balanceOf(marketA)).to.be.equal(
         balanceBaseBefore.add(baseAmount)
       );
-      expect(await liquidityProviderOne.vQuote.balanceOf(marketA)).to.be.equal(
+      expect(await lPOne.vQuote.balanceOf(marketA)).to.be.equal(
         balanceQuoteBefore.add(quoteAmount)
       );
-      expect(
-        await liquidityProviderOne.curveToken.balanceOf(
-          liquidityProviderOne.address
-        )
-      ).to.be.above(
-        await liquidityProviderOne.market.calc_token_amount([
-          quoteAmount,
-          baseAmount,
-        ])
+      expect(await lPOne.curveToken.balanceOf(lPOne.address)).to.be.above(
+        await lPOne.market.calc_token_amount([quoteAmount, baseAmount])
       );
     });
     it('Can withdraw liquidity after some trading', async function () {
       /* init */
       await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
+        asBigNumber('10')
       );
-      await buyVBaseAndBurn(
+      await mintAndBuyToken(
         traderOne.market,
         traderOne.vBase,
-        traderOne.vQuote,
+        1,
+        asBigNumber('1'),
         traderOne.address
       );
 
       /* provide liquidity */
 
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
 
       // provide liquidity
-      await liquidityProviderOne.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
 
       /* withdraw liquidity */
       // check balances before withdrawal
-      const balanceVQuoteBeforeUser =
-        await liquidityProviderOne.vQuote.balanceOf(
-          liquidityProviderOne.address
-        );
-      const balanceVBaseBeforeUser = await liquidityProviderOne.vBase.balanceOf(
-        liquidityProviderOne.address
+      const balanceVQuoteBeforeUser = await lPOne.vQuote.balanceOf(
+        lPOne.address
       );
-      const balanceVQuoteBeforeMarket =
-        await liquidityProviderOne.vQuote.balanceOf(marketA);
-      const balanceVBaseBeforeMarket =
-        await liquidityProviderOne.vBase.balanceOf(marketA);
+      const balanceVBaseBeforeUser = await lPOne.vBase.balanceOf(lPOne.address);
+      const balanceVQuoteBeforeMarket = await lPOne.vQuote.balanceOf(marketA);
+      const balanceVBaseBeforeMarket = await lPOne.vBase.balanceOf(marketA);
       expect(balanceVQuoteBeforeUser).to.be.equal(0);
       expect(balanceVBaseBeforeUser).to.be.equal(0);
 
       // withdraw liquidity
-      const withdrawableAmount =
-        await liquidityProviderOne.curveToken.balanceOf(
-          liquidityProviderOne.address
-        );
+      const withdrawableAmount = await lPOne.curveToken.balanceOf(
+        lPOne.address
+      );
       const eWithdrawAmount = await TEST_get_remove_liquidity(
-        liquidityProviderOne.market,
+        lPOne.market,
         withdrawableAmount,
         [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
       );
-      await liquidityProviderOne.market['remove_liquidity(uint256,uint256[2])'](
+      await lPOne.market['remove_liquidity(uint256,uint256[2])'](
         withdrawableAmount,
         [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
       );
 
       // check balances after withdrawal
-      const balanceVQuoteAfterUser =
-        await liquidityProviderOne.vQuote.balanceOf(
-          liquidityProviderOne.address
-        );
-      const balanceVBaseAfterUser = await liquidityProviderOne.vBase.balanceOf(
-        liquidityProviderOne.address
+      const balanceVQuoteAfterUser = await lPOne.vQuote.balanceOf(
+        lPOne.address
       );
-      const balanceVQuoteAfterMarket =
-        await liquidityProviderOne.vQuote.balanceOf(marketA);
-      const balanceVBaseAfterMarket =
-        await liquidityProviderOne.vBase.balanceOf(marketA);
+      const balanceVBaseAfterUser = await lPOne.vBase.balanceOf(lPOne.address);
+      const balanceVQuoteAfterMarket = await lPOne.vQuote.balanceOf(marketA);
+      const balanceVBaseAfterMarket = await lPOne.vBase.balanceOf(marketA);
 
       expect(balanceVBaseBeforeMarket).to.be.equal(
         balanceVBaseAfterMarket.add(balanceVBaseAfterUser)
@@ -750,36 +773,58 @@ describe('Cryptoswap: Unit tests', function () {
     });
 
     it.skip('Can calculate profit of liquidity providers', async function () {
-      /* init */
-      await fundCurvePool(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
-        ethers.utils.parseEther('10')
-      );
+      // WE CAN NOT DO CALCULATE PROFITS W/O MAKE ASSUMPIONS ON THE PRICE THE VIRTUAL TOKENS
+      // DO YOU  WANNA DELETE THIS TEST ???
 
-      await buyVBaseAndBurn(
-        traderOne.market,
-        traderOne.vBase,
-        traderOne.vQuote,
-        traderOne.address
-      );
+      /* provide liquidity */
 
-      // provide liquidity
       // mint tokens
-      const quoteAmount = ethers.utils.parseEther('10');
-      const baseAmount = await mintCurveTokens(
-        liquidityProviderOne.market,
-        liquidityProviderOne.vBase,
-        liquidityProviderOne.vQuote,
-        liquidityProviderOne.address,
+      const quoteAmount = asBigNumber('10');
+      const baseAmount = await prepareCurveTokens(
+        lPOne.market,
+        lPOne.vBase,
+        lPOne.vQuote,
+        lPOne.address,
         quoteAmount
       );
-      await liquidityProviderTwo.market['add_liquidity(uint256[2],uint256)'](
+      await lPOne.market['add_liquidity(uint256[2],uint256)'](
         [quoteAmount, baseAmount],
         MIN_MINT_AMOUNT
       );
+
+      /* capture initial state */
+      const initialQuoteBalance = await lPOne.vQuote.balanceOf(marketA);
+
+      /* some trading */
+      const openingPosition = asBigNumber('1');
+
+      // mint & buy vQuote
+      const feesVQuote = await TEST_get_dy_fees(
+        traderOne.market,
+        0,
+        1,
+        openingPosition
+      );
+      const userVQuote = await TEST_get_dy(
+        traderOne.market,
+        0,
+        1,
+        openingPosition
+      );
+
+      await mintAndBuyToken(
+        traderOne.market,
+        traderOne.vBase,
+        1,
+        openingPosition,
+        traderOne.address
+      );
+
+      /* capture mid state  */
+
+      /* withdraw liquidity */
+
+      /* capture state afterwards*/
       // TODO: finish this test
       // TODO: multiple liquidity providers & traders
     });
