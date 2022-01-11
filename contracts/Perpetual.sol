@@ -51,7 +51,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 public totalLiquidityProvided;
 
     // liquidity provider state
-    mapping(address => uint256) internal liquidityProvided;
+    mapping(address => uint256) public liquidityProvided;
 
     // user state
     mapping(address => LibPerpetual.TraderPosition) internal userPosition;
@@ -322,24 +322,29 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 price;
         if (totalLiquidityProvided == 0) {
             price = indexPrice().toUint256();
+            //console.log("hardhat: has provided no liquidity");
         } else {
-            price = marketPrice();
+            price = LibMath.wadDiv(market.balances(0), market.balances(1));
+            //console.log("hardhat: has provided  liquidity");
         }
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
         uint256 vQuoteAmount = wadAmount / 2;
         uint256 vBaseAmount = LibMath.wadDiv(vQuoteAmount, price); // vUSD / vEUR/vUSD  <=> 1 / 1.2 = 0.83
 
+        //console.log("hardhat: price", price);
         // mint tokens
         vQuote.mint(vQuoteAmount);
         vBase.mint(vBaseAmount);
 
+        //console.log("hardhat: has vQuote:", vQuoteAmount);
+        //console.log("hardhat: has vBase:", vBaseAmount);
         // supply liquidity to curve pool
         //uint256 min_mint_amount = 0; // set to zero for now
-        market.add_liquidity([vQuoteAmount, vBaseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
+        uint256 liquidity = market.add_liquidity([vQuoteAmount, vBaseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
         // increment balances
-        liquidityProvided[sender] += amount; // with 6 decimals
-        totalLiquidityProvided += wadAmount; // with 18 decimals
+        liquidityProvided[sender] += liquidity; // with 6 decimals
+        totalLiquidityProvided += liquidity;
 
         emit LiquidityProvided(sender, address(token), amount);
         return (vBaseAmount, vQuoteAmount);
@@ -348,46 +353,67 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Withdraw liquidity from the pool
     /// @param amount of liquidity to be removed from the pool (with 18 decimals)
     /// @param  token to be removed from the pool
-    function withdrawLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
+    function withdrawLiquidity(uint256 amount, IERC20 token) external override {
         address sender = _msgSender();
         require(liquidityProvided[msg.sender] >= amount, "Not enough liquidity provided");
 
-        // withdraw from curve pool
-        uint256 withdrawAmount = amount * market.get_virtual_price();
-
-        // remove liquidity from th epool
-        uint256[2] memory amountReturned;
-
+        //console.log("hardhat: trying to withdraw liquidity", amount);
         // remove liquidity from curve pool
         // calc_token_amount
-        amountReturned = market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]);
-        uint256 vBaseAmount = amountReturned[0];
-        uint256 vQuoteAmount = amountReturned[1];
+        uint256 vBaseAmount;
+        uint256 vQuoteAmount;
+        {
+            // to avoid stack to deep errors
+            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this));
+            uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
+
+            //console.log("hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
+            //console.log("hardhat vBaseBalanceBefore", vBaseBalanceBefore);
+
+            market.remove_liquidity(100, [uint256(0), uint256(0)]);
+
+            uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
+            uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
+
+            //console.log("hardhat vQuoteBalanceAfter", vQuoteBalanceAfter);
+            //console.log("hardhat vBaseBalanceAfter", vBaseBalanceAfter);
+
+            vQuoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
+            vBaseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
+
+            //console.log("hardhat vQuoteAmount", vQuoteAmount);
+            //console.log("hardhat vBaseAmount", vBaseAmount);
+        }
+        //console.log("hardhat: has withdrawn", vBaseAmount, vQuoteAmount);
 
         // burn virtual tokens
         vBase.burn(vBaseAmount);
         vQuote.burn(vQuoteAmount);
 
         // TODO: calculate profit from operation ... profit = returned money - deposited money
-        uint256 price;
-        if (totalLiquidityProvided == 0) {
-            price = indexPrice().toUint256();
-        } else {
-            price = marketPrice();
-        }
+
+        uint256 price = indexPrice().toUint256(); // always use chainlink oracle
+
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
         uint256 withdrawableAmount = vQuoteAmount + LibMath.wadMul(vBaseAmount, price);
+        //console.log("hardhat: withdrawableAmount is", withdrawableAmount);
 
-        int256 profit = liquidityProvided[sender].toInt256() - withdrawableAmount.toInt256();
+        int256 profit = 0;
+        //console.log("hardhat: profit is", profit.toUint256());
         vault.settleProfit(sender, profit);
+
+        //console.log("hardhat: withdraw all");
+
         vault.withdrawAll(sender, token); // TODO: withdraw all liquidity
 
+        //console.log("hardhat: increment balances");
+
         // lower balances
-        liquidityProvided[sender] -= amount;
-        totalLiquidityProvided -= amount;
+        liquidityProvided[sender] -= withdrawableAmount;
+        totalLiquidityProvided -= withdrawableAmount;
 
         emit LiquidityWithdrawn(sender, address(token), amount);
-        return (vBaseAmount, vQuoteAmount);
+        //console.log("hardhat: finito");
     }
 
     /// @notice Calculate the margin Ratio of some account

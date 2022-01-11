@@ -10,7 +10,7 @@ import {
   fundAccountsHardhat,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-deployments';
-import {rDiv} from './helpers/utils/calculations';
+import {asBigNumber, rDiv} from './helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from './helpers/utils/types';
 
@@ -45,7 +45,7 @@ describe('Increment App: Liquidity', function () {
       ).to.be.revertedWith('Zero amount');
     });
 
-    it('Should allow to deposit positive', async function () {
+    it('Should allow to deposit positive, emit event', async function () {
       await expect(
         user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
       )
@@ -78,8 +78,11 @@ describe('Increment App: Liquidity', function () {
       const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
       const vEURlpBalance = await user.market.balances(1);
       const vUSDlpBalance = await user.market.balances(0);
+
       const price = await getChainlinkPrice(env, 'EUR_USD');
+
       const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
+
       expect(vEURBefore).to.be.equal(vEURlpBalance);
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
 
@@ -104,32 +107,16 @@ describe('Increment App: Liquidity', function () {
       );
     });
 
-    it.skip('Should split subsequent deposits according to current ratio in pool', async function () {
+    it('Should split subsequent deposits according to current ratio in pool', async function () {
       // bob deposits some assets
       await bob.perpetual.provideLiquidity(liquidityAmount, bob.usdc.address);
 
-      console.log(
-        'vEURBefore',
-        (await user.vEUR.balanceOf(user.market.address)).toString()
-      );
-      console.log(
-        'vUSDBefore',
-        (await user.vUSD.balanceOf(user.market.address)).toString()
-      );
-      console.log(
-        ethers.utils.formatEther(await bob.market.get_virtual_price())
-      );
-      console.log(ethers.utils.formatEther(await bob.market.price_oracle()));
-      console.log(ethers.utils.formatEther(await bob.market.lp_price()));
-      console.log(ethers.utils.formatEther(await bob.market.get_dy(0, 1, 1)));
-
       // trade some assets to change the ratio in the pool
-
       const depositAmount = liquidityAmount.div(10);
       await alice.perpetual.deposit(depositAmount, alice.usdc.address);
       await alice.perpetual.openPosition(depositAmount.mul(2), Side.Long);
 
-      // before you deposit
+      // before you deposit more liquidity
       const vEURBefore = await user.vEUR.balanceOf(user.market.address);
       const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
       const vEURlpBalance = await user.market.balances(1);
@@ -138,67 +125,50 @@ describe('Increment App: Liquidity', function () {
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
 
       const priceBefore = rDiv(vUSDBefore, vEURBefore);
-      const price = await user.perpetual.marketPrice();
       const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
 
-      console.log(
-        'vEURBefore',
-        (await user.vEUR.balanceOf(user.market.address)).toString()
-      );
-      console.log(
-        'vUSDBefore',
-        (await user.vUSD.balanceOf(user.market.address)).toString()
-      );
-      console.log(
-        ethers.utils.formatEther(await bob.market.get_virtual_price())
-      );
-      console.log(ethers.utils.formatEther(await bob.market.price_oracle()));
-      console.log(ethers.utils.formatEther(await bob.market.lp_price()));
-      console.log(ethers.utils.formatEther(await bob.market.get_dy(0, 1, 1)));
-
-      // deposit
+      // deposit more liquidity
       await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
 
       // after you deposit
-      /* relative price should not change */
-      expect(await user.perpetual.marketPrice()).to.be.equal(price);
+
       /* balances should increment */
       expect(await user.vUSD.balanceOf(user.market.address)).to.be.equal(
         vUSDBefore.add(liquidityWadAmount.div(2))
       );
       expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(
-        vEURBefore.add(rDiv(liquidityWadAmount.div(2), price))
+        vEURBefore.add(rDiv(liquidityWadAmount.div(2), priceBefore))
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), price))
+        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), priceBefore))
       );
       expect(await user.market.balances(0)).to.be.equal(
         vUSDlpBalance.add(liquidityWadAmount.div(2))
       );
     });
 
-    // TODO: wait for open/close position logic to be implemented
-    // it('Should not allow to use the deposited liquidity to open up a long position', async function () {
-    //   // deposit
-    //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
     describe('Can withdraw liquidity from the curve pool', async function () {
       it('Should not allow to withdraw liquidity when non provided', async function () {
         await expect(
-          user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
+          user.perpetual.withdrawLiquidity(asBigNumber('1'), user.usdc.address)
         ).to.be.revertedWith('Not enough liquidity provided');
       });
 
-      it('Should not allow to withdraw liquidity more liquidity then provided', async function () {
+      it('Should allow not to withdraw more liquidity than provided', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,
           user.usdc.address
         );
 
-        // withdraw
+        // try withdraw
+        const providedLiquidity = await user.perpetual.liquidityProvided(
+          user.address
+        );
+
         await expect(
           user.perpetual.withdrawLiquidity(
-            liquidityAmount.add(BigNumber.from('1')),
+            providedLiquidity.add(BigNumber.from('1')),
             user.usdc.address
           )
         ).to.be.revertedWith('Not enough liquidity provided');
@@ -234,7 +204,7 @@ describe('Increment App: Liquidity', function () {
         ).to.be.revertedWith('');
       });
 
-      it.skip('Should allow to withdraw liquidity', async function () {
+      it('Should allow to withdraw liquidity, emit event', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,
@@ -242,13 +212,17 @@ describe('Increment App: Liquidity', function () {
         );
 
         // withdraw
-        // try withdrawal from pool
-        await user.perpetual.withdrawLiquidity(
-          liquidityAmount,
-          user.usdc.address
+        const providedLiquidity = await user.perpetual.liquidityProvided(
+          user.address
         );
+        await expect(
+          user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
+        )
+          .to.emit(user.perpetual, 'LiquidityWithdrawn')
+          .withArgs(user.address, user.usdc.address, providedLiquidity);
       });
-      it.skip('Should allow to withdraw liquidity', async function () {
+
+      it('Should allow to withdraw liquidity', async function () {
         const userBalanceStart = await user.usdc.balanceOf(user.address);
 
         // deposit
@@ -270,27 +244,22 @@ describe('Increment App: Liquidity', function () {
         expect(userBalanceEnd).to.be.equal(userBalanceStart);
         expect(userBalanceAfter).to.be.equal(0);
       });
-      describe('Can calculate profit from liquidity provision', async function () {});
     });
     describe('Misc', async function () {
-      it.skip('Should emit provide liquidity event in the curve pool', async function () {
-        const price = await user.perpetual.marketPrice();
+      it('Should emit provide liquidity event in the curve pool', async function () {
+        const price = await user.perpetual.indexPrice(); // valid for first deposit
         const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
 
-        const PRECISON = ethers.utils.parseEther('1');
-        console.log(
-          'has already provided',
-          await user.perpetual.totalLiquidityProvided()
-        );
+        const PRECISON = asBigNumber('1');
         await expect(
           user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
         )
-          .to.emit(user.market.address, 'LiquidityProvided')
+          .to.emit(user.market, 'AddLiquidity')
           .withArgs(
             user.perpetual.address,
             [
-              liquidityWadAmount.div(2).mul(PRECISON).div(price),
               liquidityWadAmount.div(2),
+              liquidityWadAmount.div(2).mul(PRECISON).div(price),
             ],
             0,
             0
@@ -298,12 +267,10 @@ describe('Increment App: Liquidity', function () {
       });
 
       // TODO: wait for open/close position logic to be implemented
-      it.skip('Should not allow to use the deposited liquidity to open up a long position', async function () {
-        //   // deposit
-        //   await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
-        //   // try to open a position
-        //   await expect(user.perpetual.openPosition(10,0)).to.be.revertedWith("")
-      });
+      // TODO:  it('Should not allow to use the deposited liquidity to open up a long position', async function () {
+      // TODO:       it('Can calculate profit from liquidity provision', async function () {});
+      // TODO: it('Should not allow to use the deposited liquidity to open up a long position', async function () {
+      //   // deposit
     });
   });
 });

@@ -25,5 +25,5 @@ interface ICryptoSwap {
 
     function add_liquidity(uint256[2] memory amounts, uint256 min_mint_amount) external returns (uint256); // WARNING: Has to be memory to be called within the perpetual contract, but you should use calldata
 
-    function remove_liquidity(uint256 _amount, uint256[2] memory min_amounts) external returns (uint256[2] memory); // WARNING: Has to be memory to be called within the perpetual contract, but you should use calldata
+    function remove_liquidity(uint256 _amount, uint256[2] memory min_amounts) external; // WARNING: Has to be memory to be called within the perpetual contract, but you should use calldata
 }
