@@ -360,29 +360,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // remove liquidity from curve pool
         // calc_token_amount
-        try market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]) returns (uint256[2] memory result) {
-            amountReturned = result;
-        } catch Error(string memory reason) {
-            // This is executed in case
-            // revert was called inside removeLiquidity
-            // and a reason string was provided.
-            // console.log("hardhat: error", reason);
-            return (0, 0);
-        } catch Panic(uint256 errorCode) {
-            // This is executed in case of a panic,
-            // i.e. a serious error like division by zero
-            // or overflow. The error code can be used
-            // to determine the kind of error.
-            // console.log("hardhat: panic", errorCode);
-            return (0, 0);
-        } catch (bytes memory lowLevelData) {
-            // console.log("hardhat: other");
-            // console.logBytes(lowLevelData);
-            //console.log(lowLevelData);
-            // This is executed in case revert() was used.
-            return (0, 0);
-        }
-
+        amountReturned = market.remove_liquidity(withdrawAmount, [uint256(0), uint256(0)]);
         uint256 vBaseAmount = amountReturned[0];
         uint256 vQuoteAmount = amountReturned[1];
 
