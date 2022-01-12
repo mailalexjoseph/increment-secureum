@@ -15,6 +15,7 @@ import {
   TEST_get_dy,
   TEST_get_remove_liquidity,
   TEST_get_dy_fees,
+  TEST_dust_remove_liquidity,
 } from '../integration/helpers/CurveUtils';
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {setupUsers} from '../../helpers/misc-utils';
@@ -348,11 +349,17 @@ describe('Cryptoswap: Unit tests', function () {
       const lpTokenBalance = await lPOne.curveToken.balanceOf(lPOne.address);
       expect(lpTokenBalance).to.be.above(0);
 
-      // TODO: Why do we get this (leftover) balance?
-      const remainingBalances = [
-        ethers.BigNumber.from('9999999999999999998'), // 9.9999 with 18 decimals
-        ethers.BigNumber.from('8333333333333333332'),
-      ];
+      // remaining balances
+      const dust = await TEST_dust_remove_liquidity(
+        lPOne.market,
+        lpTokenBalance,
+        [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+      );
+      expect(dust[0]).to.be.equal(2); // quoteDust is 2 (amount is above lpTokenBalance)
+      expect(dust[1]).to.be.equal(1); // baseDust is 1
+      const remainingBalances = [quoteAmount.sub('2'), baseAmount.sub('1')];
+
+      // withdraw liquidity
       await expect(
         lPOne.market['remove_liquidity(uint256,uint256[2])'](
           lpTokenBalance,
@@ -771,7 +778,7 @@ describe('Cryptoswap: Unit tests', function () {
       expect(eWithdrawAmount[1]).to.be.equal(balanceVBaseAfterUser);
     });
 
-    it.skip('Can calculate profit of liquidity providers', async function () {
+    it('Can calculate profit of liquidity providers', async function () {
       // WE CAN NOT DO CALCULATE PROFITS W/O MAKE ASSUMPIONS ON THE PRICE THE VIRTUAL TOKENS
       // DO YOU  WANNA DELETE THIS TEST ???
 

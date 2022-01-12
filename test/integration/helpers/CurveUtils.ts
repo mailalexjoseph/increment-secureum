@@ -7,32 +7,69 @@ import {BigNumber} from '../../../helpers/types';
 import {asBigNumber} from './utils/calculations';
 import {ethers} from 'hardhat';
 
+/// returns the amount of tokens transfered back to the user
 export async function TEST_get_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<[BigNumber, BigNumber]> {
+  const [amountReturned, _] = await calcRemoveLiquidity(
+    market,
+    _amount,
+    min_amounts
+  );
+  return amountReturned;
+}
+
+/// returns the amount of tokens remaining in the market
+export async function TEST_dust_remove_liquidity(
+  market: CryptoSwap,
+  _amount: BigNumber,
+  min_amounts: [BigNumber, BigNumber]
+): Promise<[BigNumber, BigNumber]> {
+  const [_, amountRemaining] = await calcRemoveLiquidity(
+    market,
+    _amount,
+    min_amounts
+  );
+  return amountRemaining;
+}
+
+async function calcRemoveLiquidity(
+  market: CryptoSwap,
+  _amount: BigNumber,
+  min_amounts: [BigNumber, BigNumber]
+): Promise<[[BigNumber, BigNumber], [BigNumber, BigNumber]]> {
   const amountReturned: [BigNumber, BigNumber] = [
     BigNumber.from(0),
     BigNumber.from(0),
   ];
-  let d_balance: BigNumber;
+  const amountRemaining: [BigNumber, BigNumber] = [
+    BigNumber.from(0),
+    BigNumber.from(0),
+  ];
 
-  const curveTokenAddress = await market.token();
-  const curveLPtoken: CurveTokenV5 = await ethers.getContractAt(
-    'CurveTokenV5',
-    curveTokenAddress
-  );
-  const totalSupply = await curveLPtoken.totalSupply();
+  let d_balance: BigNumber;
   const balances = [await market.balances(0), await market.balances(1)];
   const amount = _amount.sub(1);
+  const totalSupply = await curveTotalSupply(market);
 
   for (let i = 0; i < 2; i++) {
     d_balance = amount.mul(balances[i]).div(totalSupply);
     if (d_balance.lt(min_amounts[i])) throw new Error('MIN_AMOUNT_NOT_MET');
     amountReturned[i] = d_balance;
+    amountRemaining[i] = balances[i].sub(d_balance);
   }
-  return amountReturned;
+  return [amountReturned, amountRemaining];
+}
+
+async function curveTotalSupply(market: CryptoSwap): Promise<BigNumber> {
+  const curveTokenAddress = await market.token();
+  const curveLPtoken: CurveTokenV5 = await ethers.getContractAt(
+    'CurveTokenV5',
+    curveTokenAddress
+  );
+  return await curveLPtoken.totalSupply();
 }
 
 export async function TEST_get_dy(
