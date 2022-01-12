@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "Exchange rate protocol",
   "engines": {
-    "node": ">= 14.14.0"
+    "node": "16.13.1"
   },
   "repository": "https://github.com/Increment-Finance/increment-protocol",
   "author": "increment",
