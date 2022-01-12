@@ -25,6 +25,10 @@ import {LibFunding} from "../lib/LibFunding.sol";
 
 import "hardhat/console.sol";
 
+/*
+ * TestPerpetual includes some setter functions to edit part of
+ * the internal state of Perpetual which aren't exposed otherwise.
+ */
 contract TestPerpetual is Perpetual {
     constructor(
         IOracle _oracle,
