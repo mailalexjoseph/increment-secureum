@@ -34,6 +34,7 @@ jobs:
 
       - name: Running unit tests
         run: yarn test:unit
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
 
       - name: Running integration tests
         run: yarn test:integration
