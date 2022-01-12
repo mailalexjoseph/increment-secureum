@@ -29,10 +29,9 @@ fs.readdirSync(tasksPath)
     require(`${tasksPath}/${task}`);
   });
 
-const config: HardhatUserConfig = {
-  defaultNetwork: 'hardhat',
-  networks: {
-    hardhat: {
+const getHardhatConf = () => {
+  if (process.env.HARDHAT_FORK == 'mainnet') {
+    return {
       // process.env.HARDHAT_FORK will specify the network that the fork is made from.
       // this line ensure the use of the corresponding accounts
       accounts: accounts(process.env.HARDHAT_FORK),
@@ -40,7 +39,15 @@ const config: HardhatUserConfig = {
         url: node_url('MAINNET'),
         blockNumber: 13818037,
       },
-    },
+    };
+  }
+  return {};
+};
+
+const config: HardhatUserConfig = {
+  defaultNetwork: 'hardhat',
+  networks: {
+    hardhat: getHardhatConf(),
     localhost: {
       url: node_url('localhost'),
       accounts: accounts(),
