@@ -27,6 +27,7 @@ import {
 } from '../../../typechain';
 import {BigNumber} from '../../../helpers/types';
 import {CryptoSwap} from '../../../contracts-vyper/typechain/CryptoSwap';
+import {CurveTokenV5} from '../../../contracts-vyper/typechain/CurveTokenV5';
 
 export type User = {address: string} & {
   perpetual: TestPerpetual;
@@ -36,6 +37,7 @@ export type User = {address: string} & {
   vUSD: VirtualToken;
   market: CryptoSwap;
   oracle: Oracle;
+  curve: CurveTokenV5;
 };
 
 export interface TestEnv {
@@ -68,6 +70,9 @@ const getContracts = async (deployerAccount: string) => {
         getReserveAddress('USDC', getEthereumNetworkFromHRE(env)),
         deployerAccount
       )
+    ),
+    curve: <CurveTokenV5>(
+      await ethers.getContract('CurveTokenV5', deployerAccount)
     ),
   };
 };

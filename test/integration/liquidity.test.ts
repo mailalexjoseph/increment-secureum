@@ -167,9 +167,9 @@ describe('Increment App: Liquidity', function () {
         );
 
         // try withdraw
-        const providedLiquidity = await user.perpetual.liquidityProvided(
-          user.address
-        );
+        const providedLiquidity = (
+          await user.perpetual.liquidityPosition(user.address)
+        )[0]; // first element are lp tokens
 
         await expect(
           user.perpetual.withdrawLiquidity(
@@ -217,9 +217,10 @@ describe('Increment App: Liquidity', function () {
         );
 
         // withdraw
-        const providedLiquidity = await user.perpetual.liquidityProvided(
-          user.address
-        );
+        const providedLiquidity = (
+          await user.perpetual.liquidityPosition(user.address)
+        )[0]; // first element are lp tokens
+
         await expect(
           user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
         )
@@ -227,7 +228,7 @@ describe('Increment App: Liquidity', function () {
           .withArgs(user.address, user.usdc.address, providedLiquidity);
       });
 
-      it('Should allow to withdraw liquidity', async function () {
+      it('Should withdraw correct amount of liquidity', async function () {
         const userBalanceStart = await user.usdc.balanceOf(user.address);
 
         // deposit
@@ -236,18 +237,21 @@ describe('Increment App: Liquidity', function () {
           user.usdc.address
         );
         const userBalanceAfter = await user.usdc.balanceOf(user.address);
+        expect(userBalanceAfter).to.be.equal(0);
 
         //withdraw;
+        const providedLiquidity = (
+          await user.perpetual.liquidityPosition(user.address)
+        )[0]; // first element are lp tokens
         await expect(
-          user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
+          user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
         )
           .to.emit(user.perpetual, 'LiquidityWithdrawn')
-          .withArgs(user.address, user.usdc.address, liquidityAmount);
+          .withArgs(user.address, user.usdc.address, providedLiquidity);
         const userBalanceEnd = await user.usdc.balanceOf(user.address);
 
         // check balances
-        expect(userBalanceEnd).to.be.equal(userBalanceStart);
-        expect(userBalanceAfter).to.be.equal(0);
+        expect(userBalanceEnd).to.be.equal(userBalanceStart.sub(1)); // subtract dust
       });
     });
     describe('Misc', async function () {
@@ -275,8 +279,8 @@ describe('Increment App: Liquidity', function () {
       });
 
       // TODO: wait for open/close position logic to be implemented
-      // TODO:  it('Should not allow to use the deposited liquidity to open up a long position', async function () {
-      // TODO:       it('Can calculate profit from liquidity provision', async function () {});
+      // TODO: it('Should not allow to use the deposited liquidity to open up a long position', async function () {
+      // TODO: it('Can calculate profit from liquidity provision', async function () {});
       // TODO: it('Should not allow to use the deposited liquidity to open up a long position', async function () {
       //   // deposit
     });

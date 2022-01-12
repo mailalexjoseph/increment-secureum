@@ -28,6 +28,11 @@ library LibPerpetual {
         int256 cumFundingRate;
     }
 
+    struct LiquidityPosition {
+        uint256 liquidityBalance;
+        uint256 reserveBalance;
+    }
+
     struct GlobalPosition {
         int256 cumTradePremium;
         uint128 timeOfLastTrade;

@@ -51,7 +51,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 public totalLiquidityProvided;
 
     // liquidity provider state
-    mapping(address => uint256) public liquidityProvided;
+    mapping(address => LibPerpetual.LiquidityPosition) public liquidityPosition;
 
     // user state
     mapping(address => LibPerpetual.TraderPosition) internal userPosition;
@@ -199,6 +199,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // update user.profit using funding payment info in the `global` struct
         settleFundingRate(user, global);
 
+        //console.log("hardhat: user.notional", user.notional.toUint256());
+        //console.log("hardhat: vQuoteProceeds", vQuoteProceeds);
         // set trader position
         user.profit += _calculatePnL(user.notional, vQuoteProceeds);
         user.notional = 0;
@@ -310,7 +312,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
         address sender = _msgSender();
         require(amount != 0, "Zero amount");
-        require(liquidityProvided[sender] == 0, "Has provided liquidity before");
+        require(liquidityPosition[sender].liquidityBalance == 0, "Has provided liquidity before");
 
         // return amount with 18 decimals
         uint256 wadAmount = vault.deposit(_msgSender(), amount, token);
@@ -339,7 +341,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 liquidity = market.add_liquidity([vQuoteAmount, vBaseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
         // increment balances
-        liquidityProvided[sender] += liquidity; // with 6 decimals
+        liquidityPosition[sender].liquidityBalance += liquidity; // lp tokens
+        liquidityPosition[sender].reserveBalance += wadAmount; // usdc tokens
         totalLiquidityProvided += liquidity;
 
         emit LiquidityProvided(sender, address(token), amount);
@@ -350,8 +353,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @param amount of liquidity to be removed from the pool (with 18 decimals)
     /// @param  token to be removed from the pool
     function withdrawLiquidity(uint256 amount, IERC20 token) external override {
+        // TODO: should we just hardcode the value here?
         address sender = _msgSender();
-        require(liquidityProvided[msg.sender] >= amount, "Not enough liquidity provided");
+        //console.log("hardhat: amount", amount);
+        //console.log("hardhat: liquidityPosition[sender].liquidityBalance", liquidityPosition[sender].liquidityBalance);
+
+        require(liquidityPosition[sender].liquidityBalance == amount, "Not enough liquidity provided");
 
         //console.log("hardhat: trying to withdraw liquidity", amount);
         // remove liquidity from curve pool
@@ -360,13 +367,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 vQuoteAmount;
         {
             // to avoid stack to deep errors
-            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this));
+            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here?
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
             //console.log("hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
             //console.log("hardhat vBaseBalanceBefore", vBaseBalanceBefore);
 
-            market.remove_liquidity(100, [uint256(0), uint256(0)]);
+            market.remove_liquidity(amount, [uint256(0), uint256(0)]);
 
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
@@ -394,8 +401,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 withdrawableAmount = vQuoteAmount + LibMath.wadMul(vBaseAmount, price);
         //console.log("hardhat: withdrawableAmount is", withdrawableAmount);
 
-        int256 profit = 0;
-        //console.log("hardhat: profit is", profit.toUint256());
+        int256 profit = withdrawableAmount.toInt256() - liquidityPosition[sender].reserveBalance.toInt256();
+
+        //console.log("hardhat: profit is", profit > 0 ? profit.toUint256() : (-1 * profit).toUint256());
         vault.settleProfit(sender, profit);
 
         //console.log("hardhat: withdraw all");
@@ -404,9 +412,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         //console.log("hardhat: increment balances");
 
+        //console.log("hardhat: liquidityPosition[sender].liquidityBalance", liquidityPosition[sender].liquidityBalance);
+        //console.log("hardhat: totalLiquidityProvided", totalLiquidityProvided);
         // lower balances
-        liquidityProvided[sender] -= withdrawableAmount;
-        totalLiquidityProvided -= withdrawableAmount;
+        liquidityPosition[sender].liquidityBalance = 0;
+        liquidityPosition[sender].reserveBalance = 0;
+
+        totalLiquidityProvided -= amount;
 
         emit LiquidityWithdrawn(sender, address(token), amount);
         //console.log("hardhat: finito");
