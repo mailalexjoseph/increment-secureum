@@ -7,6 +7,23 @@ import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
+/*
+ * To be used if `b` decimals make `b` larger than what it would be otherwise.
+ * Especially useful for fixed point numbers, i.e. a way to represent decimal
+ * values without using decimals. E.g. 25e2 with 3 decimals represents 2.5%
+ *
+ * In our case, we get exchange rates with a 18 decimal precision
+ * (Solidity doesn't support decimal values natively).
+ * So if we have a EUR positions and want to get the equivalent USD amount
+ * we have to do: EUR_position * EUR_USD / 1e18 else the value would be way too high.
+ * To move from USD to EUR: (USD_position * 1e18) / EUR_USD else the value would
+ * be way too low.
+ *
+ * In essence,
+ * wadMul: a.mul(b).div(WAY)
+ * wadDiv: a.mul(WAY).div(b)
+ * where `WAY` represents the number of decimals
+ */
 library LibMath {
     uint256 public constant POSITIVE_INT256_MAX = uint256(type(int256).max);
 

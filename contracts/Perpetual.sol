@@ -18,9 +18,10 @@ import {IOracle} from "./interfaces/IOracle.sol";
 import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 
 // libraries
+import {LibFunding} from "./lib/LibFunding.sol";
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
-import {LibFunding} from "./lib/LibFunding.sol";
+import {LibReserve} from "./lib/LibReserve.sol";
 
 import "hardhat/console.sol";
 
@@ -122,11 +123,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.TraderPosition storage user = userPosition[sender];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
+        // transform USDC amount with 6 decimals to a value with 18 decimals
+        uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
+
         // Checks
-        require(amount > 0, "The amount can't be null");
+        require(convertedWadAmount > 0, "The amount can't be null");
         require(user.notional == 0, "Cannot open a position with one already opened");
 
-        int256 prospectiveMargin = LibMath.wadDiv(vault.getReserveValue(sender), amount.toInt256());
+        int256 prospectiveMargin = LibMath.wadDiv(vault.getReserveValue(sender), convertedWadAmount.toInt256());
         require(
             prospectiveMargin >= MIN_MARGIN_AT_CREATION,
             "Not enough funds in the vault for the margin of this position"
@@ -135,17 +139,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         updateFundingRate();
 
         // Buy virtual tokens for the position
-        uint256 vTokenBought = _openPositionOnMarket(amount, direction);
+        uint256 vTokenBought = _openPositionOnMarket(convertedWadAmount, direction);
 
         // Update trader position
-        user.notional = amount.toInt256();
+        user.notional = convertedWadAmount.toInt256();
         user.positionSize = vTokenBought.toInt256();
         user.profit = 0;
         user.side = direction;
         user.timeStamp = global.timeStamp; // note: timestamp of the last update of the cumFundingRate
         user.cumFundingRate = global.cumFundingRate;
 
-        emit OpenPosition(sender, uint128(block.timestamp), direction, amount, vTokenBought);
+        emit OpenPosition(sender, uint128(block.timestamp), direction, convertedWadAmount, vTokenBought);
         return vTokenBought;
     }
 

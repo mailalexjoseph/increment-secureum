@@ -5,7 +5,7 @@ pragma solidity 0.8.4;
 import "../lib/LibReserve.sol";
 
 contract TestLibReserve {
-    function tokenToWad(uint256 tokenDecimals, uint256 amount) external pure returns (int256) {
+    function tokenToWad(uint256 tokenDecimals, uint256 amount) external pure returns (uint256) {
         return LibReserve.tokenToWad(tokenDecimals, amount);
     }
 

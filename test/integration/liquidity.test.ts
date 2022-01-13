@@ -80,7 +80,10 @@ describe('Increment App: Liquidity', function () {
 
       const price = await getChainlinkPrice(env, 'EUR_USD');
 
-      const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
+      const liquidityWadAmount = await tokenToWad(
+        await user.vault.getReserveTokenDecimals(),
+        liquidityAmount
+      ); // deposited liquidity with 18 decimals
 
       expect(vEURBefore).to.be.equal(vEURlpBalance);
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
@@ -124,7 +127,10 @@ describe('Increment App: Liquidity', function () {
       expect(vUSDBefore).to.be.equal(vUSDlpBalance);
 
       const priceBefore = rDiv(vUSDBefore, vEURBefore);
-      const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
+      const liquidityWadAmount = await tokenToWad(
+        await user.vault.getReserveTokenDecimals(),
+        liquidityAmount
+      ); // deposited liquidity with 18 decimals
 
       // deposit more liquidity
       await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
@@ -247,7 +253,10 @@ describe('Increment App: Liquidity', function () {
     describe('Misc', async function () {
       it('Should emit provide liquidity event in the curve pool', async function () {
         const price = await user.perpetual.indexPrice(); // valid for first deposit
-        const liquidityWadAmount = await tokenToWad(user.usdc, liquidityAmount); // deposited liquidity with 18 decimals
+        const liquidityWadAmount = await tokenToWad(
+          await user.vault.getReserveTokenDecimals(),
+          liquidityAmount
+        ); // deposited liquidity with 18 decimals
 
         const PRECISON = asBigNumber('1');
         await expect(

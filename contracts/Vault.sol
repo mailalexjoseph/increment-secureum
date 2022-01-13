@@ -24,6 +24,7 @@ contract Vault is IVault, Context, IncreOwnable {
     using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;
+
     // constants
     uint256 private constant MAX_DECIMALS = 18;
     uint256 private constant ONE = 1e18;
@@ -79,13 +80,13 @@ contract Vault is IVault, Context, IncreOwnable {
         IERC20(depositToken).safeTransferFrom(user, address(this), amount);
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
-        int256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
+        uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
         // increment balance
-        balances[user] += convertedWadAmount;
-        totalReserveToken += convertedWadAmount.toUint256();
+        balances[user] += convertedWadAmount.toInt256();
+        totalReserveToken += convertedWadAmount;
 
-        return convertedWadAmount.toUint256();
+        return convertedWadAmount;
     }
 
     /**
@@ -124,6 +125,13 @@ contract Vault is IVault, Context, IncreOwnable {
      */
     function getReserveValue(address _account) external view override returns (int256) {
         return PRBMathSD59x18.mul(balances[_account], getAssetPrice());
+    }
+
+    /**
+     * @notice get the number of decimals of the ERC20 token used in the vault
+     */
+    function getReserveTokenDecimals() external view override returns (uint256) {
+        return reserveTokenDecimals;
     }
 
     /**

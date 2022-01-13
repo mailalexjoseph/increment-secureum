@@ -14,10 +14,9 @@ export async function convertToCurrencyDecimals(
 
 // @author: convert BigNumber with token decimals to BigNumber with 18 decimals
 export async function tokenToWad(
-  token: ERC20,
+  decimals: BigNumber,
   amount: BigNumber
 ): Promise<BigNumber> {
-  const decimals = (await token.decimals()).toString();
   const amountAsString = utils.formatUnits(amount, decimals);
   return utils.parseEther(amountAsString);
 }
