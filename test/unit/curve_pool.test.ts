@@ -1,3 +1,6 @@
+import {expect} from 'chai';
+import {ethers, getUnnamedAccounts} from 'hardhat';
+
 // typechain objects
 import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
@@ -8,7 +11,6 @@ import {VBase__factory, VQuote__factory} from '../../typechain';
 
 // utils
 import {asBigNumber, rDiv} from '../integration/helpers/utils/calculations';
-import {ethers, getUnnamedAccounts} from 'hardhat';
 import {
   TEST_get_dy,
   TEST_get_remove_liquidity,
@@ -17,9 +19,6 @@ import {
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {setupUsers} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
-
-import chaiModule = require('../chai-setup');
-const {expect} = chaiModule;
 
 const MIN_MINT_AMOUNT = ethers.BigNumber.from(0);
 

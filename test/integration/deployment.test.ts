@@ -1,7 +1,6 @@
-import {setup} from './helpers/setup';
+import {expect} from 'chai';
 
-import chaiModule = require('../chai-setup');
-const {expect} = chaiModule;
+import {setup} from './helpers/setup';
 
 describe('Increment Protocol: Deployment', function () {
   describe('Deployment', function () {

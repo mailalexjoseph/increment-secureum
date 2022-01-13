@@ -1,6 +1,4 @@
-import chaiModule = require('../chai-setup');
-const {expect} = chaiModule;
-
+import {expect} from 'chai';
 import {utils, BigNumber} from 'ethers';
 import env from 'hardhat';
 

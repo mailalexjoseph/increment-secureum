@@ -1,19 +1,16 @@
+import {expect} from 'chai';
 import {BigNumber} from 'ethers';
-import {TestLibFunding} from '../../typechain';
-import {TestLibFunding__factory} from '../../typechain';
 import {getNamedAccounts} from 'hardhat';
-
 import {ethers} from 'hardhat';
 
+import {TestLibFunding__factory} from '../../typechain';
+import {TestLibFunding} from '../../typechain';
 import {
   asBigNumber,
   rMul,
   rDiv,
 } from '../integration/helpers/utils/calculations';
-
-import chaiModule = require('../chai-setup');
 import {setupUser} from '../../helpers/misc-utils';
-const {expect} = chaiModule;
 
 // time-utils
 const minutes = (number: number) => number * 60;

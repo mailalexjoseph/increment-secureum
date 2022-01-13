@@ -1,10 +1,10 @@
-import chaiModule = require('../chai-setup');
-const {expect} = chaiModule;
+import {expect} from 'chai';
+import {ethers} from 'hardhat';
+import {BigNumber} from 'ethers';
+import env = require('hardhat');
 
 import {setup, funding, User} from './helpers/setup';
 import {tokenToWad} from '../../helpers/contracts-helpers';
-import {ethers} from 'hardhat';
-import {BigNumber} from 'ethers';
 import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
@@ -14,10 +14,9 @@ import {asBigNumber, rDiv} from './helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from './helpers/utils/types';
 
-const {getSigner} = ethers;
-
-import env = require('hardhat');
 import {Perpetual} from '../../typechain';
+
+const {getSigner} = ethers;
 
 const logPrice = async (perp: Perpetual) => {
   console.log(
