@@ -31,8 +31,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // parameterization
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
-    int256 public constant LIQUIDATION_FEE = 60e15; // 6%
-    int256 public constant PRECISION = 10e18;
+    uint256 public constant LIQUIDATION_FEE = 60e15; // 6%
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 public constant FEE = 3e16; // 3%
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE;
@@ -188,6 +187,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
+    /// @notice user.profit is the sum of funding payments and the position PnL
     function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
@@ -253,13 +253,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return soldPrice.toInt256() - boughtPrice.toInt256();
     }
 
+    /// @notice Applies the funding payments on user.profit
     function settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
         if (user.notional != 0 && user.timeStamp < global.timeStamp) {
             // update user variables when position opened before last update
             int256 upcomingFundingPayment = getFundingPayments(user, global);
-            _applyFundingPayment(user, upcomingFundingPayment);
+            user.profit += upcomingFundingPayment;
             emit Settlement(_msgSender(), user.timeStamp, upcomingFundingPayment);
         }
 
@@ -268,12 +269,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.cumFundingRate = global.cumFundingRate;
     }
 
-    /// @notice Apply funding payments
-    function _applyFundingPayment(LibPerpetual.TraderPosition storage user, int256 payments) internal {
-        user.profit += payments;
-    }
-
-    /// @notice Calculate missed funing payments
+    /// @notice Calculate missed funding payments
     function getFundingPayments(LibPerpetual.TraderPosition memory user, LibPerpetual.GlobalPosition memory global)
         public
         pure
@@ -306,10 +302,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function indexPrice() public view returns (int256) {
         return oracle.getIndexPrice();
-    }
-
-    function marginIsValid(address account) public view override returns (bool) {
-        return marginRatio(account) <= MIN_MARGIN;
     }
 
     /// @notice Provide liquidity to the pool
@@ -420,21 +412,45 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         //console.log("hardhat: finito");
     }
 
-    /// @notice Calculate the margin Ratio of some account
-    function marginRatio(address account) public view override returns (int256) {
-        LibPerpetual.TraderPosition memory user = getUserPosition(account);
-        LibPerpetual.GlobalPosition memory global = getGlobalPosition();
+    function marginIsValid(address account) public view override returns (bool) {
+        int256 marginRatioRes = marginRatio(account);
+        console.log("marginRatioRes");
+        console.logInt(marginRatioRes);
+        console.log("MIN_MARGIN");
+        console.logInt(MIN_MARGIN);
 
-        // calcuate margin ratio = = (margin + pnl + fundingPayments) / position.getNotional()
-        int256 margin = vault.getReserveValue(account);
+        return marginRatioRes >= MIN_MARGIN;
+        // return marginRatio(account) <= MIN_MARGIN;
+    }
+
+    function marginRatio(address account) public view override returns (int256) {
+        LibPerpetual.TraderPosition memory user = userPosition[account];
+        LibPerpetual.GlobalPosition memory global = globalPosition;
+
+        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.notional
+        // all amounts should be expressed in vQuote/USD, otherwise the end result doesn't make sense
+        int256 collateral = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
-        int256 unrealizedPnl = 0; /// toDO: requires implementation of curve pool;
-        int256 profit = getUserPosition(account).profit;
-        return LibMath.wadDiv(margin + unrealizedPnl + fundingPayments + profit, user.notional.toInt256());
+
+        uint256 vQuoteVirtualProceeds = 0;
+        if (user.side == LibPerpetual.Side.Long) {
+            vQuoteVirtualProceeds = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, uint256(user.positionSize));
+        } else {
+            uint256 vBaseReceived = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, uint256(user.positionSize));
+
+            uint256 baseOnQuotePrice = indexPrice().toUint256();
+            vQuoteVirtualProceeds = LibMath.wadMul(vBaseReceived, baseOnQuotePrice);
+        }
+
+        int256 unrealizedPositionPnl = _calculatePnL(user.notional, vQuoteVirtualProceeds);
+
+        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, user.notional.toInt256());
     }
 
     function liquidate(address account) external {
-        require(!marginIsValid(account), "Margin is not valid");
+        updateFundingRate();
+
+        require(!marginIsValid(account), "Margin is valid");
         address liquidator = _msgSender();
 
         // load information about state
@@ -442,23 +458,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 notionalAmount = user.notional;
 
-        //TODO: add check to ensure that user is indeed under MIN_MARGIN before doing the liquidation
-
-        // get information about position
         _closePosition(user, global);
 
-        // liquidation costs
-        int256 liquidationFee = (notionalAmount.toInt256() * LIQUIDATION_FEE) / PRECISION;
-
-        // profits - liquidationFee gets paid out
-        int256 reducedProfit = user.profit - liquidationFee;
+        uint256 liquidationFeeAmount = LibMath.wadMul(notionalAmount, LIQUIDATION_FEE);
 
         // substract fee from user account
+        int256 reducedProfit = user.profit - liquidationFeeAmount.toInt256();
         vault.settleProfit(account, reducedProfit);
 
         // add fee to liquidator account
-        vault.settleProfit(liquidator, liquidationFee);
+        vault.settleProfit(liquidator, liquidationFeeAmount.toInt256());
 
-        emit LiquidationCall(account, _msgSender(), uint128(block.timestamp), notionalAmount);
+        emit LiquidationCall(account, liquidator, uint128(block.timestamp), notionalAmount);
     }
 }

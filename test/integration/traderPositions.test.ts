@@ -18,7 +18,6 @@ describe('Increment: open/close long/short trading positions', () => {
   // protocol constants
   let MIN_MARGIN: BigNumber;
   let LIQUIDATION_FEE: BigNumber;
-  let PRECISION: BigNumber;
   let TWAP_FREQUENCY: BigNumber;
   let FEE: BigNumber;
   let MIN_MARGIN_AT_CREATION: BigNumber;
@@ -30,7 +29,6 @@ describe('Increment: open/close long/short trading positions', () => {
 
     MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
     LIQUIDATION_FEE = await alice.perpetual.LIQUIDATION_FEE();
-    PRECISION = await alice.perpetual.PRECISION();
     TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
     FEE = await alice.perpetual.FEE();
     MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
