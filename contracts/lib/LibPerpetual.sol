@@ -20,8 +20,8 @@ library LibPerpetual {
     }
 
     struct TraderPosition {
-        int256 notional; // Important to keep in mind that the liquidity amount
-        int256 positionSize; // in vBase if side is Long or vQuote if side is Short
+        uint256 notional; // Important to keep in mind that the liquidity amount
+        uint256 positionSize; // in vBase if side is Long or vQuote if side is Short
         int256 profit;
         Side side;
         uint128 timeStamp;

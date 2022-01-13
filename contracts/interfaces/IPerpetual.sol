@@ -32,7 +32,7 @@ interface IPerpetual {
         int256 notional,
         uint256 amount
     );
-    event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, int256 notional);
+    event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, uint256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
     event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
     event LiquidityWithdrawn(address indexed liquidityProvider, address indexed asset, uint256 amount);

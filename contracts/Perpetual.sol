@@ -142,8 +142,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 vTokenBought = _openPositionOnMarket(convertedWadAmount, direction);
 
         // Update trader position
-        user.notional = convertedWadAmount.toInt256();
-        user.positionSize = vTokenBought.toInt256();
+        user.notional = convertedWadAmount;
+        user.positionSize = vTokenBought;
         user.profit = 0;
         user.side = direction;
         user.timeStamp = global.timeStamp; // note: timestamp of the last update of the cumFundingRate
@@ -191,7 +191,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
-        uint256 amount = (user.positionSize).toUint256();
+        uint256 amount = user.positionSize;
         LibPerpetual.Side direction = user.side;
 
         uint256 vQuoteProceeds = _closePositionOnMarket(amount, direction);
@@ -200,7 +200,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         settleFundingRate(user, global);
 
         // set trader position
-        user.profit += _calculatePnL(user.notional, vQuoteProceeds.toInt256());
+        user.profit += _calculatePnL(user.notional, vQuoteProceeds);
         user.notional = 0;
         user.positionSize = 0;
     }
@@ -249,8 +249,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // get information about position
-    function _calculatePnL(int256 boughtPrice, int256 soldPrice) internal pure returns (int256) {
-        return soldPrice - boughtPrice;
+    function _calculatePnL(uint256 boughtPrice, uint256 soldPrice) internal pure returns (int256) {
+        return soldPrice.toInt256() - boughtPrice.toInt256();
     }
 
     function settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
@@ -294,7 +294,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             } else {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
             }
-            upcomingFundingPayment = LibMath.wadDiv(upcomingFundingRate, user.notional);
+            upcomingFundingPayment = LibMath.wadDiv(upcomingFundingRate, user.notional.toInt256());
         }
         return upcomingFundingPayment;
     }
@@ -430,7 +430,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         int256 fundingPayments = getFundingPayments(user, global);
         int256 unrealizedPnl = 0; /// toDO: requires implementation of curve pool;
         int256 profit = getUserPosition(account).profit;
-        return LibMath.wadDiv(margin + unrealizedPnl + fundingPayments + profit, user.notional);
+        return LibMath.wadDiv(margin + unrealizedPnl + fundingPayments + profit, user.notional.toInt256());
     }
 
     function liquidate(address account) external {
@@ -440,7 +440,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // load information about state
         LibPerpetual.TraderPosition storage user = userPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        int256 notionalAmount = user.notional;
+        uint256 notionalAmount = user.notional;
 
         //TODO: add check to ensure that user is indeed under MIN_MARGIN before doing the liquidation
 
@@ -448,7 +448,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         _closePosition(user, global);
 
         // liquidation costs
-        int256 liquidationFee = (notionalAmount * LIQUIDATION_FEE) / PRECISION;
+        int256 liquidationFee = (notionalAmount.toInt256() * LIQUIDATION_FEE) / PRECISION;
 
         // profits - liquidationFee gets paid out
         int256 reducedProfit = user.profit - liquidationFee;
