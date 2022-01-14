@@ -6,7 +6,7 @@ import {
 } from 'hardhat';
 import env = require('hardhat');
 
-import {fundAccountWithUSDC} from './utils/changeBalance';
+import {fundAccountWithUSDC} from './utils/manipulateStorage';
 // helpers
 import {getReserveAddress} from '../../../helpers/contract-getters';
 import {
