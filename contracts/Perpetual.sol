@@ -182,8 +182,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         _closePosition(user, global);
 
+        //console.log("hardhat: user.profit", user.profit > 0 ? user.profit.toUint256() : (-1 * user.profit).toUint256());
         // apply changes to collateral
         vault.settleProfit(_msgSender(), user.profit);
+        user.profit = 0;
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
@@ -199,8 +201,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // update user.profit using funding payment info in the `global` struct
         settleFundingRate(user, global);
 
-        //console.log("hardhat: user.notional", user.notional.toUint256());
-        //console.log("hardhat: vQuoteProceeds", vQuoteProceeds);
+        // console.log("hardhat: user.notional", user.notional.toUint256());
+        // console.log("hardhat: vQuoteProceeds", vQuoteProceeds);
         // set trader position
         user.profit += _calculatePnL(user.notional, vQuoteProceeds);
         user.notional = 0;

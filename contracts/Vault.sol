@@ -19,6 +19,8 @@ import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
 import {LibReserve} from "./lib/LibReserve.sol";
 import {LibMath} from "./lib/LibMath.sol";
 
+import "hardhat/console.sol";
+
 /// @dev Vault must be called right after Perpetual is deployed to set Perpetual as the owner of the contract
 contract Vault is IVault, Context, IncreOwnable {
     using SafeERC20 for IERC20;
@@ -114,6 +116,11 @@ contract Vault is IVault, Context, IncreOwnable {
         balances[user] -= amount.toInt256();
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
+
+        // console.log(
+        //     "hardhat: balances[user]",
+        //     balances[user] > 0 ? balances[user].toUint256() : (-1 * balances[user]).toUint256()
+        // );
         // perform transfer
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
         return rawTokenAmount;
@@ -142,6 +149,7 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     function settleProfit(address user, int256 amount) public override onlyOwner returns (int256) {
+        //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
         balances[user] += settlement;
         return settlement;
