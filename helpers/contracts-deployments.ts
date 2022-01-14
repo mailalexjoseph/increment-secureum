@@ -85,7 +85,6 @@ export async function getChainlinkPrice(
   const answer = await oracle.latestRoundData();
   const decimals = await oracle.decimals();
   const priceAsString = hre.ethers.utils.formatUnits(answer.answer, decimals);
-  console.log(`Price: ${priceAsString}`);
   return hre.ethers.utils.parseEther(priceAsString);
 }
 

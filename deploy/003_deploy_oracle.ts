@@ -6,6 +6,7 @@ import {getOracleConstructorArgs} from '../helpers/contracts-deployments';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
+  // TODO: Do we really  need the feed registry here????
   const oracleConstructorArgs = getOracleConstructorArgs(hre);
 
   await hre.deployments.deploy('Oracle', {
