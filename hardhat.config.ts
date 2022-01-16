@@ -103,6 +103,12 @@ const config: HardhatUserConfig = {
     alice: {
       default: 3,
     },
+    trader: {
+      default: 4,
+    },
+    lp: {
+      default: 5,
+    },
   },
   etherscan: {
     // Your API key for Etherscan

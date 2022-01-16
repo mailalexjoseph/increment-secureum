@@ -45,6 +45,8 @@ export interface TestEnv {
   user: User;
   bob: User;
   alice: User;
+  trader: User;
+  lp: User;
   users: User[];
 }
 
@@ -85,9 +87,12 @@ async function _fundAcount(account: string): Promise<BigNumber> {
 }
 /// @notice: fund user accounts
 export const funding = deployments.createFixture(async () => {
-  const {bob, alice, user} = await getNamedAccounts();
+  const {deployer, bob, alice, trader, lp, user} = await getNamedAccounts();
+  await _fundAcount(deployer);
   await _fundAcount(bob);
   await _fundAcount(alice);
+  await _fundAcount(trader);
+  await _fundAcount(lp);
   return await _fundAcount(user);
 });
 
@@ -96,7 +101,7 @@ export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // get contracts
   await deployments.fixture();
   await logDeployments();
-  const {deployer, bob, alice, user} = await getNamedAccounts();
+  const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
   const contracts = await getContracts(deployer);
 
   // container
@@ -106,6 +111,8 @@ export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   testEnv.user = await setupUser(user, contracts);
   testEnv.bob = await setupUser(bob, contracts);
   testEnv.alice = await setupUser(alice, contracts);
+  testEnv.trader = await setupUser(trader, contracts);
+  testEnv.lp = await setupUser(lp, contracts);
   testEnv.users = await setupUsers(await getUnnamedAccounts(), contracts);
 
   return testEnv;
