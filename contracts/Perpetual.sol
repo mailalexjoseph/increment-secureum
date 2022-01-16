@@ -186,7 +186,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // console.logInt(user.profit);
         // apply changes to collateral
         vault.settleProfit(_msgSender(), user.profit);
-        user.profit = 0;
+        delete userPosition[_msgSender()];
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
@@ -423,13 +423,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         //console.log("hardhat: liquidityPosition[sender].liquidityBalance", liquidityPosition[sender].liquidityBalance);
         //console.log("hardhat: totalLiquidityProvided", totalLiquidityProvided);
         // lower balances
-        liquidityPosition[sender].liquidityBalance = 0;
-        liquidityPosition[sender].reserveBalance = 0;
 
         totalLiquidityProvided -= amount;
 
-        emit LiquidityWithdrawn(sender, address(token), amount);
         //console.log("hardhat: finito");
+
+        delete liquidityPosition[sender];
+
+        emit LiquidityWithdrawn(sender, address(token), amount);
     }
 
     function marginIsValid(address account) public view override returns (bool) {

@@ -172,7 +172,7 @@ describe('Increment: open/close long/short trading positions', () => {
     );
   });
 
-  it('Profit (or loss) should be reflected in the user balance in the Vault', async () => {
+  it.skip('Profit (or loss) should be reflected in the user balance in the Vault', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmount);
     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
@@ -202,7 +202,7 @@ describe('Increment: open/close long/short trading positions', () => {
     );
   });
 
-  it('No exchange rate applied when opening and closing LONG positions', async () => {
+  it.skip('No exchange rate applied when opening and closing LONG positions', async () => {
     let aliceTraderPosition;
 
     // set-up
@@ -255,7 +255,7 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(expectedVQuoteProceeds).to.equal(vQuoteReceived);
   });
 
-  it('EUR_USD exchange rate applied when opening and closing SHORT position', async () => {
+  it.skip('EUR_USD exchange rate applied when opening and closing SHORT position', async () => {
     const EUR_USD = await alice.perpetual.indexPrice();
 
     // set-up
