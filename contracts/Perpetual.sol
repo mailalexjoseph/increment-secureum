@@ -182,7 +182,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         _closePosition(user, global);
 
-        //console.log("hardhat: user.profit", user.profit > 0 ? user.profit.toUint256() : (-1 * user.profit).toUint256());
+        // console.log("user.profit");
+        // console.logInt(user.profit);
         // apply changes to collateral
         vault.settleProfit(_msgSender(), user.profit);
         user.profit = 0;
@@ -302,6 +303,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     // @notice Return the current market price
     function marketPrice() public view returns (uint256) {
         return market.price_oracle(); // vBase / vQuote
+    }
+
+    // @notice Returns the simplified (x/y) market price (TODO: remove this)
+    function realizedMarketPrice() public view returns (uint256) {
+        return LibMath.wadDiv(market.balances(0), market.balances(1));
     }
 
     function indexPrice() public view returns (int256) {
