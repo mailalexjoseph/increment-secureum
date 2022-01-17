@@ -30,7 +30,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   await hre.deployments.deploy('CryptoSwap', {
     from: deployer,
-    args: cryptoSwapConstructorArgs,
+    args: Object.values(cryptoSwapConstructorArgs),
     log: true,
   });
   const cryptoSwap = await ethers.getContract('CryptoSwap', deployer);
