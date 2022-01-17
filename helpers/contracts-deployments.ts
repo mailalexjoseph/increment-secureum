@@ -97,23 +97,23 @@ export function getCryptoSwapConstructorArgs(
   baseToken: tEthereumAddress
 ): CryptoSwapConstructorArguments {
   const FEE_RECEIVER = '0xeCb456EA5365865EbAb8a2661B0c503410e9B347'; // from: https://github.com/curvefi/curve-crypto-contract/blob/f66b0c7b33232b431a813b9201e47a35c70db1ab/scripts/deploy_mainnet_eurs_pool.py#L18
-  const cryptoSwapConstructorArgs: CryptoSwapConstructorArguments = {
-    owner: deployer /* owner*/,
-    admin_fee_receiver: FEE_RECEIVER /* admin_fee_receiver*/,
-    A: BigNumber.from(5000)
+  const cryptoSwapConstructorArgs: CryptoSwapConstructorArguments = [
+    deployer /* owner*/,
+    FEE_RECEIVER /* admin_fee_receiver*/,
+    BigNumber.from(5000)
       .mul(2 ** 2)
       .mul(10000) /* A */,
-    gamma: utils.parseEther('0.0001') /*  gamma*/,
-    mid_fee: utils.parseUnits('0.0005', 10) /*  mid_fee*/,
-    out_fee: utils.parseUnits('0.0045', 10) /*  out_fee*/,
-    allowed_extra_profit: utils.parseUnits('10', 10) /*  allowed_extra_profit*/,
-    fee_gamma: utils.parseEther('0.005') /*  fee_gamma*/,
-    adjustment_step: utils.parseEther('0.0000055') /*  adjustment_step*/,
-    admin_fee: utils.parseUnits('5', 9) /*  admin_fee*/,
-    ma_half_time: BigNumber.from(600) /*  ma_half_time*/,
-    initial_price: initialPrice /*  initial_price*/, // TODO: dont hardcode initial price
-    lp_token: lpToken,
-    reserve_tokens: [quoteToken, baseToken],
-  };
+    utils.parseEther('0.0001') /*  gamma*/,
+    utils.parseUnits('0.0005', 10) /*  mid_fee*/,
+    utils.parseUnits('0.0045', 10) /*  out_fee*/,
+    utils.parseUnits('10', 10) /*  allowed_extra_profit*/,
+    utils.parseEther('0.005') /*  fee_gamma*/,
+    utils.parseEther('0.0000055') /*  adjustment_step*/,
+    utils.parseUnits('5', 9) /*  admin_fee*/,
+    BigNumber.from(600) /*  ma_half_time*/,
+    initialPrice /*  initial_price*/, // TODO: dont hardcode initial price
+    lpToken,
+    [quoteToken, baseToken],
+  ];
   return cryptoSwapConstructorArgs;
 }

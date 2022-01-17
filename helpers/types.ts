@@ -110,19 +110,32 @@ export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
 
 export type OracleConstructorArguments = [tEthereumAddress];
 
-export type CryptoSwapConstructorArguments = {
-  owner: tEthereumAddress;
-  admin_fee_receiver: tEthereumAddress;
-  A: BigNumber;
-  gamma: BigNumber;
-  mid_fee: BigNumber;
-  out_fee: BigNumber;
-  allowed_extra_profit: BigNumber;
-  fee_gamma: BigNumber;
-  adjustment_step: BigNumber;
-  admin_fee: BigNumber;
-  ma_half_time: BigNumber;
-  initial_price: BigNumber;
-  lp_token: tEthereumAddress;
-  reserve_tokens: [tEthereumAddress, tEthereumAddress];
-};
+export type CryptoSwapConstructorArguments = [
+  tEthereumAddress,
+  tEthereumAddress,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  BigNumber,
+  tEthereumAddress,
+  [tEthereumAddress, tEthereumAddress]
+];
+
+// owner: address,
+// admin_fee_receiver: address,
+// A: uint256,
+// gamma: uint256,
+// mid_fee: uint256,
+// out_fee: uint256,
+// allowed_extra_profit: uint256,
+// fee_gamma: uint256,
+// adjustment_step: uint256,
+// admin_fee: uint256,
+// ma_half_time: uint256,
+// initial_price: uint256
