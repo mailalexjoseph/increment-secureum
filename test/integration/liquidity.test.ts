@@ -1,29 +1,19 @@
 import {expect} from 'chai';
-import {ethers} from 'hardhat';
 import {BigNumber} from 'ethers';
 import env = require('hardhat');
 
+// helpers
 import {setup, funding, User} from './helpers/setup';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
+  setupUser,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-deployments';
 import {asBigNumber, rDiv} from './helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from './helpers/utils/types';
-
-import {Perpetual} from '../../typechain';
-
-const {getSigner} = ethers;
-
-const logPrice = async (perp: Perpetual) => {
-  console.log(
-    'marketPrice is',
-    ethers.utils.formatEther(await perp.marketPrice())
-  );
-};
 
 describe('Increment App: Liquidity', function () {
   let user: User, bob: User, alice: User;
@@ -190,17 +180,16 @@ describe('Increment App: Liquidity', function () {
 
         /* take over curve pool & fund with ether*/
         await impersonateAccountsHardhat([user.market.address], env);
-        const marketSigner = await getSigner(user.market.address);
+        const marketAccount = await setupUser(user.market.address, {
+          vEUR: user.vEUR,
+        });
         await fundAccountsHardhat([user.market.address], env);
 
         /* withdraw liquidity from curve pool*/
-        const vEUR = await ethers.getContract('VBase', user.address);
-        await vEUR
-          .connect(marketSigner)
-          .transfer(
-            DEAD_ADDRESS,
-            await user.vEUR.balanceOf(user.market.address)
-          );
+        await marketAccount.vEUR.transfer(
+          DEAD_ADDRESS,
+          await user.vEUR.balanceOf(user.market.address)
+        );
         expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
 
         // try withdrawal from pool:
@@ -262,7 +251,7 @@ describe('Increment App: Liquidity', function () {
           liquidityAmount
         ); // deposited liquidity with 18 decimals
 
-        const PRECISON = asBigNumber('1');
+        const PRECISION = asBigNumber('1');
         await expect(
           user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
         )
@@ -271,7 +260,7 @@ describe('Increment App: Liquidity', function () {
             user.perpetual.address,
             [
               liquidityWadAmount.div(2),
-              liquidityWadAmount.div(2).mul(PRECISON).div(price),
+              liquidityWadAmount.div(2).mul(PRECISION).div(price),
             ],
             0,
             0
