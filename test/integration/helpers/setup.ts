@@ -52,14 +52,9 @@ export interface TestEnv {
 
 /// @notice: get all deployed contracts
 const getContracts = async (deployerAccount: string) => {
-  const vEUR = <VirtualToken>await ethers.getContract('VBase', deployerAccount);
-  const vUSD = <VirtualToken>(
-    await ethers.getContract('VQuote', deployerAccount)
-  );
-
   return {
-    vEUR,
-    vUSD,
+    vEUR: <VirtualToken>await ethers.getContract('VBase', deployerAccount),
+    vUSD: <VirtualToken>await ethers.getContract('VQuote', deployerAccount),
     market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
     oracle: <Oracle>await ethers.getContract('Oracle', deployerAccount),
     vault: <Vault>await ethers.getContract('Vault', deployerAccount),
@@ -79,7 +74,7 @@ const getContracts = async (deployerAccount: string) => {
   };
 };
 
-async function _fundAcount(account: string): Promise<BigNumber> {
+async function _fundAccount(account: string): Promise<BigNumber> {
   const {usdc} = await getContracts(account);
   const fullAmount = await convertToCurrencyDecimals(usdc, '100');
   await fundAccountWithUSDC(env, usdc, account, fullAmount);
@@ -87,19 +82,20 @@ async function _fundAcount(account: string): Promise<BigNumber> {
 }
 /// @notice: fund user accounts
 export const funding = deployments.createFixture(async () => {
-  const {deployer, bob, alice, trader, lp, user} = await getNamedAccounts();
-  await _fundAcount(deployer);
-  await _fundAcount(bob);
-  await _fundAcount(alice);
-  await _fundAcount(trader);
-  await _fundAcount(lp);
-  return await _fundAcount(user);
+  const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
+
+  await _fundAccount(deployer);
+  await _fundAccount(bob);
+  await _fundAccount(alice);
+  await _fundAccount(trader);
+  await _fundAccount(lp);
+  return await _fundAccount(user);
 });
 
 /// @notice: Main deployment function
 export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // get contracts
-  await deployments.fixture();
+  await deployments.fixture('UpdateReferencesToPerpetual');
   await logDeployments();
   const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
   const contracts = await getContracts(deployer);

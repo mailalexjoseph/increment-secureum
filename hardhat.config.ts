@@ -109,6 +109,12 @@ const config: HardhatUserConfig = {
     lp: {
       default: 5,
     },
+    traderTwo: {
+      default: 4,
+    },
+    lpTwo: {
+      default: 5,
+    },
   },
   etherscan: {
     // Your API key for Etherscan
