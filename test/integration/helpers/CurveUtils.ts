@@ -7,13 +7,13 @@ import {BigNumber} from '../../../helpers/types';
 import {asBigNumber} from './utils/calculations';
 import {ethers} from 'hardhat';
 
-/// returns the amount of tokens transfered back to the user
+/// returns the amount of tokens transferred back to the user
 export async function TEST_get_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<[BigNumber, BigNumber]> {
-  const [amountReturned, _] = await calcRemoveLiquidity(
+  const [amountReturned] = await calcRemoveLiquidity(
     market,
     _amount,
     min_amounts
@@ -27,7 +27,7 @@ export async function TEST_dust_remove_liquidity(
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<[BigNumber, BigNumber]> {
-  const [_, amountRemaining] = await calcRemoveLiquidity(
+  const [, amountRemaining] = await calcRemoveLiquidity(
     market,
     _amount,
     min_amounts
@@ -255,17 +255,17 @@ async function getParameterization(
   return [PRECISION, PRECISIONS, price_scale];
 }
 
-function logConfiguration(
-  i: number,
-  j: number,
-  dx: BigNumber,
-  y: BigNumber,
-  PRECISION: BigNumber,
-  price_scale: BigNumber
-): void {
-  console.log('get_dy(, i, j, dx)');
-  console.log('i: ', i.toString(), 'j: ', j.toString(), 'dx: ', dx.toString());
-  console.log('PRECISION: ', PRECISION.toString());
-  console.log('price_scale', price_scale.toString());
-  console.log('y', y.toString());
-}
+// function logConfiguration(
+//   i: number,
+//   j: number,
+//   dx: BigNumber,
+//   y: BigNumber,
+//   PRECISION: BigNumber,
+//   price_scale: BigNumber
+// ): void {
+//   console.log('get_dy(, i, j, dx)');
+//   console.log('i: ', i.toString(), 'j: ', j.toString(), 'dx: ', dx.toString());
+//   console.log('PRECISION: ', PRECISION.toString());
+//   console.log('price_scale', price_scale.toString());
+//   console.log('y', y.toString());
+// }
