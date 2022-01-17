@@ -1,9 +1,8 @@
 import {expect} from 'chai';
 import {BigNumber} from 'ethers';
-import {getNamedAccounts} from 'hardhat';
+import {getNamedAccounts, deployments} from 'hardhat';
 import {ethers} from 'hardhat';
-
-import {TestLibFunding__factory} from '../../typechain';
+import env = require('hardhat');
 import {TestLibFunding} from '../../typechain';
 import {
   asBigNumber,
@@ -30,11 +29,11 @@ const calcTradePremium = (marketPrice: BigNumber, indexPrice: BigNumber) =>
 
 const calcCumTradePremium = (
   premium: BigNumber,
-  startTime: number,
+  START_TIME: number,
   endTime: number
 ) =>
-  endTime > startTime
-    ? BigNumber.from(endTime - startTime).mul(premium)
+  endTime > START_TIME
+    ? BigNumber.from(endTime - START_TIME).mul(premium)
     : asBigNumber('0');
 
 const calcFundingRate = (
@@ -50,7 +49,7 @@ type User = {address: string} & {
   funding: TestLibFunding;
 };
 
-describe('Funding libary: Unit tests', function () {
+describe('Funding library: Unit tests', async function () {
   // contract and accounts
   let user: User;
 
@@ -62,33 +61,30 @@ describe('Funding libary: Unit tests', function () {
     cumFundingRate: BigNumber;
 
   // function arguments
-  let marketPrice: BigNumber,
-    indexPrice: BigNumber,
-    currentTime: number,
-    TWAP_FREQUENCY: number;
-
-  // test parameters
-  let startTime: number;
+  let marketPrice: BigNumber, indexPrice: BigNumber, currentTime: number;
 
   // constants
   const SENSITIVITY = asBigNumber('1');
+  const START_TIME = await getLatestTimestamp();
+  const TWAP_FREQUENCY = minutes(15);
+
+  const setup = deployments.createFixture(async (): Promise<User> => {
+    const {deployer} = await getNamedAccounts();
+
+    await env.deployments.deploy('TestLibFunding', {
+      from: deployer,
+      log: true,
+    });
+
+    user = await setupUser(deployer, {
+      funding: await ethers.getContract('TestLibFunding', deployer),
+    });
+
+    return user;
+  });
 
   beforeEach(async () => {
-    // get contract
-    const [deployerSigner] = await ethers.getSigners();
-    const FundingFactory = new TestLibFunding__factory(deployerSigner);
-    const fundingContract = await FundingFactory.deploy();
-
-    // get accounts
-
-    const {deployer} = await getNamedAccounts();
-    user = await setupUser(deployer, {funding: fundingContract});
-
-    // default parameters
-    startTime = await getLatestTimestamp();
-    TWAP_FREQUENCY = minutes(15);
-
-    expect(user.address).to.be.equal(await deployerSigner.getAddress());
+    user = await setup();
   });
 
   describe('Can handle first transaction', async function () {
@@ -104,15 +100,15 @@ describe('Funding libary: Unit tests', function () {
       await user.funding.calculateFunding(
         asBigNumber('1'),
         asBigNumber('1'),
-        startTime,
+        START_TIME,
         minutes(15)
       );
       // check wether results are to be expected
       const position = await user.funding.getGlobalPosition();
       //console.log(position);
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
-      expect(position.timeOfLastTrade).to.be.equal(startTime);
-      expect(position.timeStamp).to.be.equal(startTime);
+      expect(position.timeOfLastTrade).to.be.equal(START_TIME);
+      expect(position.timeStamp).to.be.equal(START_TIME);
       expect(position.premium).to.be.equal(asBigNumber('0'));
       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
     });
@@ -121,8 +117,8 @@ describe('Funding libary: Unit tests', function () {
     beforeEach(async () => {
       // initial parameters after first call
       cumTradePremium = asBigNumber('0');
-      timeOfLastTrade = startTime;
-      timeStamp = startTime;
+      timeOfLastTrade = START_TIME;
+      timeStamp = START_TIME;
       premium = asBigNumber('0');
       cumFundingRate = asBigNumber('0');
 
@@ -137,7 +133,7 @@ describe('Funding libary: Unit tests', function () {
     it('trade in funding rate window', async () => {
       marketPrice = asBigNumber('1');
       indexPrice = asBigNumber('1.1');
-      currentTime = startTime + minutes(5);
+      currentTime = START_TIME + minutes(5);
       await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
@@ -153,22 +149,22 @@ describe('Funding libary: Unit tests', function () {
       );
       const eCumTradePremium: BigNumber = calcCumTradePremium(
         eTradePremium,
-        startTime,
+        START_TIME,
         currentTime
       );
-      // console.log('Time difference', currentTime - startTime);
+      // console.log('Time difference', currentTime - START_TIME);
       // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
       expect(position.cumTradePremium).to.be.equal(eCumTradePremium);
       expect(position.timeOfLastTrade).to.be.equal(currentTime);
-      expect(position.timeStamp).to.be.equal(startTime);
+      expect(position.timeStamp).to.be.equal(START_TIME);
       expect(position.premium).to.be.equal(asBigNumber('0'));
       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
     });
     it('trade after funding rate window', async () => {
       marketPrice = asBigNumber('1');
       indexPrice = asBigNumber('1.1');
-      currentTime = startTime + TWAP_FREQUENCY + 1; // after funding rate window
+      currentTime = START_TIME + TWAP_FREQUENCY + 1; // after funding rate window
       await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
@@ -184,10 +180,10 @@ describe('Funding libary: Unit tests', function () {
       );
       const eCumTradePremium: BigNumber = calcCumTradePremium(
         eTradePremium,
-        startTime,
+        START_TIME,
         currentTime
       );
-      // console.log('Time difference', currentTime - startTime);
+      // console.log('Time difference', currentTime - START_TIME);
       // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
@@ -197,13 +193,13 @@ describe('Funding libary: Unit tests', function () {
       const eFundingRate = calcFundingRate(
         SENSITIVITY,
         eCumTradePremium,
-        currentTime - startTime
+        currentTime - START_TIME
       );
 
       // console.log(
       //   'SENSITIVITY x cumTradePremium' + rMul(SENSITIVITY, eCumTradePremium)
       // );
-      // console.log('timePassed is' + BigNumber.from(currentTime - startTime));
+      // console.log('timePassed is' + BigNumber.from(currentTime - START_TIME));
       // console.log('1 days' + BigNumber.from(days(1)));
       // console.log('eCumFundingRate is: ' + eFundingRate);
       expect(position.cumFundingRate).to.be.equal(eFundingRate);
@@ -215,7 +211,7 @@ describe('Funding libary: Unit tests', function () {
       /************* FIRST TRADE ***************/
       // initial parameters for first call
 
-      currentTime = startTime + minutes(5); // before end of funding rate window
+      currentTime = START_TIME + minutes(5); // before end of funding rate window
       const timeOfTradeOne = currentTime; // before end of funding rate window
       await user.funding.calculateFunding(
         marketPrice,
@@ -231,12 +227,12 @@ describe('Funding libary: Unit tests', function () {
       );
       const eCumTradePremiumTmp: BigNumber = calcCumTradePremium(
         eTradePremium1,
-        startTime,
+        START_TIME,
         currentTime
       );
 
       /************* SECOND TRADE ***************/
-      currentTime = startTime + TWAP_FREQUENCY + 1; // after end of funding rate window
+      currentTime = START_TIME + TWAP_FREQUENCY + 1; // after end of funding rate window
       await user.funding.calculateFunding(
         marketPrice,
         indexPrice,
@@ -258,7 +254,7 @@ describe('Funding libary: Unit tests', function () {
       /************* CHECK RSLTs ***************/
 
       const position = await user.funding.getGlobalPosition();
-      // console.log('Time difference', currentTime - startTime);
+      // console.log('Time difference', currentTime - START_TIME);
       // console.log('ePremium is: ' + eTradePremium);
       // console.log('eCumTradePremium is: ' + eCumTradePremium);
       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
@@ -268,13 +264,13 @@ describe('Funding libary: Unit tests', function () {
       const eFundingRate = calcFundingRate(
         SENSITIVITY,
         eCumTradePremiumFinal,
-        currentTime - startTime
+        currentTime - START_TIME
       );
 
       // console.log(
       //   'SENSITIVITY x cumTradePremium' + rMul(SENSITIVITY, eCumTradePremium)
       // );
-      // console.log('timePassed is' + BigNumber.from(currentTime - startTime));
+      // console.log('timePassed is' + BigNumber.from(currentTime - START_TIME));
       // console.log('1 days' + BigNumber.from(days(1)));
       // console.log('eCumFundingRate is: ' + eFundingRate);
       expect(position.cumFundingRate).to.be.equal(eFundingRate);
