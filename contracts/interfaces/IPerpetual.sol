@@ -24,15 +24,15 @@ interface IPerpetual {
         address indexed user,
         uint128 indexed timeStamp,
         LibPerpetual.Side direction,
-        uint256 notional,
-        uint256 amount
+        int256 notional,
+        int256 amount
     );
     event ClosePosition(
         address indexed user,
         uint128 indexed timeStamp,
         LibPerpetual.Side direction,
         int256 notional,
-        uint256 amount
+        int256 amount
     );
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, uint256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
@@ -54,8 +54,8 @@ interface IPerpetual {
     function vault() external view returns (IVault);
 
     // buy/ sell functions
-    //@audit flag
-    function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (uint256);
+
+    function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
 
     function closePosition() external;
 
@@ -78,7 +78,7 @@ interface IPerpetual {
 
     function marginRatio(address account) external view returns (int256);
 
-    function marginIsValid(address account) external view returns (bool);
+    function marginIsValid(address account, int256 ratio) external view returns (bool);
 
     // liquidator provider functions
     function provideLiquidity(uint256 amount, IERC20 token) external returns (uint256, uint256);

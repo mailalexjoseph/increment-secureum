@@ -20,8 +20,15 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log(
     'We have updated the references of vEUR, vUSD and Vault to Perpetual'
   );
-};
 
+  const MAX_MINT_AMOUNTS = [
+    ethers.utils.parseEther('1000'),
+    ethers.utils.parseEther('1000'),
+  ];
+  await perpetual.mintTokens(MAX_MINT_AMOUNTS);
+
+  console.log('We have minted initial liquidity');
+};
 func.tags = ['UpdateReferencesToPerpetual'];
 func.id = 'update_vBase_vQuote_vault_to_reference_Perpetual';
 func.dependencies = ['AddChainlinkOracles', 'Perpetual'];

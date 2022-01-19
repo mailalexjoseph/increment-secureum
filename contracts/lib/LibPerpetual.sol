@@ -20,11 +20,10 @@ library LibPerpetual {
     }
 
     struct TraderPosition {
-        uint256 notional; // amount spent in usdc converted to a 18 decimal amount to open the position (can include leverage)
-        uint256 positionSize; // in vBase if side is Long or vQuote if side is Short
-        int256 profit;
-        Side side;
+        int256 openNotional; // amount spent in usdc converted to a 18 decimal amount to open the position (can include leverage)
+        int256 positionSize; // in vBase if side is Long or vQuote if side is Short
         int256 cumFundingRate;
+        int256 profit; // TODO: can you remove this?
     }
 
     struct LiquidityPosition {

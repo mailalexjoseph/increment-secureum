@@ -32,10 +32,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // parameterization
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
+
     uint256 public constant LIQUIDATION_FEE = 60e15; // 6%
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 public constant FEE = 3e16; // 3%
-    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE;
+    int256 public constant MIN_MARGIN_AT_CREATION = 50e15; // 5%
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
     int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
@@ -113,7 +114,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
-        require(getUserPosition(_msgSender()).notional == 0, "Has open position");
+        require(getUserPosition(_msgSender()).openNotional == 0, "Has open position");
 
         vault.withdraw(_msgSender(), amount, token);
         emit Withdraw(_msgSender(), address(token), amount);
@@ -121,71 +122,82 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Open position, long or short
     /// @notice Prices are quoted in vQuote: https://www.delta.exchange/blog/support/what-is-an-inverse-futures-contract
-    /// @param amount Amount of virtual tokens to be bought
-    /// @param direction Side of the position to open, long or short
+    /// @param amount Amount of virtual tokens to be sold
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN
     /// @dev No checks are done if bought amount exceeds allowance
-    function openPosition(uint256 amount, LibPerpetual.Side direction) external override returns (uint256) {
+    function openPosition(uint256 amount, LibPerpetual.Side direction) external override returns (int256, int256) {
+        /*
+            if amount > 0
+
+                trader goes long EUR
+                trader accrues openNotional debt
+                trader accrues positionSize assets
+
+                openNotional = vUSD traded   to market   ( < 0)
+                positionSize = vEUR received from market ( > 0)
+
+            else amount < 0
+
+                trader goes short EUR
+                trader accrues openNotional assets
+                trader accrues positionSize debt
+
+                openNotional = vUSD received from market ( > 0)
+                positionSize = vEUR traded   to market   ( < 0)
+
+        */
+
         address sender = _msgSender();
-        LibPerpetual.TraderPosition storage user = userPosition[sender];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
 
-        // transform USDC amount with 6 decimals to a value with 18 decimals
-        uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
-
-        // Checks
-        require(convertedWadAmount > 0, "The amount can't be null");
-        require(user.notional == 0, "Cannot open a position with one already opened");
-
-        int256 prospectiveMargin = LibMath.wadDiv(vault.getReserveValue(sender), convertedWadAmount.toInt256());
-        require(
-            prospectiveMargin >= MIN_MARGIN_AT_CREATION,
-            "Not enough funds in the vault for the margin of this position"
-        );
+        require(amount > 0, "Not zero amount");
+        require(userPosition[sender].openNotional == 0, "Cannot open a position with one already opened");
 
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
 
-        // Buy virtual tokens for the position
-        uint256 vTokenBought = _openPositionOnMarket(convertedWadAmount, direction);
+        // open position
+        bool isLong = direction == LibPerpetual.Side.Long ? true : false;
+        (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong);
 
-        // Update trader position
-        user.notional = convertedWadAmount;
-        user.positionSize = vTokenBought;
-        user.profit = 0;
-        user.side = direction;
-        user.cumFundingRate = global.cumFundingRate;
+        // update position
+        userPosition[sender] = LibPerpetual.TraderPosition({
+            openNotional: openNotional,
+            positionSize: positionSize,
+            cumFundingRate: globalPosition.cumFundingRate,
+            profit: 0
+        });
 
-        emit OpenPosition(sender, uint128(block.timestamp), direction, convertedWadAmount, vTokenBought);
-        return vTokenBought;
+        require(marginIsValid(sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
+
+        emit OpenPosition(sender, uint128(block.timestamp), direction, openNotional, positionSize);
+
+        return (openNotional, positionSize);
     }
 
-    /// @notice Create virtual tokens and sell them in the pool
-    function _openPositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
-        uint256 vTokenBought = 0;
+    function _openPosition(uint256 amount, bool isLong) internal returns (int256 openNotional, int256 positionSize) {
+        /*  if long:
+                openNotional = vUSD traded   to market   ( < 0)
+                positionSize = vEUR received from market ( > 0)
+            if short:
+                openNotional = vEUR traded   to market   ( < 0)
+                positionSize = vUSD received from market ( > 0)
+        */
 
-        // long: swap vQuote for vBase
-        // short: swap vBase for vQuote
-        if (direction == LibPerpetual.Side.Long) {
-            vQuote.mint(amount);
-            vTokenBought = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
-        } else if (direction == LibPerpetual.Side.Short) {
-            uint256 baseOnQuotePrice = indexPrice().toUint256();
-            uint256 vBaseAmount = LibMath.wadDiv(amount, baseOnQuotePrice);
-
-            vBase.mint(vBaseAmount);
-            vTokenBought = market.exchange(VBASE_INDEX, VQUOTE_INDEX, vBaseAmount, 0);
+        if (isLong) {
+            positionSize = -(market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0)).toInt256();
+            openNotional = amount.toInt256();
+        } else {
+            positionSize = (market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0)).toInt256();
+            openNotional = -amount.toInt256();
         }
-        return vTokenBought;
     }
 
     /// @notice Closes position from account holder
     function closePosition() external override {
         LibPerpetual.TraderPosition storage user = userPosition[_msgSender()];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-
-        require(user.notional != 0, "No position currently opened");
+        require(user.openNotional != 0, "No position currently opened");
 
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
@@ -202,43 +214,37 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
     /// @notice user.profit is the sum of funding payments and the position PnL
+    /// @dev Used both by traders closing their own positions and liquidators liquidaty other people's positions
+    /// @notice user.profit is the sum of funding payments and the position PnL
     function _closePosition(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
-        uint256 amount = user.positionSize;
-        LibPerpetual.Side direction = user.side;
-
-        uint256 vQuoteProceeds = _closePositionOnMarket(amount, direction);
-
         // update user.profit using funding payment info in the `global` struct
-        settleFundingRate(user, global);
+        user.profit += _settleFundingRate(user, global);
+        user.profit += user.openNotional - _closePositionOnMarket(user.positionSize);
 
-        // console.log("hardhat: user.notional", user.notional.toUint256());
-        // console.log("hardhat: vQuoteProceeds", vQuoteProceeds);
-        // set trader position
-        user.profit += _calculatePnL(user.notional.toInt256(), vQuoteProceeds.toInt256());
-        user.notional = 0;
+        user.openNotional = 0;
         user.positionSize = 0;
     }
 
-    /// @notice Sell back virtual tokens and burn the ones received
-    function _closePositionOnMarket(uint256 amount, LibPerpetual.Side direction) internal returns (uint256) {
-        uint256 vQuoteProceeds = 0;
+    function _closePositionOnMarket(int256 positionSize) internal returns (int256 vQuoteProceeds) {
+        bool isLong = positionSize > 0 ? true : false;
+        uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
 
-        if (direction == LibPerpetual.Side.Long) {
-            uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
-            vQuote.burn(vQuoteReceived);
-
-            vQuoteProceeds = vQuoteReceived;
+        if (isLong) {
+            uint256 amount = market.exchange(VBASE_INDEX, VQUOTE_INDEX, position, 0);
+            vQuoteProceeds = amount.toInt256();
         } else {
-            uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0);
-            vBase.burn(vBaseReceived);
+            // sell for exact tokens
+            uint256 amount = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, position);
+            uint256 vBaseProceeds = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
 
-            uint256 baseOnQuotePrice = indexPrice().toUint256();
-            vQuoteProceeds = LibMath.wadMul(vBaseReceived, baseOnQuotePrice);
+            console.log("vBaseProceeds:", vBaseProceeds);
+            console.log("position:", position);
+
+            require(vBaseProceeds == position, "Not enough returned");
+            vQuoteProceeds = -amount.toInt256();
         }
-
-        return vQuoteProceeds;
     }
 
     /// @notice Calculate the funding rate for the current block
@@ -261,20 +267,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         }
     }
 
-    // get information about position
-    function _calculatePnL(int256 boughtPrice, int256 soldPrice) internal pure returns (int256) {
-        return soldPrice - boughtPrice;
-    }
-
     /// @notice Applies the funding payments on user.profit
-    function settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
+    function _settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
+        returns (int256 upcomingFundingPayment)
     {
-        if (user.notional != 0) {
+        if (user.openNotional != 0) {
             // update user variables when position opened before last update
-            int256 upcomingFundingPayment = getFundingPayments(user, global);
-            user.profit += upcomingFundingPayment;
-            emit Settlement(_msgSender(), upcomingFundingPayment);
+            upcomingFundingPayment = getFundingPayments(user, global);
+            emit Settlement(_msgSender(), uint128(block.timestamp), upcomingFundingPayment);
         }
 
         // update user variables to global state
@@ -285,7 +286,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function getFundingPayments(LibPerpetual.TraderPosition memory user, LibPerpetual.GlobalPosition memory global)
         public
         pure
-        returns (int256)
+        returns (int256 upcomingFundingPayment)
     {
         /* Funding rates (as defined in our protocol) are paid from shorts to longs
 
@@ -295,14 +296,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             comment: Making an negative funding payment is equvalent to receiving a positive one.
         */
         int256 upcomingFundingRate = 0;
-        int256 upcomingFundingPayment = 0;
         if (user.cumFundingRate != global.cumFundingRate) {
-            if (user.side == LibPerpetual.Side.Long) {
+            if (user.positionSize > 0) {
                 upcomingFundingRate = global.cumFundingRate - user.cumFundingRate;
             } else {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
             }
-            upcomingFundingPayment = LibMath.wadDiv(upcomingFundingRate, user.notional.toInt256());
+            upcomingFundingPayment = LibMath.wadDiv(upcomingFundingRate, user.openNotional);
         }
         return upcomingFundingPayment;
     }
@@ -440,25 +440,20 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         emit LiquidityWithdrawn(sender, address(token), amount);
     }
 
-    function marginIsValid(address account) public view override returns (bool) {
+    function marginIsValid(address account, int256 ratio) public view override returns (bool) {
         int256 marginRatioRes = marginRatio(account);
-        // console.log("marginRatioRes");
-        // console.logInt(marginRatioRes);
-        // console.log("MIN_MARGIN");
-        // console.logInt(MIN_MARGIN);
-
-        return marginRatioRes >= MIN_MARGIN;
-        // return marginRatio(account) <= MIN_MARGIN;
+        return marginRatioRes >= ratio;
     }
 
     function marginRatio(address account) public view override returns (int256) {
         LibPerpetual.TraderPosition memory user = userPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
 
-        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.notional
+        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.openNotional
         // all amounts should be expressed in vQuote/USD, otherwise the end result doesn't make sense
         int256 collateral = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
+        int256 unrealizedPositionPnl = getUnrealizedPositionPnl(user.positionSize, user.openNotional);
 
         int256 vQuoteVirtualProceeds = 0;
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
@@ -483,25 +478,31 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
 
-        require(!marginIsValid(account), "Margin is valid");
+        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
         address liquidator = _msgSender();
 
         // load information about state
         LibPerpetual.TraderPosition storage user = userPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        uint256 notionalAmount = user.notional;
+        uint256 openNotional = uint256(user.openNotional); // TODO: is this safe??
 
         _closePosition(user, global);
 
-        uint256 liquidationFeeAmount = LibMath.wadMul(notionalAmount, LIQUIDATION_FEE);
+        uint256 liquidationFeeAmount = LibMath.wadMul(openNotional, LIQUIDATION_FEE);
 
-        // substract fee from user account
+        // subtract fee from user account
         int256 reducedProfit = user.profit - liquidationFeeAmount.toInt256();
         vault.settleProfit(account, reducedProfit);
 
         // add fee to liquidator account
         vault.settleProfit(liquidator, liquidationFeeAmount.toInt256());
 
-        emit LiquidationCall(account, liquidator, uint128(block.timestamp), notionalAmount);
+        emit LiquidationCall(account, liquidator, uint128(block.timestamp), openNotional);
+    }
+
+    // admin setter
+    function mintTokens(uint256[2] calldata maxMintAmounts) external onlyOwner {
+        vQuote.mint(maxMintAmounts[0]);
+        vBase.mint(maxMintAmounts[1]);
     }
 }

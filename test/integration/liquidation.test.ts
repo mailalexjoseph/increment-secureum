@@ -87,9 +87,9 @@ describe('Increment: liquidation', () => {
       'LiquidationCall'
     );
 
-    // Check trader's position is closed, i.e. user.notional and user.positionSize = 0
+    // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
     const alicePosition = await alice.perpetual.getUserPosition(alice.address);
-    expect(alicePosition.notional).to.eq(0);
+    expect(alicePosition.openNotional).to.eq(0);
     expect(alicePosition.positionSize).to.eq(0);
 
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
