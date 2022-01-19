@@ -96,6 +96,7 @@ export const funding = deployments.createFixture(async () => {
 export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // get contracts
   await deployments.fixture('UpdateReferencesToPerpetual');
+
   await logDeployments();
   const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
   const contracts = await getContracts(deployer);

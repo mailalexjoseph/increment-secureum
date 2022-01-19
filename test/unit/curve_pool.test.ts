@@ -20,6 +20,8 @@ import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments'
 import {setupUser} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
 
+import {initialPrice} from '../helpers/deploy/002_create_curve_pool';
+
 type User = {address: string} & {
   vBase: VBase;
   vQuote: VQuote;
@@ -42,7 +44,7 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
 
   // fund account with ether
   // await fundAccountsHardhat([DEPLOYER], env);
-  await deployments.fixture('CurvePool');
+  await deployments.fixture('CurvePool_test');
 
   const contracts = {
     market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployer),
@@ -169,8 +171,6 @@ describe('Cryptoswap: Unit tests', function () {
   }
   describe('Init', function () {
     it('Initialize parameters correctly', async function () {
-      const initialPrice = await getChainlinkPrice(env, 'EUR_USD');
-
       const {
         owner,
         A,

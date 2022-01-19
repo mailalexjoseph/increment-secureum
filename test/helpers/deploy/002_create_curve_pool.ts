@@ -1,8 +1,9 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {getCryptoSwapConstructorArgs} from '../helpers/contracts-deployments';
+import {getCryptoSwapConstructorArgs} from '../../../helpers/contracts-deployments';
 import {ethers} from 'hardhat';
-import {getChainlinkPrice} from '../helpers/contracts-deployments';
+
+export const initialPrice = ethers.utils.parseEther('1.131523');
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -14,11 +15,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  // get chainlink price
-  const initialPrice = await getChainlinkPrice(hre, 'EUR_USD');
-
   console.log(
-    'Use EUR/USD price of ',
+    'Use FIXED EUR/USD price of ',
     hre.ethers.utils.formatEther(initialPrice)
   );
   // deploy CryptoSwap
@@ -45,8 +43,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('We have deployed vEUR/vUSD curve pool');
 };
 
-func.tags = ['CurvePool'];
-func.id = 'call_curve_factory_to_create_curve_pool';
-func.dependencies = ['VirtualTokens'];
+func.tags = ['CurvePool_test'];
+func.id = 'call_curve_factory_to_create_curve_pool_test';
+func.dependencies = ['VirtualTokens_test'];
 
 export default func;

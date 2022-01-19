@@ -58,7 +58,7 @@
     "compile": "hardhat compile",
     "void:deploy": "hardhat deploy",
     "test": "yarn test:unit && yarn test:integration",
-    "test:integration": "yarn compile && cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha 'test/integration/*.test.ts'",
+    "test:integration": "yarn compile && cross-env HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha 'test/integration/*.test.ts'",
     "test:unit": "yarn compile && cross-env mocha --bail --recursive 'test/unit/*.test.ts'",
     "test:debug": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true hardhat",
     "gas": "cross-env REPORT_GAS=true hardhat test",
