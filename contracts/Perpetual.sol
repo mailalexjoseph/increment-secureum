@@ -435,10 +435,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function marginIsValid(address account) public view override returns (bool) {
         int256 marginRatioRes = marginRatio(account);
-        console.log("marginRatioRes");
-        console.logInt(marginRatioRes);
-        console.log("MIN_MARGIN");
-        console.logInt(MIN_MARGIN);
+        // console.log("marginRatioRes");
+        // console.logInt(marginRatioRes);
+        // console.log("MIN_MARGIN");
+        // console.logInt(MIN_MARGIN);
 
         return marginRatioRes >= MIN_MARGIN;
         // return marginRatio(account) <= MIN_MARGIN;
