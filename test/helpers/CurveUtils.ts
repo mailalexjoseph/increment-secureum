@@ -1,13 +1,13 @@
 // typechain objects
-import {CryptoSwap} from '../../../contracts-vyper/typechain/CryptoSwap';
-import {CurveTokenV5} from '../../../contracts-vyper/typechain/CurveTokenV5';
+import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
+import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 
 // utils
-import {BigNumber} from '../../../helpers/types';
-import {asBigNumber} from '../../helpers/calculations';
+import {BigNumber} from '../../helpers/types';
+import {asBigNumber} from './utils/calculations';
 import {ethers} from 'hardhat';
 
-/// returns the amount of tokens transferred back to the user
+/// @notice returns the amount of tokens transferred back to the user
 export async function TEST_get_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
@@ -21,7 +21,7 @@ export async function TEST_get_remove_liquidity(
   return amountReturned;
 }
 
-/// returns the amount of tokens remaining in the market
+/// @notice returns the amount of tokens remaining in the market
 export async function TEST_dust_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
@@ -35,6 +35,164 @@ export async function TEST_dust_remove_liquidity(
   return amountRemaining;
 }
 
+/// @notice returns the amount of tokens transferred back to the user
+export async function TEST_get_dy(
+  market: CryptoSwap,
+  i: number,
+  j: number,
+  dx: BigNumber
+): Promise<BigNumber> {
+  /*
+    print the results of the get_dy function line by line
+  */
+  if (i == j) throw new Error('i==j');
+  if (i > 2 || j > 2) throw new Error('i or j > 2');
+
+  const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
+    market
+  );
+
+  const [xp, y] = await calcNewPoolBalances(
+    market,
+    dx,
+    i,
+    j,
+    PRECISION,
+    PRECISIONS,
+    price_scale
+  );
+
+  let dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
+
+  dy = await applyFees(market, xp, dy);
+
+  return dy;
+}
+
+/// @notice returns the amount of tokens transferred back to the user
+
+export async function TEST_get_dy_fees(
+  market: CryptoSwap,
+  i: number,
+  j: number,
+  dx: BigNumber
+): Promise<BigNumber> {
+  /*
+    print the results of the get_dy function line by line
+  */
+  if (i == j) throw new Error('i==j');
+  if (i > 2 || j > 2) throw new Error('i or j > 2');
+
+  const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
+    market
+  );
+
+  const [xp, y] = await calcNewPoolBalances(
+    market,
+    dx,
+    i,
+    j,
+    PRECISION,
+    PRECISIONS,
+    price_scale
+  );
+
+  const dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
+
+  const fees = await calcFees(market, xp, dy);
+
+  return fees;
+}
+
+/// @notice returns the output of a exactOutputSwap
+export async function TEST_get_exactOutputSwap(
+  market: CryptoSwap,
+  eAmountOut: BigNumber,
+  amountInMaximum: BigNumber
+): Promise<void> {
+  // getter function to equivalent: https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
+  /*
+            uint256 amount = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, position);
+            uint256 vBaseProceeds = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
+
+            console.log("vBaseProceeds:", vBaseProceeds);
+            console.log("position:", position);
+
+            require(vBaseProceeds == position, "Not enough returned");
+            vQuoteProceeds = -amount.toInt256();
+          */
+
+  console.log('eAmountOut:', eAmountOut.toString());
+
+  const inIndex = 0;
+  const outIndex = 1;
+
+  // equation 1: how much would you get for selling the vBase token right now?
+  const inAmount = await market.get_dy(outIndex, inIndex, eAmountOut);
+
+  console.log('inAmount:', inAmount.toString());
+  if (inAmount.gt(amountInMaximum)) throw new Error('Too much required');
+
+  // fees paid for first dy
+  const feesPayedIn = await TEST_get_dy_fees(
+    market,
+    outIndex,
+    inIndex,
+    eAmountOut
+  );
+  console.log('feesPayedIn:', feesPayedIn.toString());
+
+  const inAmountInclFees = inAmount.add(feesPayedIn);
+  console.log('inAmountInclFees:', inAmountInclFees.toString());
+
+  // fees paid for second dy
+  const feesPayedOut = await TEST_get_dy_fees(
+    market,
+    inIndex,
+    outIndex,
+    inAmountInclFees
+  );
+  console.log('feesPayedOut:', feesPayedOut.toString());
+
+  // equation 2: buy vBase according to equation 1)
+  const outAmountInclFees = (
+    await market.get_dy(inIndex, outIndex, inAmountInclFees)
+  ).add(feesPayedOut);
+
+  console.log('outAmountInclFees:', outAmountInclFees.toString());
+
+  // log the final result
+  const deltaInclFees = outAmountInclFees.sub(eAmountOut);
+  console.log('deltaInclFees:', deltaInclFees.toString());
+
+  const deltaPercentInclFees = deltaInclFees
+    .mul(asBigNumber('1'))
+    .div(eAmountOut)
+    .mul(ethers.BigNumber.from(100));
+  console.log(
+    'deltaInclFees % is',
+    ethers.utils.formatEther(deltaPercentInclFees)
+  );
+}
+/*
+
+
+883319625884063498   - inAmount
+
+     444707207612999 - feesPayed
+
+ 1000000000000000000 - eAmountOut
+
+  998996826699080839 - outAmount
+   -1003173300919161 - delta:
+
+  999499771534544348 - outAmountInclFees
+    -500228465455652 - deltaInclFees
+
+
+*/
+
+/******************* HELPER FUNCTIONS  *******************/
 async function calcRemoveLiquidity(
   market: CryptoSwap,
   _amount: BigNumber,
@@ -70,72 +228,6 @@ async function curveTotalSupply(market: CryptoSwap): Promise<BigNumber> {
     curveTokenAddress
   );
   return await curveLPtoken.totalSupply();
-}
-
-export async function TEST_get_dy(
-  market: CryptoSwap,
-  i: number,
-  j: number,
-  dx: BigNumber
-): Promise<BigNumber> {
-  /*
-    print the results of the get_dy function line by line
-  */
-  if (i == j) throw new Error('i==j');
-  if (i > 2 || j > 2) throw new Error('i or j > 2');
-
-  const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
-    market
-  );
-
-  const [xp, y] = await calcNewPoolBalances(
-    market,
-    dx,
-    i,
-    j,
-    PRECISION,
-    PRECISIONS,
-    price_scale
-  );
-
-  let dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
-
-  dy = await applyFees(market, xp, dy);
-
-  return dy;
-}
-
-export async function TEST_get_dy_fees(
-  market: CryptoSwap,
-  i: number,
-  j: number,
-  dx: BigNumber
-): Promise<BigNumber> {
-  /*
-    print the results of the get_dy function line by line
-  */
-  if (i == j) throw new Error('i==j');
-  if (i > 2 || j > 2) throw new Error('i or j > 2');
-
-  const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
-    market
-  );
-
-  const [xp, y] = await calcNewPoolBalances(
-    market,
-    dx,
-    i,
-    j,
-    PRECISION,
-    PRECISIONS,
-    price_scale
-  );
-
-  const dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
-
-  const fees = await calcFees(market, xp, dy);
-
-  return fees;
 }
 
 async function calcFees(

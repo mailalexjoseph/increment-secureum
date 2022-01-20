@@ -1,10 +1,12 @@
 import {utils} from 'ethers';
+import {ethers} from 'hardhat';
 // ----------------
 // MATH
 // ----------------
 
-export const MAX_UINT_AMOUNT =
-  '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+export const MAX_UINT_AMOUNT = ethers.BigNumber.from(
+  '115792089237316195423570985008687907853269984665640564039457584007913129639935'
+);
 export const ONE_YEAR = '31536000';
 export const ZERO_ADDRESS = utils.getAddress(
   '0x0000000000000000000000000000000000000000'

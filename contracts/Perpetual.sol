@@ -177,19 +177,19 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function _openPosition(uint256 amount, bool isLong) internal returns (int256 openNotional, int256 positionSize) {
         /*  if long:
-                openNotional = vUSD traded   to market   ( < 0)
-                positionSize = vEUR received from market ( > 0)
+                openNotional = vUSD traded   to market   (or "- vUSD")
+                positionSize = vEUR received from market (or "+ vEUR")
             if short:
-                openNotional = vEUR traded   to market   ( < 0)
-                positionSize = vUSD received from market ( > 0)
+                openNotional = vUSD received from market (or "+ vUSD")
+                positionSize = vEUR traded   to market   (or "- vEUR")
         */
 
         if (isLong) {
-            positionSize = -(market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0)).toInt256();
-            openNotional = amount.toInt256();
-        } else {
-            positionSize = (market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0)).toInt256();
             openNotional = -amount.toInt256();
+            positionSize = (market.exchange(VQUOTE_INDEX, VBASE_INDEX, amount, 0)).toInt256();
+        } else {
+            openNotional = (market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0)).toInt256();
+            positionSize = -amount.toInt256();
         }
     }
 
