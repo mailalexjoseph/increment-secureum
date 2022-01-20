@@ -1,13 +1,13 @@
 import {expect} from 'chai';
 
 import env = require('hardhat');
-import {setup, funding, User} from './helpers/setup';
+import {setup, funding, User} from '../helpers/setup';
 import {ethers} from 'hardhat';
 import {BigNumber} from 'ethers';
-import {Side} from './helpers/utils/types';
+import {Side} from '../helpers/utils/types';
 import {getChainlinkOracle} from '../../helpers/contracts-deployments';
 
-import {setLatestChainlinkPrice} from './helpers/utils/manipulateStorage';
+import {setLatestChainlinkPrice} from '../helpers/utils/manipulateStorage';
 import {AggregatorV3Interface} from '../../typechain';
 
 // https://docs.chain.link/docs/ethereum-addresses/

@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 
-import {setup} from './helpers/setup';
+import {setup} from '../helpers/setup';
 
 describe('Increment Protocol: Deployment', function () {
   describe('Deployment', function () {

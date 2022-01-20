@@ -2,12 +2,12 @@ import {expect} from 'chai';
 import {utils, BigNumber, ethers} from 'ethers';
 import env from 'hardhat';
 
-import {rMul, rDiv} from '../helpers/calculations';
-import {setup, funding, User} from './helpers/setup';
-import {setUpPoolLiquidity} from './helpers/PerpetualUtils';
+import {rMul, rDiv} from '../helpers/utils/calculations';
+import {setup, funding, User} from '../helpers/setup';
+import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
-import {Side} from './helpers/utils/types';
+import {Side} from '../helpers/utils/types';
 
 describe('Increment: open/close long/short trading positions', () => {
   let alice: User;

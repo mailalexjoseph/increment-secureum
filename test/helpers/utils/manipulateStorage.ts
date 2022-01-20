@@ -1,10 +1,10 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
-import {BigNumber, tEthereumAddress} from '../../../../helpers/types';
-import {getReserveAddress} from '../../../../helpers/contract-getters';
-import {getEthereumNetworkFromHRE} from '../../../../helpers/misc-utils';
+import {BigNumber, tEthereumAddress} from '../../../helpers/types';
+import {getReserveAddress} from '../../../helpers/contract-getters';
+import {getEthereumNetworkFromHRE} from '../../../helpers/misc-utils';
 import {ethers} from 'hardhat';
 
-import {AggregatorV3Interface, IERC20} from '../../../../typechain';
+import {AggregatorV3Interface, IERC20} from '../../../typechain';
 import {expect} from 'chai';
 
 /**

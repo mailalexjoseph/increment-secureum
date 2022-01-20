@@ -1,7 +1,7 @@
 import {expect} from 'chai';
 import {utils, BigNumber} from 'ethers';
 
-import {setup, funding, User} from './helpers/setup';
+import {setup, funding, User} from '../helpers/setup';
 import {convertToCurrencyUnits} from '../../helpers/contracts-helpers';
 
 describe('Increment App: Reserve', function () {

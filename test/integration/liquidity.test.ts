@@ -3,7 +3,7 @@ import {BigNumber} from 'ethers';
 import env = require('hardhat');
 
 // helpers
-import {setup, funding, User} from './helpers/setup';
+import {setup, funding, User} from '../helpers/setup';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {
   impersonateAccountsHardhat,
@@ -11,9 +11,9 @@ import {
   setupUser,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-deployments';
-import {asBigNumber, rDiv} from '../helpers/calculations';
+import {asBigNumber, rDiv} from '../helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
-import {Side} from './helpers/utils/types';
+import {Side} from '../helpers/utils/types';
 
 describe('Increment App: Liquidity', function () {
   let user: User, bob: User, alice: User;
