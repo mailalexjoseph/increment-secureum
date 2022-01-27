@@ -1,7 +1,7 @@
 import {
   eEthereumNetwork,
   VaultConstructorArguments,
-  OracleConstructorArguments,
+  ChainlinkOracleConstructorArguments,
   CryptoSwapConstructorArguments,
   tEthereumAddress,
 } from '../helpers/types';
@@ -11,37 +11,41 @@ import {
 } from '../helpers/contract-getters';
 import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
 import {integrations} from '../markets/ethereum';
-import {OracleConfig} from '../markets/ethereum';
+import {ChainlinkOracleConfig} from '../markets/ethereum';
 import {utils, BigNumber} from 'ethers';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
-export function getOracleConstructorArgs(
+export function getChainlinkOracleConstructorArgs(
   hre: HardhatRuntimeEnvironment
-): OracleConstructorArguments {
-  return _getOracleConstructorArgsByNetwork(getEthereumNetworkFromHRE(hre));
+): ChainlinkOracleConstructorArguments {
+  return _getChainlinkOracleConstructorArgsByNetwork(
+    getEthereumNetworkFromHRE(hre)
+  );
 }
-function _getOracleConstructorArgsByNetwork(
+function _getChainlinkOracleConstructorArgsByNetwork(
   network: eEthereumNetwork
-): OracleConstructorArguments {
-  const oracleConstructorArguments: OracleConstructorArguments = [
-    getFeedRegistryAddress(network),
-  ];
-  return oracleConstructorArguments;
+): ChainlinkOracleConstructorArguments {
+  const chainlinkOracleConstructorArguments: ChainlinkOracleConstructorArguments =
+    [getFeedRegistryAddress(network)];
+  return chainlinkOracleConstructorArguments;
 }
 
 export function getVaultConstructorArgs(
   hre: HardhatRuntimeEnvironment,
-  oracleAddress: tEthereumAddress
+  chainlinkOracleAddress: tEthereumAddress
 ): VaultConstructorArguments {
-  return _getVaultArgsByNetwork(getEthereumNetworkFromHRE(hre), oracleAddress);
+  return _getVaultArgsByNetwork(
+    getEthereumNetworkFromHRE(hre),
+    chainlinkOracleAddress
+  );
 }
 
 function _getVaultArgsByNetwork(
   network: eEthereumNetwork,
-  oracleAddress: tEthereumAddress
+  chainlinkOracleAddress: tEthereumAddress
 ): VaultConstructorArguments {
   const vaultConstructorArgs: VaultConstructorArguments = [
-    oracleAddress,
+    chainlinkOracleAddress,
     getReserveAddress('USDC', network),
   ];
   return vaultConstructorArgs;
@@ -59,7 +63,7 @@ export function getChainlinkOracle(
   name: string
 ): tEthereumAddress {
   const ethereumNetwork = getEthereumNetworkFromHRE(hre);
-  return OracleConfig.ChainlinkOracles[ethereumNetwork][name];
+  return ChainlinkOracleConfig.ChainlinkOracles[ethereumNetwork][name];
 }
 
 export function getPerpetualVersionToUse(
@@ -78,12 +82,12 @@ export async function getChainlinkPrice(
   /* We have to use the chainlink price here since we use the oracle price to distribute the initial liquidity
   in the perpetual contracts. In case the price changes during deployment, the deployment could (potentially) fail.
   */
-  const oracle = await hre.ethers.getContractAt(
+  const chainlinkOracle = await hre.ethers.getContractAt(
     'AggregatorV3Interface',
     getChainlinkOracle(hre, pair)
   );
-  const answer = await oracle.latestRoundData();
-  const decimals = await oracle.decimals();
+  const answer = await chainlinkOracle.latestRoundData();
+  const decimals = await chainlinkOracle.decimals();
   const priceAsString = hre.ethers.utils.formatUnits(answer.answer, decimals);
   return hre.ethers.utils.parseEther(priceAsString);
 }

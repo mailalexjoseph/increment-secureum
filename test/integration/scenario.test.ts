@@ -17,7 +17,7 @@ describe('Increment App: Scenario', function () {
   let deployer: User, trader: User, lp: User;
 
   let liquidityAmount: BigNumber;
-  let oracle: AggregatorV3Interface;
+  let chainlinkOracle: AggregatorV3Interface;
 
   beforeEach('Set up', async () => {
     ({lp, deployer, trader} = await setup());
@@ -54,12 +54,12 @@ describe('Increment App: Scenario', function () {
     );
   }
 
-  async function changeOraclePrice(price: BigNumber) {
-    oracle = await ethers.getContractAt(
+  async function changeChainlinkOraclePrice(price: BigNumber) {
+    chainlinkOracle = await ethers.getContractAt(
       'AggregatorV3Interface',
       await getChainlinkOracle(env, 'EUR_USD')
     );
-    await setLatestChainlinkPrice(env, oracle, price);
+    await setLatestChainlinkPrice(env, chainlinkOracle, price);
   }
 
   async function checks() {
@@ -75,7 +75,7 @@ describe('Increment App: Scenario', function () {
     // );
   }
   describe('One LP & one Trader', async function () {
-    describe('1. Should remain solvent with no oracle price change', async function () {
+    describe('1. Should remain solvent with no chainlinkOracle price change', async function () {
       it.skip('1.1. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
         await provideLiquidity(liquidityAmount, lp);
 
@@ -110,7 +110,7 @@ describe('Increment App: Scenario', function () {
     describe('2. EUR/USD increases & long trade', async function () {
       it.skip('2.1. EUR/USD increases, LP provides liquidity, trader opens long position, trader closes position, LP withdraws liquidity', async function () {
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await provideLiquidity(liquidityAmount, lp);
 
@@ -130,7 +130,7 @@ describe('Increment App: Scenario', function () {
         await provideLiquidity(liquidityAmount, lp);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await openPosition(liquidityAmount.div(10), trader, Side.Long);
 
@@ -150,7 +150,7 @@ describe('Increment App: Scenario', function () {
         await openPosition(liquidityAmount.div(10), trader, Side.Long);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await closePosition(trader);
 
@@ -171,7 +171,7 @@ describe('Increment App: Scenario', function () {
         await closePosition(trader);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await withdrawLiquidity(lp);
 
@@ -185,7 +185,7 @@ describe('Increment App: Scenario', function () {
     describe('3. EUR/USD increases & short trade', async function () {
       it.skip('3.1. EUR/USD increases, LP provides liquidity, trader opens short position, trader closes position, LP withdraws liquidity', async function () {
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await provideLiquidity(liquidityAmount, lp);
 
@@ -205,7 +205,7 @@ describe('Increment App: Scenario', function () {
         await provideLiquidity(liquidityAmount, lp);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await openPosition(liquidityAmount.div(10), trader, Side.Short);
 
@@ -225,7 +225,7 @@ describe('Increment App: Scenario', function () {
         await openPosition(liquidityAmount.div(10), trader, Side.Short);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await closePosition(trader);
 
@@ -246,7 +246,7 @@ describe('Increment App: Scenario', function () {
         await closePosition(trader);
 
         // change price
-        await changeOraclePrice(parsePrice('1.2'));
+        await changeChainlinkOraclePrice(parsePrice('1.2'));
 
         await withdrawLiquidity(lp);
 
@@ -260,7 +260,7 @@ describe('Increment App: Scenario', function () {
     describe('4. EUR/USD decreases & long trade', async function () {
       it.skip('4.1. EUR/USD decreases, LP provides liquidity, trader opens long position, trader closes position, LP withdraws liquidity', async function () {
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await provideLiquidity(liquidityAmount, lp);
 
@@ -280,7 +280,7 @@ describe('Increment App: Scenario', function () {
         await provideLiquidity(liquidityAmount, lp);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await openPosition(liquidityAmount.div(10), trader, Side.Long);
 
@@ -300,7 +300,7 @@ describe('Increment App: Scenario', function () {
         await openPosition(liquidityAmount.div(10), trader, Side.Long);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await closePosition(trader);
 
@@ -321,7 +321,7 @@ describe('Increment App: Scenario', function () {
         await closePosition(trader);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await withdrawLiquidity(lp);
 
@@ -335,7 +335,7 @@ describe('Increment App: Scenario', function () {
     describe('5. EUR/USD decreases & short trade', async function () {
       it.skip('5.1. EUR/USD decreases, LP provides liquidity, trader opens short position, trader closes position, LP withdraws liquidity', async function () {
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await provideLiquidity(liquidityAmount, lp);
 
@@ -355,7 +355,7 @@ describe('Increment App: Scenario', function () {
         await provideLiquidity(liquidityAmount, lp);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await openPosition(liquidityAmount.div(10), trader, Side.Short);
 
@@ -375,7 +375,7 @@ describe('Increment App: Scenario', function () {
         await openPosition(liquidityAmount.div(10), trader, Side.Short);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await closePosition(trader);
 
@@ -395,7 +395,7 @@ describe('Increment App: Scenario', function () {
         await closePosition(trader);
 
         // change price
-        await changeOraclePrice(parsePrice('1'));
+        await changeChainlinkOraclePrice(parsePrice('1'));
 
         await withdrawLiquidity(lp);
 

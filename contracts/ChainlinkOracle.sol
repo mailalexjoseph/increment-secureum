@@ -11,10 +11,10 @@ import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 // interfaces
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
+import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 
-contract Oracle is IOracle, IncreOwnable {
+contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     using SafeCast for uint256;
     FeedRegistryInterface private registry;
 

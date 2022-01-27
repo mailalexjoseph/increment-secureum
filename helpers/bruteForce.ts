@@ -50,13 +50,13 @@ export async function findBalancesSlot(
 
 // find the price storage slot of an chainlink oracle
 export async function findPriceSlot(
-  oracleAddress: tEthereumAddress
+  chainlinkOracleAddress: tEthereumAddress
 ): Promise<number> {
   const probeA = encode(['int'], [1]);
   const probeB = encode(['int'], [2]);
-  const oracle: AggregatorV3Interface = await ethers.getContractAt(
+  const chainlinkOracle: AggregatorV3Interface = await ethers.getContractAt(
     'AggregatorV3Interface',
-    oracleAddress
+    chainlinkOracleAddress
   );
 
   // get aggregator (contract where price is stored)
@@ -64,7 +64,7 @@ export async function findPriceSlot(
   const aggregator = await (
     await ethers.getContractAt(
       ['function aggregator() view returns (address)'],
-      oracleAddress
+      chainlinkOracleAddress
     )
   ).aggregator();
   console.log('Changing storage slot of aggregator at address', aggregator);
@@ -95,7 +95,7 @@ https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html
 */
 
   // get latest round_id as uint32
-  const roundId = (await oracle.latestRoundData())[0].mod(
+  const roundId = (await chainlinkOracle.latestRoundData())[0].mod(
     ethers.BigNumber.from(ethers.BigNumber.from(2).pow(32))
   );
 
@@ -131,7 +131,7 @@ https://docs.soliditylang.org/en/latest/internals/layout_in_storage.html
     ]);
 
     // get price
-    const answer = (await oracle.latestRoundData())[1];
+    const answer = (await chainlinkOracle.latestRoundData())[1];
 
     // reset to previous value
     await env.network.provider.send('hardhat_setStorageAt', [

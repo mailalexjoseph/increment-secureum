@@ -4,7 +4,7 @@ import {ZERO_ADDRESS} from '../../helpers/constants';
 import {
   IReserveParams,
   IVaultConfiguration,
-  IOracleConfig,
+  IChainlinkOracleConfig,
 } from '../../helpers/types';
 
 // ----------------
@@ -97,6 +97,6 @@ export const VaultConfig: IVaultConfiguration = {
 // Oracle--SPECIFIC PARAMS
 // ----------------
 
-export const OracleConfig: IOracleConfig = {
+export const ChainlinkOracleConfig: IChainlinkOracleConfig = {
   ChainlinkOracles: chainlinkOracles,
 };

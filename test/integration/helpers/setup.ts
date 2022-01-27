@@ -20,7 +20,7 @@ import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
 // types
 import {
   ERC20,
-  Oracle,
+  ChainlinkOracle,
   TestPerpetual,
   Vault,
   VirtualToken,
@@ -36,7 +36,7 @@ export type User = {address: string} & {
   vBase: VirtualToken;
   vQuote: VirtualToken;
   market: CryptoSwap;
-  oracle: Oracle;
+  chainlinkOracle: ChainlinkOracle;
   curve: CurveTokenV5;
 };
 
@@ -56,7 +56,9 @@ const getContracts = async (deployerAccount: string) => {
     vBase: <VirtualToken>await ethers.getContract('VBase', deployerAccount),
     vQuote: <VirtualToken>await ethers.getContract('VQuote', deployerAccount),
     market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
-    oracle: <Oracle>await ethers.getContract('Oracle', deployerAccount),
+    chainlinkOracle: <ChainlinkOracle>(
+      await ethers.getContract('ChainlinkOracle', deployerAccount)
+    ),
     vault: <Vault>await ethers.getContract('Vault', deployerAccount),
     perpetual: <TestPerpetual>(
       await ethers.getContract('TestPerpetual', deployerAccount)

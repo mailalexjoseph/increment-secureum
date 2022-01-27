@@ -8,8 +8,8 @@ describe('Increment Protocol: Deployment', function () {
       const {deployer} = await setup();
 
       expect(await deployer.perpetual.vault()).to.equal(deployer.vault.address);
-      expect(await deployer.perpetual.oracle()).to.equal(
-        deployer.oracle.address
+      expect(await deployer.perpetual.chainlinkOracle()).to.equal(
+        deployer.chainlinkOracle.address
       );
       expect(await deployer.perpetual.market()).to.equal(
         deployer.market.address
@@ -29,8 +29,8 @@ describe('Increment Protocol: Deployment', function () {
       expect(await deployer.vault.reserveToken()).to.be.equal(
         deployer.usdc.address
       );
-      expect(await deployer.vault.oracle()).to.be.equal(
-        deployer.oracle.address
+      expect(await deployer.vault.chainlinkOracle()).to.be.equal(
+        deployer.chainlinkOracle.address
       );
       expect(await deployer.vault.totalReserveToken()).to.be.equal(0);
     });
@@ -59,8 +59,8 @@ describe('Increment Protocol: Deployment', function () {
       // console.log((await deployer.market.gamma()).toString());
       // console.log('await deployer.market.price_scale()');
       // console.log((await deployer.market.price_scale()).toString());
-      // console.log('await deployer.market.price_oracle()');
-      // console.log((await deployer.market.price_oracle()).toString());
+      // console.log('await deployer.market.price_chainlinkOracle()');
+      // console.log((await deployer.market.price_chainlinkOracle()).toString());
       // console.log('await deployer.market.last_prices()');
       // console.log((await deployer.market.last_prices()).toString());
       // console.log('await deployer.market.last_prices_timestamp()');

@@ -8,7 +8,7 @@ import {ICryptoSwap} from "./ICryptoSwap.sol";
 // interfaces
 import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
-import {IOracle} from "./IOracle.sol";
+import {IChainlinkOracle} from "./IChainlinkOracle.sol";
 import {IVirtualToken} from "./IVirtualToken.sol";
 
 // libraries
@@ -39,7 +39,7 @@ interface IPerpetual {
 
     function market() external view returns (ICryptoSwap);
 
-    function oracle() external view returns (IOracle);
+    function chainlinkOracle() external view returns (IChainlinkOracle);
 
     function vBase() external view returns (IVirtualToken);
 

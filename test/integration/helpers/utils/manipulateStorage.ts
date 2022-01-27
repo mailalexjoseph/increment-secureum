@@ -40,23 +40,23 @@ export async function fundAccountWithUSDC(
 
 export async function setLatestChainlinkPrice(
   hre: HardhatRuntimeEnvironment,
-  oracle: AggregatorV3Interface,
+  chainlinkOracle: AggregatorV3Interface,
   price: BigNumber
 ): Promise<void> {
-  const latestRound = (await oracle.latestRoundData())[4];
-  await setChainlinkPrice(hre, oracle, price, latestRound);
+  const latestRound = (await chainlinkOracle.latestRoundData())[4];
+  await setChainlinkPrice(hre, chainlinkOracle, price, latestRound);
 }
 
 // manipulate the chainlink storage price (attention: tested for the EUR_USD price feed on mainnet (01/2021))
 export async function setChainlinkPrice(
   hre: HardhatRuntimeEnvironment,
-  oracle: AggregatorV3Interface,
+  chainlinkOracle: AggregatorV3Interface,
   price: BigNumber,
   roundId: BigNumber
 ): Promise<void> {
   const aggregatorRoundId = await calcAggregatorRound(roundId);
 
-  const aggregator = await getChainlinkAggregator(hre, oracle.address);
+  const aggregator = await getChainlinkAggregator(hre, chainlinkOracle.address);
 
   const PRICE_SLOT = 43; // check for yourself by running 'yarn hardhat run ./scripts/chainlinkPriceSlots.ts' (only tested for EUR_USD / mainnet!)
 
@@ -87,10 +87,10 @@ export async function setChainlinkPrice(
   );
 
   // checks
-  const roundAnswer = (await oracle.getRoundData(roundId))[1];
+  const roundAnswer = (await chainlinkOracle.getRoundData(roundId))[1];
   expect(roundAnswer).to.be.equal(price);
 
-  const answer = (await oracle.latestRoundData())[1];
+  const answer = (await chainlinkOracle.latestRoundData())[1];
   expect(answer).to.be.equal(price);
 }
 /*************************************************** UTIL FUNCTIONS *************************************************/
@@ -119,12 +119,12 @@ const setStorageAt = async (
 */
 async function getChainlinkAggregator(
   hre: HardhatRuntimeEnvironment,
-  oracleAddress: tEthereumAddress
+  chainlinkOracleAddress: tEthereumAddress
 ): Promise<tEthereumAddress> {
   const aggregator = await (
     await hre.ethers.getContractAt(
       ['function aggregator() view returns (address)'],
-      oracleAddress
+      chainlinkOracleAddress
     )
   ).aggregator();
   return aggregator;
@@ -140,7 +140,7 @@ async function calcAggregatorRound(
   /*
 
 
-  Function extracts the aggregator round id (originalId) from the oracle roundId (answeredInRound)
+  Function extracts the aggregator round id (originalId) from the chainlinkOracle roundId (answeredInRound)
 
   answeredInRound = uint80((uint256(phase) << 64) | originalId);
 

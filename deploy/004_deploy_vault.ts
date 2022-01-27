@@ -7,9 +7,12 @@ import {getVaultConstructorArgs} from '../helpers/contracts-deployments';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const oracle = await ethers.getContract('Oracle', deployer);
+  const chainlinkOracle = await ethers.getContract('ChainlinkOracle', deployer);
 
-  const vaultConstructorArgs = getVaultConstructorArgs(hre, oracle.address);
+  const vaultConstructorArgs = getVaultConstructorArgs(
+    hre,
+    chainlinkOracle.address
+  );
 
   await hre.deployments.deploy('Vault', {
     from: deployer,
@@ -22,6 +25,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ['Vault'];
 func.id = 'deploy_vault_contract';
-func.dependencies = ['Oracle'];
+func.dependencies = ['ChainlinkOracle'];
 
 export default func;

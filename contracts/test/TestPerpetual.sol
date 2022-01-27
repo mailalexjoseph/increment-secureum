@@ -15,7 +15,7 @@ import {VirtualToken} from "../tokens/VirtualToken.sol";
 import {IPerpetual} from "../interfaces/IPerpetual.sol";
 import {IVault} from "../interfaces/IVault.sol";
 import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
-import {IOracle} from "../interfaces/IOracle.sol";
+import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
 
 // libraries
@@ -31,12 +31,12 @@ import "hardhat/console.sol";
  */
 contract TestPerpetual is Perpetual {
     constructor(
-        IOracle _oracle,
+        IChainlinkOracle _chainlinkOracle,
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
         IVault _vault
-    ) Perpetual(_oracle, _vBase, _vQuote, _curvePool, _vault) {}
+    ) Perpetual(_chainlinkOracle, _vBase, _vQuote, _curvePool, _vault) {}
 
     // simplified setter
     function setGlobalPosition(

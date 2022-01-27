@@ -94,7 +94,7 @@ export type iMultiPoolsAssets<T> = iAssetCommon<T>;
 
 /********************** OWN TYPES **************************/
 
-export interface IOracleConfig {
+export interface IChainlinkOracleConfig {
   ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
@@ -108,7 +108,7 @@ export interface IVaultConfiguration {
 
 export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
 
-export type OracleConstructorArguments = [tEthereumAddress];
+export type ChainlinkOracleConstructorArguments = [tEthereumAddress];
 
 export type CryptoSwapConstructorArguments = {
   owner: tEthereumAddress;

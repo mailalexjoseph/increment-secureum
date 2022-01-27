@@ -1,4 +1,4 @@
-import {VaultConfig, OracleConfig} from '../markets/ethereum';
+import {VaultConfig, ChainlinkOracleConfig} from '../markets/ethereum';
 import {eEthereumNetwork, tEthereumAddress} from './types';
 
 export function getReserveAddress(
@@ -8,7 +8,7 @@ export function getReserveAddress(
   return VaultConfig.ReserveAssets[network][reserveAssetName];
 }
 
-export function getReserveOracleAddress(
+export function getReserveChainlinkOracleAddress(
   reserveAssetName: string,
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
@@ -24,5 +24,5 @@ export function getLendingPoolAddressProvider(
 export function getFeedRegistryAddress(
   network: eEthereumNetwork = eEthereumNetwork.main
 ): tEthereumAddress {
-  return OracleConfig.ChainlinkOracles[network].FEED_REGISTRY;
+  return ChainlinkOracleConfig.ChainlinkOracles[network].FEED_REGISTRY;
 }

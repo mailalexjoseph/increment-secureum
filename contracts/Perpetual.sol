@@ -14,7 +14,7 @@ import {VirtualToken} from "./tokens/VirtualToken.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
+import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 
 // libraries
@@ -40,7 +40,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // dependencies
     ICryptoSwap public override market;
-    IOracle public override oracle;
+    IChainlinkOracle public override chainlinkOracle;
     IVirtualToken public override vBase;
     IVirtualToken public override vQuote;
     IVault public override vault;
@@ -57,13 +57,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     mapping(address => LibPerpetual.TraderPosition) internal userPosition;
 
     constructor(
-        IOracle _oracle,
+        IChainlinkOracle _chainlinkOracle,
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
         IVault _vault
     ) {
-        oracle = _oracle;
+        chainlinkOracle = _chainlinkOracle;
         vBase = _vBase;
         vQuote = _vQuote;
         market = _curvePool;
@@ -244,7 +244,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             LibFunding.calculateFunding(
                 global,
                 marketPrice().toInt256(),
-                oracle.getIndexPrice(),
+                chainlinkOracle.getIndexPrice(),
                 currentTime,
                 TWAP_FREQUENCY
             );
@@ -311,7 +311,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function indexPrice() public view returns (int256) {
-        return oracle.getIndexPrice();
+        return chainlinkOracle.getIndexPrice();
     }
 
     /// @notice Provide liquidity to the pool

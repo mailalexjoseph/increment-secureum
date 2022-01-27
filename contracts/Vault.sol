@@ -11,7 +11,7 @@ import {IncreOwnable} from "./utils/IncreOwnable.sol";
 // interfaces
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {ILiquidation} from "./interfaces/ILiquidation.sol";
-import {IOracle} from "./interfaces/IOracle.sol";
+import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
 
@@ -34,15 +34,15 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 private immutable reserveTokenDecimals;
 
     // state
-    IOracle public immutable override oracle;
+    IChainlinkOracle public immutable override chainlinkOracle;
     IERC20 public immutable override reserveToken;
     uint256 public override totalReserveToken;
     //      amm     =>         trader =>            ERC20 => balances
     // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
     mapping(address => int256) private balances;
 
-    constructor(IOracle _oracle, IERC20 _reserveToken) {
-        require(address(_oracle) != address(0), "Oracle can not be zero address");
+    constructor(IChainlinkOracle _chainlinkOracle, IERC20 _reserveToken) {
+        require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
             IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS,
@@ -50,7 +50,7 @@ contract Vault is IVault, Context, IncreOwnable {
         );
 
         // set contract addresses
-        oracle = _oracle;
+        chainlinkOracle = _chainlinkOracle;
         reserveToken = _reserveToken;
 
         // set other parameters
