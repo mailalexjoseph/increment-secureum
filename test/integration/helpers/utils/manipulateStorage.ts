@@ -26,10 +26,12 @@ export async function fundAccountWithUSDC(
     const USDC_SLOT = 9; // check for yourself by running 'yarn hardhat run ./scripts/storageSlots.ts' (only works for mainnet!)
 
     // Get storage slot index
-    const index = ethers.utils.solidityKeccak256(
-      ['uint256', 'uint256'],
-      [account, USDC_SLOT] // key, slot
-    );
+    const index = ethers.utils
+      .solidityKeccak256(
+        ['uint256', 'uint256'],
+        [account, USDC_SLOT] // key, slot
+      )
+      .replace(/0x0+/, '0x');
 
     // Manipulate local balance (needs to be bytes32 string)
     await setStorageAt(USDC_ADDRESS, index, toBytes32(amount).toString());
@@ -59,9 +61,11 @@ export async function setChainlinkPrice(
   const PRICE_SLOT = 43; // check for yourself by running 'yarn hardhat run ./scripts/chainlinkPriceSlots.ts' (only tested for EUR_USD / mainnet!)
 
   // Get storage slot index
-  let probedSlot = hre.ethers.utils.keccak256(
-    encode(['uint32', 'uint'], [aggregatorRoundId, PRICE_SLOT]) // key, slot
-  );
+  let probedSlot = hre.ethers.utils
+    .keccak256(
+      encode(['uint32', 'uint'], [aggregatorRoundId, PRICE_SLOT]) // key, slot
+    )
+    .replace(/0x0+/, '0x');
 
   // remove padding for JSON RPC
   while (probedSlot.startsWith('0x0')) probedSlot = '0x' + probedSlot.slice(3);
