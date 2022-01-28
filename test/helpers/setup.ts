@@ -8,14 +8,14 @@ import env = require('hardhat');
 
 import {fundAccountWithUSDC} from './utils/manipulateStorage';
 // helpers
-import {getReserveAddress} from '../../../helpers/contract-getters';
+import {getReserveAddress} from '../../helpers/contract-getters';
 import {
   setupUser,
   setupUsers,
   logDeployments,
   getEthereumNetworkFromHRE,
-} from '../../../helpers/misc-utils';
-import {convertToCurrencyDecimals} from '../../../helpers/contracts-helpers';
+} from '../../helpers/misc-utils';
+import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
 
 // types
 import {
@@ -24,10 +24,10 @@ import {
   TestPerpetual,
   Vault,
   VirtualToken,
-} from '../../../typechain';
-import {BigNumber} from '../../../helpers/types';
-import {CryptoSwap} from '../../../contracts-vyper/typechain/CryptoSwap';
-import {CurveTokenV5} from '../../../contracts-vyper/typechain/CurveTokenV5';
+} from '../../typechain';
+import {BigNumber} from '../../helpers/types';
+import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
+import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 
 export type User = {address: string} & {
   perpetual: TestPerpetual;
@@ -51,27 +51,19 @@ export interface TestEnv {
 }
 
 /// @notice: get all deployed contracts
-const getContracts = async (deployerAccount: string) => {
+const getContracts = async (deply: string) => {
+  const usdcAddress = getReserveAddress('USDC', getEthereumNetworkFromHRE(env));
+
   return {
-    vBase: <VirtualToken>await ethers.getContract('VBase', deployerAccount),
-    vQuote: <VirtualToken>await ethers.getContract('VQuote', deployerAccount),
-    market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
+    vBase: <VirtualToken>await ethers.getContract('VBase', deply),
+    vQuote: <VirtualToken>await ethers.getContract('VQuote', deply),
+    market: <CryptoSwap>await ethers.getContract('CryptoSwap', deply),
+    vault: <Vault>await ethers.getContract('Vault', deply),
+    perpetual: <TestPerpetual>await ethers.getContract('TestPerpetual', deply),
+    usdc: <ERC20>await ethers.getContractAt('ERC20', usdcAddress, deply),
+    curve: <CurveTokenV5>await ethers.getContract('CurveTokenV5', deply),
     chainlinkOracle: <ChainlinkOracle>(
-      await ethers.getContract('ChainlinkOracle', deployerAccount)
-    ),
-    vault: <Vault>await ethers.getContract('Vault', deployerAccount),
-    perpetual: <TestPerpetual>(
-      await ethers.getContract('TestPerpetual', deployerAccount)
-    ),
-    usdc: <ERC20>(
-      await ethers.getContractAt(
-        'ERC20',
-        getReserveAddress('USDC', getEthereumNetworkFromHRE(env)),
-        deployerAccount
-      )
-    ),
-    curve: <CurveTokenV5>(
-      await ethers.getContract('CurveTokenV5', deployerAccount)
+      await ethers.getContract('ChainlinkOracle', deply)
     ),
   };
 };
