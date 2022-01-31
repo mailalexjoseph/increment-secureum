@@ -7,20 +7,25 @@ import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 // libraries
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+// TMP
+import "hardhat/console.sol";
+
 // should it be made a library?
 contract PoolOracle {
     using SafeCast for uint256;
     using SafeCast for int256;
 
-    uint256 public constant PERIOD = 1 hours;
+    uint256 public constant PERIOD = 15 minutes;
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
 
-    ICryptoSwap public pool;
-    uint256 timeOfPreviousCumulativePriceOne;
-    uint256 cumulativePriceOne;
-    uint256 timeOfPreviousCumulativePriceTwo;
-    uint256 cumulativePriceTwo;
+    ICryptoSwap public immutable pool;
+    uint256 public timeOfCumulativePriceOne;
+    uint256 public cumulativePriceOne;
+    uint256 public timeOfCumulativePriceTwo;
+    uint256 public cumulativePriceTwo;
+
+    event TWAPUpdated();
 
     constructor(ICryptoSwap _curvePool) {
         pool = _curvePool;
@@ -29,23 +34,41 @@ contract PoolOracle {
     // no update if TWAP is under PERIOD
     function updateTWAP() external {
         uint256 currentTime = block.timestamp;
-        uint256 timeElapsed = currentTime - timeOfPreviousCumulativePriceTwo;
+        uint256 timeElapsed = currentTime - timeOfCumulativePriceTwo;
+
+        console.log("currentTime:", currentTime);
 
         if (timeElapsed >= PERIOD) {
             uint256 newPrice = pool.balances(VBASE_INDEX) / pool.balances(VQUOTE_INDEX);
 
-            timeOfPreviousCumulativePriceOne = timeOfPreviousCumulativePriceTwo;
+            timeOfCumulativePriceOne = timeOfCumulativePriceTwo;
             cumulativePriceOne = cumulativePriceTwo;
 
-            timeOfPreviousCumulativePriceTwo = currentTime;
+            timeOfCumulativePriceTwo = currentTime;
             cumulativePriceTwo = cumulativePriceOne + newPrice * timeElapsed;
+
+            emit TWAPUpdated();
         }
     }
 
     function getTWAP() external view returns (int256) {
-        int256 priceDiff = cumulativePriceTwo.toInt256() - cumulativePriceOne.toInt256();
-        int256 timeDiff = timeOfPreviousCumulativePriceTwo.toInt256() - timeOfPreviousCumulativePriceOne.toInt256();
+        console.log("cumulativePriceOne:", cumulativePriceOne);
+        console.log("timeOfCumulativePriceOne:", timeOfCumulativePriceOne);
+        console.log("cumulativePriceTwo:", cumulativePriceTwo);
+        console.log("timeOfCumulativePriceTwo:", timeOfCumulativePriceTwo);
 
-        return priceDiff / timeDiff;
+        if (timeOfCumulativePriceTwo > 0) {
+            int256 priceDiff = cumulativePriceTwo.toInt256() - cumulativePriceOne.toInt256();
+            int256 timeDiff = timeOfCumulativePriceTwo.toInt256() - timeOfCumulativePriceOne.toInt256();
+
+            console.log("priceDiff:");
+            console.logInt(priceDiff);
+            console.log("timeDiff:");
+            console.logInt(timeDiff);
+
+            return priceDiff / timeDiff;
+        }
+
+        return 0;
     }
 }
