@@ -3,7 +3,7 @@ import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
-import {rMul, rDiv} from '../integration/helpers/utils/calculations';
+import {rMul, rDiv} from '../helpers/calculations';
 import CryptoSwap from '../../contracts-vyper/artifacts/CryptoSwap.vy/CryptoSwap.json';
 import {PoolOracle} from '../../typechain';
 

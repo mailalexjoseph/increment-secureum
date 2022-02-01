@@ -4,7 +4,7 @@ import {CurveTokenV5} from '../../../contracts-vyper/typechain/CurveTokenV5';
 
 // utils
 import {BigNumber} from '../../../helpers/types';
-import {asBigNumber} from './utils/calculations';
+import {asBigNumber} from '../../helpers/calculations';
 import {ethers} from 'hardhat';
 
 /// returns the amount of tokens transferred back to the user

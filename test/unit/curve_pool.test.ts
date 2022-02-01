@@ -8,7 +8,7 @@ import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 import {VBase, VQuote, VirtualToken} from '../../typechain';
 
 // utils
-import {asBigNumber, rDiv} from '../integration/helpers/utils/calculations';
+import {asBigNumber, rDiv} from '../helpers/calculations';
 import {
   TEST_get_dy,
   TEST_get_remove_liquidity,

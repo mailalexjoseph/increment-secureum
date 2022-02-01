@@ -2,7 +2,7 @@ import {expect} from 'chai';
 import {utils, BigNumber, ethers} from 'ethers';
 import env from 'hardhat';
 
-import {rMul, rDiv} from './helpers/utils/calculations';
+import {rMul, rDiv} from '../helpers/calculations';
 import {setup, funding, User} from './helpers/setup';
 import {setUpPoolLiquidity} from './helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';

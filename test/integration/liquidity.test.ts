@@ -11,7 +11,7 @@ import {
   setupUser,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-deployments';
-import {asBigNumber, rDiv} from './helpers/utils/calculations';
+import {asBigNumber, rDiv} from '../helpers/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from './helpers/utils/types';
 
