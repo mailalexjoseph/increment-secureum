@@ -3,12 +3,12 @@ import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
+import {rMul, rDiv} from '../integration/helpers/utils/calculations';
 import CryptoSwap from '../../contracts-vyper/artifacts/CryptoSwap.vy/CryptoSwap.json';
 import {PoolOracle} from '../../typechain';
-// import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 
 let nextBlockTimestamp = 2000000000;
-export async function setNextBlockTimestamp(
+async function addTimeToNextBlockTimestamp(
   hre: HardhatRuntimeEnvironment,
   additionalTimestamp: number
 ): Promise<number> {
@@ -41,6 +41,18 @@ describe('PoolOracle', async function () {
     return {poolOracle};
   }
 
+  async function _set_vBase_vQuote(vBaseAmount: number, vQuoteAmount: number) {
+    // console.log(`vBaseAmount: ${vBaseAmount} - vQuoteAmount: ${vQuoteAmount}`);
+
+    await curvePoolMock.mock.balances
+      .withArgs(0)
+      .returns(ethers.utils.parseEther(vQuoteAmount.toString()));
+
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther(vBaseAmount.toString()));
+  }
+
   beforeEach(async () => {
     user = await _deploy_poolOracle();
     PERIOD = (await user.poolOracle.PERIOD()).toNumber();
@@ -49,183 +61,160 @@ describe('PoolOracle', async function () {
     await curvePoolMock.mock.balances.returns(ethers.utils.parseEther('1'));
   });
 
-  // it('Should not crash if TWAP read while no value set', async () => {
-  //   expect(await user.poolOracle.getTWAP()).to.eq(0);
-  // });
-
-  // it('Should set TWAP value when contract is called for the first time, this value should be readable', async () => {
-  //   expect(await user.poolOracle.timeOfCumulativePriceOne()).to.eq(0);
-  //   expect(await user.poolOracle.cumulativePriceOne()).to.eq(0);
-  //   expect(await user.poolOracle.timeOfCumulativePriceTwo()).to.eq(0);
-  //   expect(await user.poolOracle.cumulativePriceTwo()).to.eq(0);
-
-  //   const nextBlockTimestamp = await setNextBlockTimestamp(env);
-  //   await user.poolOracle.updateTWAP();
-
-  //   expect(await user.poolOracle.timeOfCumulativePriceOne()).to.eq(0);
-  //   expect(await user.poolOracle.cumulativePriceOne()).to.eq(0);
-
-  //   expect(await user.poolOracle.timeOfCumulativePriceTwo()).to.eq(
-  //     nextBlockTimestamp
-  //   );
-  //   // given that `cumulativePriceOne` equals 0 and `newPrice` (the ratio of both balances in the pool) equals 1,
-  //   // the value of `cumulativePriceTwo` equals the timestamp of the block
-  //   expect(await user.poolOracle.cumulativePriceTwo()).to.eq(
-  //     nextBlockTimestamp
-  //   );
-
-  //   // 1 for the same reason that cumulativePriceTwo equals the same timestamp as the block
-  //   expect(await user.poolOracle.getTWAP()).to.eq(1);
-  // });
-
-  // it('Should update TWAP value when contract is called subsequently (2nd, 3rd times and more) & values should be readable', async () => {
-  //   const firstTimestamp = await setNextBlockTimestamp(env);
-  //   await user.poolOracle.updateTWAP();
-
-  //   const secondTimestamp = await setNextBlockTimestamp(env);
-  //   await user.poolOracle.updateTWAP();
-
-  //   expect(await user.poolOracle.timeOfCumulativePriceOne()).to.eq(
-  //     firstTimestamp
-  //   );
-  //   expect(await user.poolOracle.cumulativePriceOne()).to.eq(firstTimestamp);
-  //   expect(await user.poolOracle.timeOfCumulativePriceTwo()).to.eq(
-  //     secondTimestamp
-  //   );
-
-  //   // cumulativePriceTwo = cumulativePriceOne + newPrice * timeElapsed;
-  //   const expectedCumulativePriceTwo =
-  //     firstTimestamp + 1 * (secondTimestamp - firstTimestamp);
-  //   expect(await user.poolOracle.cumulativePriceTwo()).to.eq(
-  //     expectedCumulativePriceTwo
-  //   );
-  // });
-
-  // it('Should not update TWAP value when value has been updated recently & we should get the previous value', async () => {
-  //   const firstTimestamp = await setNextBlockTimestamp(env);
-  //   await expect(user.poolOracle.updateTWAP()).to.emit(
-  //     user.poolOracle,
-  //     'TWAPUpdated'
-  //   );
-
-  //   expect(await user.poolOracle.timeOfCumulativePriceTwo()).to.eq(
-  //     firstTimestamp
-  //   );
-  //   expect(await user.poolOracle.cumulativePriceTwo()).to.eq(firstTimestamp);
-
-  //   await env.network.provider.request({
-  //     method: 'evm_setNextBlockTimestamp',
-  //     params: [firstTimestamp + 100], // PERIOD = 15min = 900sec
-  //   });
-  //   await expect(user.poolOracle.updateTWAP()).not.to.emit(
-  //     user.poolOracle,
-  //     'TWAPUpdated'
-  //   );
-
-  //   // oracle values should not have been updated
-  //   expect(await user.poolOracle.timeOfCumulativePriceTwo()).to.eq(
-  //     firstTimestamp
-  //   );
-  //   expect(await user.poolOracle.cumulativePriceTwo()).to.eq(firstTimestamp);
-  // });
-
-  it.only('TWAP value should properly account for variations of the underlying pool balances', async () => {
-    // initially both the balance of vBase and vQuote are equal
-    console.log('newPrice: 1');
-    const firstTimestamp = await setNextBlockTimestamp(env, 0);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    // console.log('Zero is expected the first time');
-    console.log();
-
-    // the balance of vBase is now double that of vQuote (vQuote is still 1e18)
-    console.log('newPrice: 3');
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('3'));
-    // await curvePoolMock.mock.balances
-    //   .withArgs(0)
-    //   .returns(ethers.utils.parseEther('6'));
-
-    const secondTimestamp = await setNextBlockTimestamp(env, 100);
-    await user.poolOracle.updateTWAP();
-
-    // cumulativePrice = cumulativePriceOne + newPrice * timeElapsed;
-    // const cumulativePriceOne = firstTimestamp;
-    // const newPrice = 3 / 6;
-    // const timeElapsed = secondTimestamp - firstTimestamp;
-    // const expectedCumulativePrice = cumulativePriceOne + newPrice * timeElapsed;
-
-    // expect(await user.poolOracle.cumulativePrice()).to.eq(
-    //   expectedCumulativePrice
-    // );
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 5');
-    // update balance of vBase to 5e18 (vQuote is still 1e18)
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('5'));
-    await setNextBlockTimestamp(env, 100);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 10');
-    // update balance of vBase to 10e18 (vQuote is still 1e18)
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('10'));
-    await setNextBlockTimestamp(env, 100);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 10');
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('10'));
-    await setNextBlockTimestamp(env, PERIOD);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 20');
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('20'));
-    await setNextBlockTimestamp(env, 100);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 10');
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('10'));
-    await setNextBlockTimestamp(env, PERIOD);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
-
-    console.log('newPrice: 20');
-    await curvePoolMock.mock.balances
-      .withArgs(1)
-      .returns(ethers.utils.parseEther('20'));
-    await setNextBlockTimestamp(env, 100);
-    await user.poolOracle.updateTWAP();
-
-    console.log((await user.poolOracle.getTWAP()).toString());
-    console.log();
+  it('Should not crash if TWAP read while no value set', async () => {
+    expect(await user.poolOracle.getTWAP()).to.eq(0);
   });
 
-  // TODO: test to compute TWAP from pool.price_oracle()
+  it('Should set TWAP value when contract is called for the first time, this value should be readable', async () => {
+    expect(await user.poolOracle.cumulativeAmount()).to.eq(0);
+    expect(await user.poolOracle.timeOfCumulativeAmount()).to.eq(0);
+    expect(await user.poolOracle.cumulativeAmountAtBeginningOfPeriod()).to.eq(
+      0
+    );
+    expect(
+      await user.poolOracle.timeOfCumulativeAmountAtBeginningOfPeriod()
+    ).to.eq(0);
+
+    const nextBlockTimestamp = await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    expect(await user.poolOracle.cumulativeAmountAtBeginningOfPeriod()).to.eq(
+      0
+    );
+    expect(
+      await user.poolOracle.timeOfCumulativeAmountAtBeginningOfPeriod()
+    ).to.eq(0);
+
+    // given that `cumulativeAmountAtBeginningOfPeriod` equals 0 and `newPrice` (the ratio of both balances in the pool) equals 1,
+    // the value of `cumulativeAmount` equals the timestamp of the block
+    expect(await user.poolOracle.cumulativeAmount()).to.eq(nextBlockTimestamp);
+    expect(await user.poolOracle.timeOfCumulativeAmount()).to.eq(
+      nextBlockTimestamp
+    );
+
+    // 1 for the same reason that cumulativeAmount equals the same timestamp as the block
+    expect(await user.poolOracle.getTWAP()).to.eq(ethers.utils.parseEther('1'));
+  });
+
+  it('TWAP value should properly account for variations of the underlying pool balances', async () => {
+    // Initially both the balance of vBase and vQuote are equal
+    await _set_vBase_vQuote(1, 1);
+    const firstTimestamp = await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    expect(await user.poolOracle.getTWAP()).to.eq(ethers.utils.parseEther('1'));
+
+    const cumulativeAmountBeforeSecondUpdate =
+      await user.poolOracle.cumulativeAmount();
+
+    await _set_vBase_vQuote(3, 1);
+    const secondTimestamp = await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
+    const newPrice = ethers.BigNumber.from('3'); // vBase / vQuote
+    const timeElapsed = ethers.BigNumber.from(
+      (secondTimestamp - firstTimestamp).toString()
+    );
+    const productPriceTime = newPrice.mul(timeElapsed);
+    const expectedCumulativeAmount =
+      cumulativeAmountBeforeSecondUpdate.add(productPriceTime);
+
+    expect(await user.poolOracle.cumulativeAmount()).to.eq(
+      expectedCumulativeAmount
+    );
+
+    const cumulativeAmount = expectedCumulativeAmount;
+    const timeOfCumulativeAmount = ethers.BigNumber.from(
+      secondTimestamp.toString()
+    );
+    // this far `cumulativeAmountAtBeginningOfPeriod` and `timeOfCumulativeAmountAtBeginningOfPeriod` are worth 0
+    const expectedTWAP = rDiv(cumulativeAmount, timeOfCumulativeAmount);
+    expect(await user.poolOracle.getTWAP()).to.eq(expectedTWAP);
+
+    await _set_vBase_vQuote(5, 1);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(10, 1);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(10, 1);
+    await addTimeToNextBlockTimestamp(env, PERIOD);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(20, 1);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(10, 1);
+    await addTimeToNextBlockTimestamp(env, PERIOD);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(20, 1);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    await _set_vBase_vQuote(20, 15);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+    // console.log((await user.poolOracle.getTWAP()).toString());
+
+    const cumulativeAmountBeforeLastUpdate =
+      await user.poolOracle.cumulativeAmount();
+    const timeOfCumulativeAmountBeforeLastUpdate =
+      await user.poolOracle.timeOfCumulativeAmount();
+
+    await _set_vBase_vQuote(20, 25);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
+    const vBaseAmount = ethers.BigNumber.from('20');
+    const vQuoteAmount = ethers.BigNumber.from('25');
+    const expectedNewPriceLastUpdate = rDiv(vBaseAmount, vQuoteAmount); // vBase / vQuote;
+
+    const timeOfCumulativeAmountLastUpdate =
+      await user.poolOracle.timeOfCumulativeAmount();
+    const expectedTimeElapsed = timeOfCumulativeAmountLastUpdate.sub(
+      timeOfCumulativeAmountBeforeLastUpdate
+    );
+
+    const productPriceTimeLastUpdate = rMul(
+      expectedNewPriceLastUpdate,
+      expectedTimeElapsed
+    );
+    const expectedCumulativeAmountLastUpdate =
+      cumulativeAmountBeforeLastUpdate.add(productPriceTimeLastUpdate);
+
+    expect(await user.poolOracle.cumulativeAmount()).to.eq(
+      expectedCumulativeAmountLastUpdate
+    );
+
+    const cumulativeAmountLastUpdate = expectedCumulativeAmountLastUpdate;
+    const cumulativeAmountAtBeginningOfPeriodAtLastUpdate =
+      await user.poolOracle.cumulativeAmountAtBeginningOfPeriod();
+
+    const expectedPriceDiffLastUpdate = cumulativeAmountLastUpdate.sub(
+      cumulativeAmountAtBeginningOfPeriodAtLastUpdate
+    );
+
+    const timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate =
+      await user.poolOracle.timeOfCumulativeAmountAtBeginningOfPeriod();
+    const expectedTimeDiffLastUpdate = timeOfCumulativeAmountLastUpdate.sub(
+      timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate
+    );
+
+    const expectedTWAPLastUpdate = rDiv(
+      expectedPriceDiffLastUpdate,
+      expectedTimeDiffLastUpdate
+    );
+    expect(await user.poolOracle.getTWAP()).to.eq(expectedTWAPLastUpdate);
+  });
 });

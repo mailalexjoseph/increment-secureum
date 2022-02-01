@@ -35,22 +35,18 @@ contract PoolOracle {
         pool = _curvePool;
     }
 
-    // no update if TWAP is under PERIOD
     function updateTWAP() external {
         uint256 currentTime = block.timestamp;
-        console.log("currentTime:", currentTime);
 
         uint256 timeElapsed = currentTime - timeOfCumulativeAmount;
-        // newPrice = pool.balances(VBASE_INDEX) / pool.balances(VQUOTE_INDEX);
         uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
-        // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
+        // console.log("newPrice: ", newPrice);
+        // console.log("timeElapsed: ", timeElapsed);
         cumulativeAmount = cumulativeAmount + LibMath.wadMul(newPrice, timeElapsed);
         timeOfCumulativeAmount = currentTime;
 
         uint256 timeElapsedSinceBeginningOfTWAPPeriodTmp = currentTime - timeOfCumulativeAmountAtBeginningOfPeriodTmp;
         if (timeElapsedSinceBeginningOfTWAPPeriodTmp >= PERIOD) {
-            console.log("In new PERIOD block");
-
             cumulativeAmountAtBeginningOfPeriod = cumulativeAmountAtBeginningOfPeriodTmp;
             timeOfCumulativeAmountAtBeginningOfPeriod = timeOfCumulativeAmountAtBeginningOfPeriodTmp;
 
@@ -62,23 +58,22 @@ contract PoolOracle {
     }
 
     function getTWAP() external view returns (int256) {
-        console.log("cumulativeAmount:", cumulativeAmount);
-        console.log("timeOfCumulativeAmount:", timeOfCumulativeAmount);
-        console.log("cumulativeAmountAtBeginningOfPeriod:", cumulativeAmountAtBeginningOfPeriod);
-        console.log("timeOfCumulativeAmountAtBeginningOfPeriod:", timeOfCumulativeAmountAtBeginningOfPeriod);
-        console.log("cumulativeAmountAtBeginningOfPeriodTmp:", cumulativeAmountAtBeginningOfPeriodTmp);
-        console.log("timeOfCumulativeAmountAtBeginningOfPeriodTmp:", timeOfCumulativeAmountAtBeginningOfPeriodTmp);
+        // console.log("cumulativeAmount:", cumulativeAmount);
+        // console.log("timeOfCumulativeAmount:", timeOfCumulativeAmount);
+        // console.log("cumulativeAmountAtBeginningOfPeriod:", cumulativeAmountAtBeginningOfPeriod);
+        // console.log("timeOfCumulativeAmountAtBeginningOfPeriod:", timeOfCumulativeAmountAtBeginningOfPeriod);
+        // console.log("cumulativeAmountAtBeginningOfPeriodTmp:", cumulativeAmountAtBeginningOfPeriodTmp);
+        // console.log("timeOfCumulativeAmountAtBeginningOfPeriodTmp:", timeOfCumulativeAmountAtBeginningOfPeriodTmp);
 
         int256 priceDiff = cumulativeAmount.toInt256() - cumulativeAmountAtBeginningOfPeriod.toInt256();
         int256 timeDiff = timeOfCumulativeAmount.toInt256() - timeOfCumulativeAmountAtBeginningOfPeriod.toInt256();
 
-        if (timeDiff > 0) {
-            console.log("priceDiff:");
-            console.logInt(priceDiff);
-            console.log("timeDiff:");
-            console.logInt(timeDiff);
+        // console.log("priceDiff:");
+        // console.logInt(priceDiff);
+        // console.log("timeDiff:");
+        // console.logInt(timeDiff);
 
-            // priceDiff / timeDiff;
+        if (timeDiff > 0) {
             return LibMath.wadDiv(priceDiff, timeDiff);
         }
 
