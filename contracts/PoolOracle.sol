@@ -6,6 +6,7 @@ import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 
 // libraries
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {LibMath} from "./lib/LibMath.sol";
 
 // TMP
 import "hardhat/console.sol";
@@ -19,11 +20,14 @@ contract PoolOracle {
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
 
+    uint256 public cumulativeAmount;
+    uint256 public timeOfCumulativeAmount;
+    uint256 public cumulativeAmountAtBeginningOfPeriod;
+    uint256 public timeOfCumulativeAmountAtBeginningOfPeriod;
+    uint256 public cumulativeAmountAtBeginningOfPeriodTmp;
+    uint256 public timeOfCumulativeAmountAtBeginningOfPeriodTmp;
+
     ICryptoSwap public immutable pool;
-    uint256 public timeOfCumulativePriceOne;
-    uint256 public cumulativePriceOne;
-    uint256 public timeOfCumulativePriceTwo;
-    uint256 public cumulativePriceTwo;
 
     event TWAPUpdated();
 
@@ -34,39 +38,48 @@ contract PoolOracle {
     // no update if TWAP is under PERIOD
     function updateTWAP() external {
         uint256 currentTime = block.timestamp;
-        uint256 timeElapsed = currentTime - timeOfCumulativePriceTwo;
-
         console.log("currentTime:", currentTime);
 
-        if (timeElapsed >= PERIOD) {
-            uint256 newPrice = pool.balances(VBASE_INDEX) / pool.balances(VQUOTE_INDEX);
+        uint256 timeElapsed = currentTime - timeOfCumulativeAmount;
+        // newPrice = pool.balances(VBASE_INDEX) / pool.balances(VQUOTE_INDEX);
+        uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
+        // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
+        cumulativeAmount = cumulativeAmount + LibMath.wadMul(newPrice, timeElapsed);
+        timeOfCumulativeAmount = currentTime;
 
-            timeOfCumulativePriceOne = timeOfCumulativePriceTwo;
-            cumulativePriceOne = cumulativePriceTwo;
+        uint256 timeElapsedSinceBeginningOfTWAPPeriodTmp = currentTime - timeOfCumulativeAmountAtBeginningOfPeriodTmp;
+        if (timeElapsedSinceBeginningOfTWAPPeriodTmp >= PERIOD) {
+            console.log("In new PERIOD block");
 
-            timeOfCumulativePriceTwo = currentTime;
-            cumulativePriceTwo = cumulativePriceOne + newPrice * timeElapsed;
+            cumulativeAmountAtBeginningOfPeriod = cumulativeAmountAtBeginningOfPeriodTmp;
+            timeOfCumulativeAmountAtBeginningOfPeriod = timeOfCumulativeAmountAtBeginningOfPeriodTmp;
+
+            cumulativeAmountAtBeginningOfPeriodTmp = cumulativeAmount;
+            timeOfCumulativeAmountAtBeginningOfPeriodTmp = timeOfCumulativeAmount;
 
             emit TWAPUpdated();
         }
     }
 
     function getTWAP() external view returns (int256) {
-        console.log("cumulativePriceOne:", cumulativePriceOne);
-        console.log("timeOfCumulativePriceOne:", timeOfCumulativePriceOne);
-        console.log("cumulativePriceTwo:", cumulativePriceTwo);
-        console.log("timeOfCumulativePriceTwo:", timeOfCumulativePriceTwo);
+        console.log("cumulativeAmount:", cumulativeAmount);
+        console.log("timeOfCumulativeAmount:", timeOfCumulativeAmount);
+        console.log("cumulativeAmountAtBeginningOfPeriod:", cumulativeAmountAtBeginningOfPeriod);
+        console.log("timeOfCumulativeAmountAtBeginningOfPeriod:", timeOfCumulativeAmountAtBeginningOfPeriod);
+        console.log("cumulativeAmountAtBeginningOfPeriodTmp:", cumulativeAmountAtBeginningOfPeriodTmp);
+        console.log("timeOfCumulativeAmountAtBeginningOfPeriodTmp:", timeOfCumulativeAmountAtBeginningOfPeriodTmp);
 
-        if (timeOfCumulativePriceTwo > 0) {
-            int256 priceDiff = cumulativePriceTwo.toInt256() - cumulativePriceOne.toInt256();
-            int256 timeDiff = timeOfCumulativePriceTwo.toInt256() - timeOfCumulativePriceOne.toInt256();
+        int256 priceDiff = cumulativeAmount.toInt256() - cumulativeAmountAtBeginningOfPeriod.toInt256();
+        int256 timeDiff = timeOfCumulativeAmount.toInt256() - timeOfCumulativeAmountAtBeginningOfPeriod.toInt256();
 
+        if (timeDiff > 0) {
             console.log("priceDiff:");
             console.logInt(priceDiff);
             console.log("timeDiff:");
             console.logInt(timeDiff);
 
-            return priceDiff / timeDiff;
+            // priceDiff / timeDiff;
+            return LibMath.wadDiv(priceDiff, timeDiff);
         }
 
         return 0;

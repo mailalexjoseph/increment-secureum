@@ -131,37 +131,101 @@ describe('PoolOracle', async function () {
 
   it.only('TWAP value should properly account for variations of the underlying pool balances', async () => {
     // initially both the balance of vBase and vQuote are equal
-    const firstTimestamp = await setNextBlockTimestamp(env, PERIOD);
+    console.log('newPrice: 1');
+    const firstTimestamp = await setNextBlockTimestamp(env, 0);
     await user.poolOracle.updateTWAP();
 
     console.log((await user.poolOracle.getTWAP()).toString());
+    // console.log('Zero is expected the first time');
+    console.log();
 
-    // the balance of vBase is now double that of vQuote
+    // the balance of vBase is now double that of vQuote (vQuote is still 1e18)
+    console.log('newPrice: 3');
     await curvePoolMock.mock.balances
       .withArgs(1)
       .returns(ethers.utils.parseEther('3'));
-    const secondTimestamp = await setNextBlockTimestamp(env, PERIOD);
+    // await curvePoolMock.mock.balances
+    //   .withArgs(0)
+    //   .returns(ethers.utils.parseEther('6'));
+
+    const secondTimestamp = await setNextBlockTimestamp(env, 100);
     await user.poolOracle.updateTWAP();
 
-    // cumulativePriceTwo = cumulativePriceOne + newPrice * timeElapsed;
-    const cumulativePriceOne = firstTimestamp;
-    const newPrice = 3 / 1;
-    const timeElapsed = secondTimestamp - firstTimestamp;
-    const expectedCumulativePriceTwo =
-      cumulativePriceOne + newPrice * timeElapsed;
+    // cumulativePrice = cumulativePriceOne + newPrice * timeElapsed;
+    // const cumulativePriceOne = firstTimestamp;
+    // const newPrice = 3 / 6;
+    // const timeElapsed = secondTimestamp - firstTimestamp;
+    // const expectedCumulativePrice = cumulativePriceOne + newPrice * timeElapsed;
 
-    expect(await user.poolOracle.cumulativePriceTwo()).to.eq(
-      expectedCumulativePriceTwo
-    );
+    // expect(await user.poolOracle.cumulativePrice()).to.eq(
+    //   expectedCumulativePrice
+    // );
 
     console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
 
-    // tmp
+    console.log('newPrice: 5');
+    // update balance of vBase to 5e18 (vQuote is still 1e18)
     await curvePoolMock.mock.balances
       .withArgs(1)
       .returns(ethers.utils.parseEther('5'));
+    await setNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
+
+    console.log('newPrice: 10');
+    // update balance of vBase to 10e18 (vQuote is still 1e18)
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther('10'));
+    await setNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
+
+    console.log('newPrice: 10');
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther('10'));
     await setNextBlockTimestamp(env, PERIOD);
     await user.poolOracle.updateTWAP();
+
     console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
+
+    console.log('newPrice: 20');
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther('20'));
+    await setNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
+
+    console.log('newPrice: 10');
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther('10'));
+    await setNextBlockTimestamp(env, PERIOD);
+    await user.poolOracle.updateTWAP();
+
+    console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
+
+    console.log('newPrice: 20');
+    await curvePoolMock.mock.balances
+      .withArgs(1)
+      .returns(ethers.utils.parseEther('20'));
+    await setNextBlockTimestamp(env, 100);
+    await user.poolOracle.updateTWAP();
+
+    console.log((await user.poolOracle.getTWAP()).toString());
+    console.log();
   });
+
+  // TODO: test to compute TWAP from pool.price_oracle()
 });
