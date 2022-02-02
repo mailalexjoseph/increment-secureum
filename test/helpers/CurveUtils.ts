@@ -3,8 +3,8 @@ import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 
 // utils
-import {BigNumber} from '../../helpers/types';
-import {asBigNumber} from './utils/calculations';
+import {BigNumber, ExactOutputSwapOutput} from '../../helpers/types';
+import {asBigNumber, rDiv, rMul} from './utils/calculations';
 import {ethers} from 'hardhat';
 
 /// @notice returns the amount of tokens transferred back to the user
@@ -26,13 +26,16 @@ export async function TEST_dust_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
-): Promise<[BigNumber, BigNumber]> {
+): Promise<{quote: BigNumber; base: BigNumber}> {
   const [, amountRemaining] = await calcRemoveLiquidity(
     market,
     _amount,
     min_amounts
   );
-  return amountRemaining;
+  return {
+    quote: amountRemaining[0],
+    base: amountRemaining[1],
+  };
 }
 
 /// @notice returns the amount of tokens transferred back to the user
@@ -104,93 +107,70 @@ export async function TEST_get_dy_fees(
   return fees;
 }
 
-/// @notice returns the output of a exactOutputSwap
+/// @notice: perform an exactOutputSwap with curve (i.e. https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps)
 export async function TEST_get_exactOutputSwap(
   market: CryptoSwap,
   eAmountOut: BigNumber,
-  amountInMaximum: BigNumber
-): Promise<void> {
-  // getter function to equivalent: https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
+  amountInMaximum: BigNumber,
+  inIndex: number,
+  outIndex: number
+): Promise<ExactOutputSwapOutput> {
   /*
-            uint256 amount = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, position);
-            uint256 vBaseProceeds = market.exchange(VBASE_INDEX, VQUOTE_INDEX, amount, 0);
+  references from curve.fi discord channel:
+    https://discord.com/channels/729808684359876718/729812922649542758/912804632533823488
+    https://discord.com/channels/729808684359876718/729812922649542758/874863929686380565
+  */
 
-            console.log("vBaseProceeds:", vBaseProceeds);
-            console.log("position:", position);
+  if (eAmountOut.lt(0)) {
+    throw new Error('eAmountOut < 0');
+  }
 
-            require(vBaseProceeds == position, "Not enough returned");
-            vQuoteProceeds = -amount.toInt256();
-          */
+  let amountOut: BigNumber = BigNumber.from(0);
 
-  console.log('eAmountOut:', eAmountOut.toString());
+  // Binary search in [marketPrice * 0.7, marketPrice * 1.3]
+  const price = await market.price_oracle();
 
-  const inIndex = 0;
-  const outIndex = 1;
+  let amountIn =
+    inIndex == 0 ? rMul(eAmountOut, price) : rDiv(eAmountOut, price);
 
-  // equation 1: how much would you get for selling the vBase token right now?
-  const inAmount = await market.get_dy(outIndex, inIndex, eAmountOut);
+  let maxVal = amountIn.mul(13).div(10);
+  let minVal = amountIn.mul(7).div(10);
 
-  console.log('inAmount:', inAmount.toString());
-  if (inAmount.gt(amountInMaximum)) throw new Error('Too much required');
+  // console.log(
+  //   'Searching in interval [',
+  //   minVal.toString(),
+  //   ',',
+  //   maxVal.toString(),
+  //   ']'
+  // );
+  for (let i = 0; i < 100; i++) {
+    amountIn = minVal.add(maxVal).div(2);
+    amountOut = await market.get_dy(inIndex, outIndex, amountIn);
 
-  // fees paid for first dy
-  const feesPayedIn = await TEST_get_dy_fees(
-    market,
-    outIndex,
-    inIndex,
-    eAmountOut
-  );
-  console.log('feesPayedIn:', feesPayedIn.toString());
+    if (amountOut.eq(eAmountOut)) {
+      break;
+    } else if (amountOut.lt(eAmountOut)) {
+      minVal = amountIn;
+    } else {
+      maxVal = amountIn;
+    }
+  }
 
-  const inAmountInclFees = inAmount.add(feesPayedIn);
-  console.log('inAmountInclFees:', inAmountInclFees.toString());
+  // take maxVal to make sure we are above the target
+  if (amountOut.lt(eAmountOut)) {
+    amountIn = maxVal;
+    amountOut = await TEST_get_dy(market, inIndex, outIndex, maxVal);
+  }
 
-  // fees paid for second dy
-  const feesPayedOut = await TEST_get_dy_fees(
-    market,
-    inIndex,
-    outIndex,
-    inAmountInclFees
-  );
-  console.log('feesPayedOut:', feesPayedOut.toString());
+  if (amountIn.gt(amountInMaximum)) {
+    throw new Error('amountIn > amountInMaximum');
+  }
 
-  // equation 2: buy vBase according to equation 1)
-  const outAmountInclFees = (
-    await market.get_dy(inIndex, outIndex, inAmountInclFees)
-  ).add(feesPayedOut);
-
-  console.log('outAmountInclFees:', outAmountInclFees.toString());
-
-  // log the final result
-  const deltaInclFees = outAmountInclFees.sub(eAmountOut);
-  console.log('deltaInclFees:', deltaInclFees.toString());
-
-  const deltaPercentInclFees = deltaInclFees
-    .mul(asBigNumber('1'))
-    .div(eAmountOut)
-    .mul(ethers.BigNumber.from(100));
-  console.log(
-    'deltaInclFees % is',
-    ethers.utils.formatEther(deltaPercentInclFees)
-  );
+  return {
+    amountIn,
+    amountOut,
+  };
 }
-/*
-
-
-883319625884063498   - inAmount
-
-     444707207612999 - feesPayed
-
- 1000000000000000000 - eAmountOut
-
-  998996826699080839 - outAmount
-   -1003173300919161 - delta:
-
-  999499771534544348 - outAmountInclFees
-    -500228465455652 - deltaInclFees
-
-
-*/
 
 /******************* HELPER FUNCTIONS  *******************/
 async function calcRemoveLiquidity(

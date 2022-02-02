@@ -10,6 +10,7 @@ import {
   fundAccountsHardhat,
   setupUser,
 } from '../../helpers/misc-utils';
+import {TEST_dust_remove_liquidity} from '../helpers/CurveUtils';
 import {getChainlinkPrice} from '../../helpers/contracts-deployments';
 import {asBigNumber, rDiv} from '../helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
@@ -18,6 +19,9 @@ import {Side} from '../helpers/utils/types';
 describe('Increment App: Liquidity', function () {
   let user: User, bob: User, alice: User;
   let liquidityAmount: BigNumber;
+
+  // constants
+  const MIN_MINT_AMOUNT = BigNumber.from(0);
 
   beforeEach('Set up', async () => {
     ({user, bob, alice} = await setup());
@@ -158,8 +162,8 @@ describe('Increment App: Liquidity', function () {
 
         // try withdraw
         const providedLiquidity = (
-          await user.perpetual.liquidityPosition(user.address)
-        )[0]; // first element are lp tokens
+          await user.perpetual.getUserPosition(user.address)
+        ).liquidityBalance;
 
         await expect(
           user.perpetual.withdrawLiquidity(
@@ -207,8 +211,8 @@ describe('Increment App: Liquidity', function () {
 
         // withdraw
         const providedLiquidity = (
-          await user.perpetual.liquidityPosition(user.address)
-        )[0]; // first element are lp tokens
+          await user.perpetual.getUserPosition(user.address)
+        ).liquidityBalance;
 
         await expect(
           user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
@@ -218,8 +222,6 @@ describe('Increment App: Liquidity', function () {
       });
 
       it('Should withdraw correct amount of liquidity', async function () {
-        const userBalanceStart = await user.usdc.balanceOf(user.address);
-
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,
@@ -229,18 +231,39 @@ describe('Increment App: Liquidity', function () {
         expect(userBalanceAfter).to.be.equal(0);
 
         //withdraw;
-        const providedLiquidity = (
-          await user.perpetual.liquidityPosition(user.address)
-        )[0]; // first element are lp tokens
+        const positionBefore = await user.perpetual.getUserPosition(
+          user.address
+        );
+
+        const dust = await TEST_dust_remove_liquidity(
+          // dust balances remaining in contract
+          user.market,
+          positionBefore.liquidityBalance,
+          [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+        );
+
         await expect(
-          user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
+          user.perpetual.withdrawLiquidity(
+            positionBefore.liquidityBalance,
+            user.usdc.address
+          )
         )
           .to.emit(user.perpetual, 'LiquidityWithdrawn')
-          .withArgs(user.address, user.usdc.address, providedLiquidity);
-        const userBalanceEnd = await user.usdc.balanceOf(user.address);
+          .withArgs(
+            user.address,
+            user.usdc.address,
+            positionBefore.liquidityBalance
+          );
 
-        // check balances
-        expect(userBalanceEnd).to.be.equal(userBalanceStart.sub(1)); // subtract dust
+        const positionAfter = await user.perpetual.getUserPosition(
+          user.address
+        );
+
+        expect(positionAfter.liquidityBalance).to.be.equal(0);
+        expect(positionAfter.profit).to.be.equal(0);
+        expect(positionAfter.cumFundingRate).to.be.equal(0);
+        expect(positionAfter.positionSize).to.be.equal(-dust.base);
+        expect(positionAfter.openNotional).to.be.equal(-dust.quote);
       });
     });
     describe('Misc', async function () {
@@ -258,10 +281,7 @@ describe('Increment App: Liquidity', function () {
           .to.emit(user.market, 'AddLiquidity')
           .withArgs(
             user.perpetual.address,
-            [
-              liquidityWadAmount.div(2),
-              liquidityWadAmount.div(2).mul(PRECISION).div(price),
-            ],
+            [liquidityWadAmount, liquidityWadAmount.mul(PRECISION).div(price)],
             0,
             0
           );

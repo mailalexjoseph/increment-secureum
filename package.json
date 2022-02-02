@@ -74,8 +74,5 @@
     "fork:dev": "node ./_scripts.js fork:dev",
     "fork:node": "node ./_scripts.js fork:node",
     "fork:test": "node ./_scripts.js fork:test"
-  },
-  "dependencies": {
-    "@uniswap/v2-core": "^1.0.1"
   }
 }

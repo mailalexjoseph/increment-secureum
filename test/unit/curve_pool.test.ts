@@ -332,8 +332,8 @@ describe('Cryptoswap: Unit tests', function () {
         MIN_MINT_AMOUNT,
         MIN_MINT_AMOUNT,
       ]);
-      expect(dust[0]).to.be.equal(2); // quoteDust is 2 (amount is above lpTokenBalance)
-      expect(dust[1]).to.be.equal(1); // baseDust is 1
+      expect(dust.quote).to.be.equal(2); // quoteDust is 2 (amount is above lpTokenBalance)
+      expect(dust.base).to.be.equal(1); // baseDust is 1
       const remainingBalances = [quoteAmount.sub('2'), baseAmount.sub('1')];
 
       // withdraw liquidity
@@ -475,39 +475,47 @@ describe('Cryptoswap: Unit tests', function () {
         eBuyQuoteAmount
       );
     });
-    it.only('Can perform Exact Output Swap for Base', async function () {
+    it('Can perform (approximated) Exact Output Swap for Base', async function () {
       /* init */
-      await fundCurvePool(lp, asBigNumber('100'));
-
-      // mint tokens to trade
-      const sellBaseAmount = asBigNumber('10');
-      const eBuyQuoteAmount = await trader.market.get_dy(1, 0, sellBaseAmount);
-
-      // trade some tokens
-      await mintAndBuyToken(trader, 1, trader.vBase, sellBaseAmount);
-
-      // check balances after trade
-      expect(await trader.vQuote.balanceOf(trader.address)).to.be.equal(
-        eBuyQuoteAmount
-      );
-
-      await TEST_get_exactOutputSwap(
-        trader.market,
-        asBigNumber('1'),
-        MAX_UINT_AMOUNT
-      );
-    });
-    it('Can perform Exact Output Swap for Quote', async function () {
-      /* init */
-      await fundCurvePool(lp, asBigNumber('10'));
+      await fundCurvePool(lp, asBigNumber('1000'));
 
       await mintAndBuyToken(trader, 1, trader.vBase, asBigNumber('1'));
 
-      await TEST_get_exactOutputSwap(
+      // swap for exact quote tokens
+      const swapAmount = asBigNumber('1');
+      const result = await TEST_get_exactOutputSwap(
         trader.market,
-        asBigNumber('1'),
-        MAX_UINT_AMOUNT
+        swapAmount,
+        MAX_UINT_AMOUNT,
+        0,
+        1
       );
+      expect(result.amountOut).to.be.at.least(swapAmount);
+      expect(await trader.market.get_dy(0, 1, result.amountIn)).to.be.equal(
+        result.amountOut
+      );
+      //console.log('y-delta is ', result.amountOut.sub(swapAmount).toString());
+    });
+    it('Can perform (approximated) Exact Output Swap for Quote', async function () {
+      /* init */
+      await fundCurvePool(lp, asBigNumber('1000'));
+
+      await mintAndBuyToken(trader, 1, trader.vBase, asBigNumber('1'));
+
+      // swap for exact base tokens
+      const swapAmount = asBigNumber('1');
+      const result = await TEST_get_exactOutputSwap(
+        trader.market,
+        swapAmount,
+        MAX_UINT_AMOUNT,
+        1,
+        0
+      );
+      expect(result.amountOut).to.be.at.least(swapAmount);
+      expect(await trader.market.get_dy(1, 0, result.amountIn)).to.be.equal(
+        result.amountOut
+      );
+      // console.log('y-delta is ', result.amountOut.sub(swapAmount).toString());
     });
 
     it('Can buy base tokens twice', async function () {

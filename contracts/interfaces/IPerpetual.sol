@@ -57,7 +57,7 @@ interface IPerpetual {
 
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
 
-    function closePosition() external;
+    function closePosition(uint256 amount) external;
 
     // funding rate functions
     function getLatestPrice() external view returns (LibPerpetual.Price memory);
@@ -72,7 +72,7 @@ interface IPerpetual {
     function withdraw(uint256 amount, IERC20 token) external;
 
     // user position function
-    function getUserPosition(address account) external view returns (LibPerpetual.TraderPosition memory);
+    function getUserPosition(address account) external view returns (LibPerpetual.UserPosition memory);
 
     function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
 

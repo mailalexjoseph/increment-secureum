@@ -27,12 +27,18 @@ import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 library LibMath {
     uint256 public constant POSITIVE_INT256_MAX = uint256(type(int256).max);
 
+    // safe casting
     function toInt256(uint256 x) internal pure returns (int256) {
         return SafeCast.toInt256(x);
     }
 
     function toUint256(int256 x) internal pure returns (uint256) {
         return SafeCast.toUint256(x);
+    }
+
+    // absolute value
+    function abs(int256 x) internal pure returns (int256) {
+        return PRBMathSD59x18.abs(x);
     }
 
     // wad division
