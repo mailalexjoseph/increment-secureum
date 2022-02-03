@@ -68,13 +68,9 @@ export async function TEST_get_dy(
     price_scale
   );
 
-  let dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
+  const dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
 
-  const fees = await calcFees(market, xp, dy);
-
-  dy = await applyFees(market, xp, dy);
-
-  return {dy, fees};
+  return await applyFees(market, xp, dy);
 }
 
 /// @notice: perform an exactOutputSwap with curve (i.e. https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps)
@@ -196,11 +192,12 @@ async function applyFees(
   market: CryptoSwap,
   xp: BigNumber[],
   dy: BigNumber
-): Promise<BigNumber> {
-  dy = dy.sub(await calcFees(market, xp, dy));
+): Promise<{dy: BigNumber; fees: BigNumber}> {
+  const fees = await calcFees(market, xp, dy);
+  dy = dy.sub(fees);
   // console.log('dy', dy.toString());
   // console.log('end of get_dy(, i, j, dx, )');
-  return dy;
+  return {dy, fees};
 }
 
 async function calcOutToken(

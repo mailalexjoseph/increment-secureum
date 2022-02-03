@@ -409,7 +409,7 @@ describe('Cryptoswap: Unit tests', function () {
 
       const dx = asBigNumber('1');
       await mintAndApprove(trader.vBase, dx, trader.address, marketA);
-      const expectedResult = (await TEST_get_dy(trader.market, 0, 1, dx)).dy;
+      const expectedResult = (await TEST_get_dy(trader.market, 1, 0, dx)).dy;
       const result = await trader.market.get_dy(1, 0, dx);
       expect(result).to.be.equal(expectedResult);
     });
