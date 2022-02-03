@@ -112,15 +112,15 @@ contract Vault is IVault, Context, IncreOwnable {
         require(amount.toInt256() <= balances[user], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
+        //    console.log("hardhat: Withdrawing for user", amount);
+
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
+
         balances[user] -= amount.toInt256();
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
 
-        // console.log(
-        //     "hardhat: balances[user]",
-        //     balances[user] > 0 ? balances[user].toUint256() : (-1 * balances[user]).toUint256()
-        // );
+        //    console.log("Withdrawing for user (raw)", rawTokenAmount);
         // perform transfer
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
         return rawTokenAmount;

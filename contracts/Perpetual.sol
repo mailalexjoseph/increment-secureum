@@ -110,6 +110,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
+        //console.log("try withdrawing collateral");
         require(getUserPosition(_msgSender()).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         vault.withdraw(_msgSender(), amount, token);
@@ -247,21 +248,21 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
-        console.log("quoteAmount is", quoteAmount);
-        console.log("minAmount is", minAmount);
+        // console.log("quoteAmount is", quoteAmount);
+        // console.log("minAmount is", minAmount);
 
-        uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount);
-        console.log("get_dy returns", amountTest);
+        // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount);
+        // console.log("get_dy returns", amountTest);
 
         return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
     }
 
     function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        console.log("baseAmount is", baseAmount);
-        console.log("minAmount is", minAmount);
+        // console.log("baseAmount is", baseAmount);
+        // console.log("minAmount is", minAmount);
 
-        uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, baseAmount);
-        console.log("get_dy returns", amountTest);
+        // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, baseAmount);
+        // console.log("get_dy returns", amountTest);
 
         return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
     }
@@ -324,8 +325,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
             }
             upcomingFundingPayment = LibMath.wadMul(upcomingFundingRate, LibMath.abs(user.openNotional));
-            console.log("upcomingFundingPayment: ");
-            console.logInt(upcomingFundingPayment);
+            //console.log("upcomingFundingPayment: ");
+            //console.logInt(upcomingFundingPayment);
         }
         return upcomingFundingPayment;
     }
@@ -398,6 +399,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         require(user.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
 
+        // lower balances
+        user.liquidityBalance -= amount;
+        totalLiquidityProvided -= amount;
+
         //console.log("hardhat: trying to withdraw liquidity", amount);
         // remove liquidity from curve pool
         // calc_token_amount
@@ -405,7 +410,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 quoteAmount;
         {
             // to avoid stack to deep errors
-            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here?
+            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
             //console.log("hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
@@ -422,43 +427,41 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
 
-            console.log("hardhat quoteAmount", quoteAmount);
-            console.log("hardhat baseAmount", baseAmount);
+            //console.log("hardhat quoteAmount", quoteAmount);
+            //console.log("hardhat baseAmount", baseAmount);
         }
         //console.log("hardhat: has withdrawn", vBaseAmount, vQuoteAmount);
-        console.log("hardhat: ******before adjustments******");
+        //console.log("hardhat: ******before adjustments******");
 
-        console.log("hardhat: user.profit");
-        console.logInt(user.openNotional);
+        //console.log("hardhat: user.profit");
+        //console.logInt(user.profit);
 
-        console.log("hardhat: user.openNotional");
-        console.logInt(user.openNotional);
+        //console.log("hardhat: user.openNotional");
+        //console.logInt(user.openNotional);
 
-        console.log("hardhat: user.positionSize");
-        console.logInt(user.positionSize);
+        //console.log("hardhat: user.positionSize");
+        //console.logInt(user.positionSize);
 
         // user.profit += _settleFundingRate(user, global); TODO: use once funding rate calculation is done
         user.openNotional += quoteAmount.toInt256();
         user.positionSize += baseAmount.toInt256();
 
-        console.log("hardhat: ******after adjustments******");
-        console.log("hardhat: user.profit");
-        console.logInt(user.openNotional);
+        //console.log("hardhat: ******after adjustments******");
+        //console.log("hardhat: user.profit");
+        //console.logInt(user.profit);
 
-        console.log("hardhat: user.openNotional");
-        console.logInt(user.openNotional);
+        //console.log("hardhat: user.openNotional");
+        //console.logInt(user.openNotional);
 
-        console.log("hardhat: user.positionSize");
-        console.logInt(user.positionSize);
+        //console.log("hardhat: user.positionSize");
+        //console.logInt(user.positionSize);
 
         // if no open position remaining, remove the user
         if (user.positionSize == 0) {
+            vault.settleProfit(sender, user.openNotional);
             vault.withdrawAll(sender, token);
+            delete userPosition[sender];
         }
-
-        // lower balances
-        totalLiquidityProvided -= amount;
-        user.liquidityBalance -= amount;
 
         emit LiquidityWithdrawn(sender, address(token), amount);
     }
