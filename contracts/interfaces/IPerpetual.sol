@@ -4,6 +4,8 @@ pragma solidity 0.8.4;
 // contract
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
+import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
+import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
 
 // interfaces
 import {IVault} from "./IVault.sol";
@@ -40,6 +42,10 @@ interface IPerpetual {
     function market() external view returns (ICryptoSwap);
 
     function chainlinkOracle() external view returns (IChainlinkOracle);
+
+    function poolTWAPOracle() external view returns (PoolTWAPOracle);
+
+    function chainlinkTWAPOracle() external view returns (ChainlinkTWAPOracle);
 
     function vBase() external view returns (IVirtualToken);
 

@@ -7,6 +7,11 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
   const chainlinkOracle = await ethers.getContract('ChainlinkOracle', deployer);
+  const poolTWAPOracle = await ethers.getContract('PoolTWAPOracle', deployer);
+  const chainlinkTWAPOracle = await ethers.getContract(
+    'ChainlinkTWAPOracle',
+    deployer
+  );
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
   const vault = await ethers.getContract('Vault', deployer);
@@ -14,6 +19,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const perpetualArgs = [
     chainlinkOracle.address,
+    poolTWAPOracle.address,
+    chainlinkTWAPOracle.address,
     vEUR.address,
     vUSD.address,
     market.address,
@@ -32,6 +39,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ['Perpetual'];
 func.id = 'deploy_perpetual_contract';
-func.dependencies = ['VirtualTokens', 'CurvePool', 'ChainlinkOracle', 'Vault'];
+func.dependencies = [
+  'VirtualTokens',
+  'CurvePool',
+  'ChainlinkOracle',
+  'PoolTWAPOracle',
+  'ChainlinkTWAPOracle',
+  'Vault',
+];
 
 export default func;

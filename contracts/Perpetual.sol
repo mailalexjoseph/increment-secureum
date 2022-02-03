@@ -9,6 +9,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 import {VirtualToken} from "./tokens/VirtualToken.sol";
+import {PoolTWAPOracle} from "./oracles/PoolTWAPOracle.sol";
+import {ChainlinkTWAPOracle} from "./oracles/ChainlinkTWAPOracle.sol";
 
 // interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
@@ -40,6 +42,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // dependencies
     ICryptoSwap public override market;
+    PoolTWAPOracle public override poolTWAPOracle;
+    ChainlinkTWAPOracle public override chainlinkTWAPOracle;
     IChainlinkOracle public override chainlinkOracle;
     IVirtualToken public override vBase;
     IVirtualToken public override vQuote;
@@ -58,12 +62,16 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     constructor(
         IChainlinkOracle _chainlinkOracle,
+        PoolTWAPOracle _poolTWAPOracle,
+        ChainlinkTWAPOracle _chainlinkTWAPOracle,
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
         IVault _vault
     ) {
         chainlinkOracle = _chainlinkOracle;
+        poolTWAPOracle = _poolTWAPOracle;
+        chainlinkTWAPOracle = _chainlinkTWAPOracle;
         vBase = _vBase;
         vQuote = _vQuote;
         market = _curvePool;
@@ -136,6 +144,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         );
 
         updateFundingRate();
+        poolTWAPOracle.updateEURUSDTWAP();
 
         // Buy virtual tokens for the position
         uint256 vTokenBought = _openPositionOnMarket(convertedWadAmount, direction);
@@ -179,6 +188,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(user.notional != 0, "No position currently opened");
 
         updateFundingRate();
+        poolTWAPOracle.updateEURUSDTWAP();
 
         _closePosition(user, global);
 
@@ -205,7 +215,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // console.log("hardhat: user.notional", user.notional.toUint256());
         // console.log("hardhat: vQuoteProceeds", vQuoteProceeds);
         // set trader position
-        user.profit += _calculatePnL(user.notional, vQuoteProceeds);
+        user.profit += _calculatePnL(user.notional.toInt256(), vQuoteProceeds.toInt256());
         user.notional = 0;
         user.positionSize = 0;
     }
@@ -254,8 +264,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // get information about position
-    function _calculatePnL(uint256 boughtPrice, uint256 soldPrice) internal pure returns (int256) {
-        return soldPrice.toInt256() - boughtPrice.toInt256();
+    function _calculatePnL(int256 boughtPrice, int256 soldPrice) internal pure returns (int256) {
+        return soldPrice - boughtPrice;
     }
 
     /// @notice Applies the funding payments on user.profit
@@ -453,23 +463,27 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         int256 collateral = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
 
-        uint256 vQuoteVirtualProceeds = 0;
+        int256 vQuoteVirtualProceeds = 0;
+        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
         if (user.side == LibPerpetual.Side.Long) {
-            vQuoteVirtualProceeds = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, uint256(user.positionSize));
+            // vQuoteVirtualProceeds = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, user.positionSize);
+            vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize.toInt256(), poolEURUSDTWAP);
         } else {
-            uint256 vBaseReceived = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, uint256(user.positionSize));
+            // uint256 vBaseReceived = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, user.positionSize);
+            int256 vBaseReceived = LibMath.wadDiv(user.positionSize.toInt256(), poolEURUSDTWAP);
 
-            uint256 baseOnQuotePrice = indexPrice().toUint256();
+            int256 baseOnQuotePrice = indexPrice();
             vQuoteVirtualProceeds = LibMath.wadMul(vBaseReceived, baseOnQuotePrice);
         }
 
-        int256 unrealizedPositionPnl = _calculatePnL(user.notional, vQuoteVirtualProceeds);
+        int256 unrealizedPositionPnl = _calculatePnL(user.notional.toInt256(), vQuoteVirtualProceeds);
 
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, user.notional.toInt256());
     }
 
     function liquidate(address account) external {
         updateFundingRate();
+        poolTWAPOracle.updateEURUSDTWAP();
 
         require(!marginIsValid(account), "Margin is valid");
         address liquidator = _msgSender();

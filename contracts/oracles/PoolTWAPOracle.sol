@@ -2,17 +2,23 @@
 pragma solidity 0.8.4;
 
 // interfaces
-import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
+import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 
 // libraries
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {LibMath} from "./lib/LibMath.sol";
+import {LibMath} from "../lib//LibMath.sol";
 
-// TMP
-import "hardhat/console.sol";
+// import "hardhat/console.sol";
 
-// should it be made a library?
-contract PoolOracle {
+/*
+ * PoolTWAP is used to compute and return a time-weighted average of the vBase/vQuote ratio in the crypto swap pool.
+ *
+ * This TWAP oracle is inspired by this TWAP article of Uniswap: https://docs.uniswap.org/protocol/V2/concepts/core-concepts/oracles
+ * Except that the weighting is done over the length of one PERIOD minimum, and that every 2 PERIODs the value of the
+ * the cumulative amount used as a reference point against the current cumulative amount is reset with the value it
+ * had 1 PERIOD ago - same thing for the reference timestamp value.
+ */
+contract PoolTWAPOracle {
     using SafeCast for uint256;
     using SafeCast for int256;
 
@@ -27,6 +33,8 @@ contract PoolOracle {
     uint256 public cumulativeAmountAtBeginningOfPeriodTmp;
     uint256 public timeOfCumulativeAmountAtBeginningOfPeriodTmp;
 
+    int256 public currentEURUSDTWAP;
+
     ICryptoSwap public immutable pool;
 
     event TWAPUpdated();
@@ -35,7 +43,7 @@ contract PoolOracle {
         pool = _curvePool;
     }
 
-    function updateTWAP() external {
+    function updateEURUSDTWAP() external {
         uint256 currentTime = block.timestamp;
 
         uint256 timeElapsed = currentTime - timeOfCumulativeAmount;
@@ -55,28 +63,14 @@ contract PoolOracle {
 
             emit TWAPUpdated();
         }
-    }
-
-    function getTWAP() external view returns (int256) {
-        // console.log("cumulativeAmount:", cumulativeAmount);
-        // console.log("timeOfCumulativeAmount:", timeOfCumulativeAmount);
-        // console.log("cumulativeAmountAtBeginningOfPeriod:", cumulativeAmountAtBeginningOfPeriod);
-        // console.log("timeOfCumulativeAmountAtBeginningOfPeriod:", timeOfCumulativeAmountAtBeginningOfPeriod);
-        // console.log("cumulativeAmountAtBeginningOfPeriodTmp:", cumulativeAmountAtBeginningOfPeriodTmp);
-        // console.log("timeOfCumulativeAmountAtBeginningOfPeriodTmp:", timeOfCumulativeAmountAtBeginningOfPeriodTmp);
 
         int256 priceDiff = cumulativeAmount.toInt256() - cumulativeAmountAtBeginningOfPeriod.toInt256();
         int256 timeDiff = timeOfCumulativeAmount.toInt256() - timeOfCumulativeAmountAtBeginningOfPeriod.toInt256();
 
-        // console.log("priceDiff:");
-        // console.logInt(priceDiff);
-        // console.log("timeDiff:");
-        // console.logInt(timeDiff);
+        currentEURUSDTWAP = LibMath.wadDiv(priceDiff, timeDiff);
+    }
 
-        if (timeDiff > 0) {
-            return LibMath.wadDiv(priceDiff, timeDiff);
-        }
-
-        return 0;
+    function getEURUSDTWAP() external view returns (int256) {
+        return currentEURUSDTWAP;
     }
 }

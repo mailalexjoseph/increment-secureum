@@ -10,6 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {IncreOwnable} from "../utils/IncreOwnable.sol";
 import {VirtualToken} from "../tokens/VirtualToken.sol";
+import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
+import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
 
 // interfaces
 import {IPerpetual} from "../interfaces/IPerpetual.sol";
@@ -32,11 +34,13 @@ import "hardhat/console.sol";
 contract TestPerpetual is Perpetual {
     constructor(
         IChainlinkOracle _chainlinkOracle,
+        PoolTWAPOracle _poolTWAPOracle,
+        ChainlinkTWAPOracle _chainlinkTWAPOracle,
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
         IVault _vault
-    ) Perpetual(_chainlinkOracle, _vBase, _vQuote, _curvePool, _vault) {}
+    ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _vault) {}
 
     // simplified setter
     function setGlobalPosition(
