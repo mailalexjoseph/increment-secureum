@@ -2,8 +2,7 @@ import {expect} from 'chai';
 import {BigNumber} from 'ethers';
 import {getNamedAccounts, deployments} from 'hardhat';
 import {ethers} from 'hardhat';
-import env = require('hardhat');
-import {TestLibFunding} from '../../typechain';
+import {TestLibFunding, TestLibFunding__factory} from '../../typechain';
 import {
   asBigNumber,
   rMul,
@@ -71,13 +70,12 @@ describe('Funding library: Unit tests', async function () {
   const setup = deployments.createFixture(async (): Promise<User> => {
     const {deployer} = await getNamedAccounts();
 
-    await env.deployments.deploy('TestLibFunding', {
-      from: deployer,
-      log: true,
-    });
+    const [deployerSigner] = await ethers.getSigners();
+    const FundingFactory = new TestLibFunding__factory(deployerSigner);
+    const funding = await FundingFactory.deploy();
 
     user = await setupUser(deployer, {
-      funding: await ethers.getContract('TestLibFunding', deployer),
+      funding: await funding,
     });
 
     return user;

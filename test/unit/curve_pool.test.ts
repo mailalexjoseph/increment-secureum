@@ -2,8 +2,6 @@ import {expect} from 'chai';
 import {ethers, deployments, getNamedAccounts} from 'hardhat';
 import env = require('hardhat');
 
-import {getChainlinkPrice} from '../../helpers/contracts-deployments';
-
 // typechain objects
 import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
@@ -20,7 +18,9 @@ import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments'
 import {setupUser} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
 
-import {initialPrice} from '../helpers/deploy/002_create_curve_pool';
+import {VBase__factory, VQuote__factory} from '../../typechain';
+import {CurveTokenV5__factory} from '../../contracts-vyper/typechain/factories/CurveTokenV5__factory';
+import {CryptoSwap__factory} from '../../contracts-vyper/typechain/factories/CryptoSwap__factory';
 
 type User = {address: string} & {
   vBase: VBase;
@@ -39,26 +39,70 @@ interface TestEnv {
   vQuoteA: tEthereumAddress;
   curveTokenA: tEthereumAddress;
 }
+
+// fixed initial price
+const initialPrice = ethers.utils.parseEther('1.131523');
+
+// setup function w/ snapshots
 const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   const {lp, lpTwo, trader, deployer} = await getNamedAccounts();
+  console.log(`Current network is ${env.network.name.toString()}`);
 
-  // fund account with ether
-  // await fundAccountsHardhat([DEPLOYER], env);
-  await deployments.fixture('CurvePool_test');
+  const [DEPLOYER] = await ethers.getSigners();
+  // deploy vEUR & vUSD
+  const VBaseFactory = new VBase__factory(DEPLOYER);
+  const vBase = await VBaseFactory.deploy('Long EUR/USD', 'vEUR');
+
+  const VQuoteFactory = new VQuote__factory(DEPLOYER);
+  const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vUSD');
+
+  // deploy curve token
+  const CurveTokenV5Factory = new CurveTokenV5__factory(DEPLOYER);
+  const curveToken = await CurveTokenV5Factory.deploy('vEUR/vUSD', 'EURUSD');
+
+  // deploy curve pool
+  const FundingFactory = new CryptoSwap__factory(DEPLOYER);
+
+  console.log(
+    'Use FIXED EUR/USD price of ',
+    env.ethers.utils.formatEther(initialPrice)
+  );
+  // deploy CryptoSwap
+  const cryptoSwapConstructorArgs = getCryptoSwapConstructorArgs(
+    deployer,
+    initialPrice,
+    curveToken.address,
+    vQuote.address,
+    vBase.address
+  );
+  const cryptoSwap = await FundingFactory.deploy(
+    cryptoSwapConstructorArgs.owner,
+    cryptoSwapConstructorArgs.admin_fee_receiver,
+    cryptoSwapConstructorArgs.A,
+    cryptoSwapConstructorArgs.gamma,
+    cryptoSwapConstructorArgs.mid_fee,
+    cryptoSwapConstructorArgs.out_fee,
+    cryptoSwapConstructorArgs.allowed_extra_profit,
+    cryptoSwapConstructorArgs.fee_gamma,
+    cryptoSwapConstructorArgs.adjustment_step,
+    cryptoSwapConstructorArgs.admin_fee,
+    cryptoSwapConstructorArgs.ma_half_time,
+    cryptoSwapConstructorArgs.initial_price,
+    cryptoSwapConstructorArgs.curve_token,
+    cryptoSwapConstructorArgs.reserve_tokens
+  );
+
+  // transfer minter role to curve pool
+  await curveToken.set_minter(cryptoSwap.address);
+
+  console.log('We have deployed vEUR/vUSD curve pool');
 
   const contracts = {
-    market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployer),
-    vBase: <VBase>await ethers.getContract('VBase', deployer),
-    vQuote: <VQuote>await ethers.getContract('VQuote', deployer),
-    curveToken: <CurveTokenV5>(
-      await ethers.getContract('CurveTokenV5', deployer)
-    ),
+    market: <CryptoSwap>cryptoSwap,
+    vBase: <VBase>vBase,
+    vQuote: <VQuote>vQuote,
+    curveToken: <CurveTokenV5>curveToken,
   };
-
-  const marketA = contracts.market.address;
-  const vBaseA = contracts.vBase.address;
-  const vQuoteA = contracts.vQuote.address;
-  const curveTokenA = contracts.curveToken.address;
 
   // container
   const testEnv: TestEnv = {
@@ -66,10 +110,10 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
     trader: await setupUser(trader, contracts),
     lp: await setupUser(lp, contracts),
     lpTwo: await setupUser(lpTwo, contracts),
-    vBaseA,
-    vQuoteA,
-    curveTokenA,
-    marketA,
+    vBaseA: vBase.address,
+    vQuoteA: vQuote.address,
+    curveTokenA: curveToken.address,
+    marketA: cryptoSwap.address,
   };
 
   return testEnv;
@@ -93,6 +137,7 @@ describe('Cryptoswap: Unit tests', function () {
     ({deployer, lp, lpTwo, trader, marketA, vBaseA, vQuoteA, curveTokenA} =
       await setup());
   });
+
   async function mintAndBuyToken(
     market: CryptoSwap,
     inToken: VirtualToken,

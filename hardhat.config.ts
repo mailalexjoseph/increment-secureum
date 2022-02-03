@@ -125,7 +125,7 @@ const config: HardhatUserConfig = {
     artifacts: 'artifacts',
     sources: 'contracts',
     tests: 'test',
-    deploy: ['deploy', 'test/helpers/deploy'],
+    deploy: ['deploy'],
   },
   gasReporter: {
     currency: 'USD',
