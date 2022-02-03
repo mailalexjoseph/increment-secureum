@@ -12,13 +12,16 @@ export async function TEST_get_remove_liquidity(
   market: CryptoSwap,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
-): Promise<[BigNumber, BigNumber]> {
+): Promise<{quote: BigNumber; base: BigNumber}> {
   const [amountReturned] = await calcRemoveLiquidity(
     market,
     _amount,
     min_amounts
   );
-  return amountReturned;
+  return {
+    quote: amountReturned[0],
+    base: amountReturned[1],
+  };
 }
 
 /// @notice returns the amount of tokens remaining in the market
@@ -44,7 +47,7 @@ export async function TEST_get_dy(
   i: number,
   j: number,
   dx: BigNumber
-): Promise<BigNumber> {
+): Promise<{dy: BigNumber; fees: BigNumber}> {
   /*
     print the results of the get_dy function line by line
   */
@@ -67,44 +70,11 @@ export async function TEST_get_dy(
 
   let dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
 
-  dy = await applyFees(market, xp, dy);
-
-  return dy;
-}
-
-/// @notice returns the amount of tokens transferred back to the user
-
-export async function TEST_get_dy_fees(
-  market: CryptoSwap,
-  i: number,
-  j: number,
-  dx: BigNumber
-): Promise<BigNumber> {
-  /*
-    print the results of the get_dy function line by line
-  */
-  if (i == j) throw new Error('i==j');
-  if (i > 2 || j > 2) throw new Error('i or j > 2');
-
-  const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
-    market
-  );
-
-  const [xp, y] = await calcNewPoolBalances(
-    market,
-    dx,
-    i,
-    j,
-    PRECISION,
-    PRECISIONS,
-    price_scale
-  );
-
-  const dy = await calcOutToken(j, xp, y, PRECISION, PRECISIONS, price_scale);
-
   const fees = await calcFees(market, xp, dy);
 
-  return fees;
+  dy = await applyFees(market, xp, dy);
+
+  return {dy, fees};
 }
 
 /// @notice: perform an exactOutputSwap with curve (i.e. https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps)
@@ -159,7 +129,7 @@ export async function TEST_get_exactOutputSwap(
   // take maxVal to make sure we are above the target
   if (amountOut.lt(eAmountOut)) {
     amountIn = maxVal;
-    amountOut = await TEST_get_dy(market, inIndex, outIndex, maxVal);
+    amountOut = (await TEST_get_dy(market, inIndex, outIndex, maxVal)).dy;
   }
 
   if (amountIn.gt(amountInMaximum)) {

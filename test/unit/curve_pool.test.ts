@@ -399,7 +399,7 @@ describe('Cryptoswap: Unit tests', function () {
 
       const dx = asBigNumber('1');
       await mintAndApprove(trader.vQuote, dx, trader.address, marketA);
-      const expectedResult = await TEST_get_dy(trader.market, 0, 1, dx);
+      const expectedResult = (await TEST_get_dy(trader.market, 0, 1, dx)).dy;
       const result = await trader.market.get_dy(0, 1, dx);
       expect(result).to.be.equal(expectedResult);
     });
@@ -409,7 +409,7 @@ describe('Cryptoswap: Unit tests', function () {
 
       const dx = asBigNumber('1');
       await mintAndApprove(trader.vBase, dx, trader.address, marketA);
-      const expectedResult = await TEST_get_dy(trader.market, 1, 0, dx);
+      const expectedResult = (await TEST_get_dy(trader.market, 0, 1, dx)).dy;
       const result = await trader.market.get_dy(1, 0, dx);
       expect(result).to.be.equal(expectedResult);
     });
@@ -638,8 +638,8 @@ describe('Cryptoswap: Unit tests', function () {
       expect(balanceVQuoteBeforeMarket).to.be.equal(
         balanceVQuoteAfterMarket.add(balanceVQuoteAfterUser)
       );
-      expect(eWithdrawAmount[0]).to.be.equal(balanceVQuoteAfterUser);
-      expect(eWithdrawAmount[1]).to.be.equal(balanceVBaseAfterUser);
+      expect(eWithdrawAmount.quote).to.be.equal(balanceVQuoteAfterUser);
+      expect(eWithdrawAmount.base).to.be.equal(balanceVBaseAfterUser);
     });
   });
 });
