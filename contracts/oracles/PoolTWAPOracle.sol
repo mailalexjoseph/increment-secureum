@@ -47,7 +47,9 @@ contract PoolTWAPOracle {
         uint256 currentTime = block.timestamp;
 
         uint256 timeElapsed = currentTime - timeOfCumulativeAmount;
-        uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
+        // uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
+        uint256 newPrice = pool.price_oracle();
+
         // console.log("newPrice: ", newPrice);
         // console.log("timeElapsed: ", timeElapsed);
         cumulativeAmount = cumulativeAmount + LibMath.wadMul(newPrice, timeElapsed);
