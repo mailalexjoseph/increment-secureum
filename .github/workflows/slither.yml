@@ -35,4 +35,4 @@ jobs:
 
       - name: Run slither
         run: |
-          slither .
+          slither . --sarif slither.sarif
