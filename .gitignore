@@ -38,5 +38,4 @@ crytic-export/
 
 !contracts-vyper/*
 
-slither.config.json
 slither.sarif
