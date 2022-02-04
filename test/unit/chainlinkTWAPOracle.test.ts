@@ -3,7 +3,7 @@ import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
-import ChainlinkOracle from '../../artifacts/contracts/ChainlinkOracle.sol/ChainlinkOracle.json';
+import ChainlinkOracle from '../../artifacts/contracts/oracles/ChainlinkOracle.sol/ChainlinkOracle.json';
 import {ChainlinkTWAPOracle} from '../../typechain';
 import {rMul, rDiv} from '../helpers/calculations';
 

@@ -2,7 +2,7 @@
 pragma solidity 0.8.4;
 
 // contracts
-import {IncreOwnable} from "./utils/IncreOwnable.sol";
+import {IncreOwnable} from "../utils/IncreOwnable.sol";
 
 // libraries
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -11,8 +11,8 @@ import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
 // interfaces
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {FeedRegistryInterface} from "@chainlink/contracts/src/v0.8/interfaces/FeedRegistryInterface.sol";
-import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
-import {IPerpetual} from "./interfaces/IPerpetual.sol";
+import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
+import {IPerpetual} from "../interfaces/IPerpetual.sol";
 
 contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     using SafeCast for uint256;
