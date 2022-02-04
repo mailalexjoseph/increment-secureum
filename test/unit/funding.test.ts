@@ -67,14 +67,6 @@
 //   const setup = deployments.createFixture(async (): Promise<User> => {
 //     const {deployer} = await getNamedAccounts();
 
-<<<<<<< HEAD
-//     const [deployerSigner] = await ethers.getSigners();
-//     const FundingFactory = new TestLibFunding__factory(deployerSigner);
-//     const funding = await FundingFactory.deploy();
-
-//     user = await setupUser(deployer, {
-//       funding: await funding,
-=======
 //     await env.deployments.deploy('TestLibFunding', {
 //       from: deployer,
 //       log: true,
@@ -82,7 +74,6 @@
 
 //     user = await setupUser(deployer, {
 //       funding: await ethers.getContract('TestLibFunding', deployer),
->>>>>>> 7d2346d (feat: add ChainlinkTWAPOracle)
 //     });
 
 //     return user;
