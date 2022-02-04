@@ -13,10 +13,19 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const perpetualVersionToUse = getPerpetualVersionToUse(hre);
   const perpetual = await ethers.getContract(perpetualVersionToUse, deployer);
+  const chainlinkTWAPOracle = await ethers.getContract(
+    'ChainlinkTWAPOracle',
+    deployer
+  );
   const chainlinkOracle = await ethers.getContract('ChainlinkOracle', deployer);
 
   await chainlinkOracle.addAggregator(
     perpetual.address,
+    getChainlinkOracle(hre, 'EUR_USD')
+  );
+
+  await chainlinkOracle.addAggregator(
+    chainlinkTWAPOracle.address,
     getChainlinkOracle(hre, 'EUR_USD')
   );
 

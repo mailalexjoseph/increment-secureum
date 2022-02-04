@@ -143,8 +143,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             "Not enough funds in the vault for the margin of this position"
         );
 
-        updateFundingRate();
+        chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
+        updateFundingRate();
 
         // Buy virtual tokens for the position
         uint256 vTokenBought = _openPositionOnMarket(convertedWadAmount, direction);
@@ -187,8 +188,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         require(user.notional != 0, "No position currently opened");
 
-        updateFundingRate();
+        chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
+        updateFundingRate();
 
         _closePosition(user, global);
 
@@ -253,8 +255,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         if (currentTime > timeOfLastTrade) {
             LibFunding.calculateFunding(
                 global,
-                marketPrice().toInt256(),
-                chainlinkOracle.getIndexPrice(),
+                poolTWAPOracle.getEURUSDTWAP(),
+                chainlinkTWAPOracle.getEURUSDTWAP(),
                 currentTime,
                 TWAP_FREQUENCY
             );
@@ -482,8 +484,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function liquidate(address account) external {
-        updateFundingRate();
+        chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
+        updateFundingRate();
 
         require(!marginIsValid(account), "Margin is valid");
         address liquidator = _msgSender();
