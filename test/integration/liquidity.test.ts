@@ -63,10 +63,10 @@ describe('Increment App: Liquidity', function () {
 
     it('Should split first deposit according to current chainlink price', async function () {
       // before you deposit
-      const vEURBefore = await user.vEUR.balanceOf(user.market.address);
-      const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
-      const vEURlpBalance = await user.market.balances(1);
-      const vUSDlpBalance = await user.market.balances(0);
+      const vBaseBefore = await user.vBase.balanceOf(user.market.address);
+      const vQuoteBefore = await user.vQuote.balanceOf(user.market.address);
+      const vBaselpBalance = await user.market.balances(1);
+      const vQuotelpBalance = await user.market.balances(0);
 
       const price = await getChainlinkPrice(env, 'EUR_USD');
 
@@ -75,8 +75,8 @@ describe('Increment App: Liquidity', function () {
         liquidityAmount
       ); // deposited liquidity with 18 decimals
 
-      expect(vEURBefore).to.be.equal(vEURlpBalance);
-      expect(vUSDBefore).to.be.equal(vUSDlpBalance);
+      expect(vBaseBefore).to.be.equal(vBaselpBalance);
+      expect(vQuoteBefore).to.be.equal(vQuotelpBalance);
 
       // deposit
       await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
@@ -85,17 +85,17 @@ describe('Increment App: Liquidity', function () {
       /* relative price should not change */
       expect(await user.perpetual.marketPrice()).to.be.equal(price);
       /* balances should increment */
-      expect(await user.vUSD.balanceOf(user.market.address)).to.be.equal(
-        vUSDBefore.add(liquidityWadAmount.div(2))
+      expect(await user.vQuote.balanceOf(user.market.address)).to.be.equal(
+        vQuoteBefore.add(liquidityWadAmount.div(2))
       );
-      expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(
-        vEURBefore.add(rDiv(liquidityWadAmount.div(2), price))
+      expect(await user.vBase.balanceOf(user.market.address)).to.be.equal(
+        vBaseBefore.add(rDiv(liquidityWadAmount.div(2), price))
       );
       expect(await user.market.balances(0)).to.be.equal(
-        vUSDlpBalance.add(liquidityWadAmount.div(2))
+        vQuotelpBalance.add(liquidityWadAmount.div(2))
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), price))
+        vBaselpBalance.add(rDiv(liquidityWadAmount.div(2), price))
       );
     });
 
@@ -109,14 +109,14 @@ describe('Increment App: Liquidity', function () {
       await alice.perpetual.openPosition(depositAmount.mul(2), Side.Long);
 
       // before you deposit more liquidity
-      const vEURBefore = await user.vEUR.balanceOf(user.market.address);
-      const vUSDBefore = await user.vUSD.balanceOf(user.market.address);
-      const vEURlpBalance = await user.market.balances(1);
-      const vUSDlpBalance = await user.market.balances(0);
-      expect(vEURBefore).to.be.equal(vEURlpBalance);
-      expect(vUSDBefore).to.be.equal(vUSDlpBalance);
+      const vBaseBefore = await user.vBase.balanceOf(user.market.address);
+      const vQuoteBefore = await user.vQuote.balanceOf(user.market.address);
+      const vBaselpBalance = await user.market.balances(1);
+      const vQuotelpBalance = await user.market.balances(0);
+      expect(vBaseBefore).to.be.equal(vBaselpBalance);
+      expect(vQuoteBefore).to.be.equal(vQuotelpBalance);
 
-      const priceBefore = rDiv(vUSDBefore, vEURBefore);
+      const priceBefore = rDiv(vQuoteBefore, vBaseBefore);
       const liquidityWadAmount = await tokenToWad(
         await user.vault.getReserveTokenDecimals(),
         liquidityAmount
@@ -128,17 +128,17 @@ describe('Increment App: Liquidity', function () {
       // after you deposit
 
       /* balances should increment */
-      expect(await user.vUSD.balanceOf(user.market.address)).to.be.equal(
-        vUSDBefore.add(liquidityWadAmount.div(2))
+      expect(await user.vQuote.balanceOf(user.market.address)).to.be.equal(
+        vQuoteBefore.add(liquidityWadAmount.div(2))
       );
-      expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(
-        vEURBefore.add(rDiv(liquidityWadAmount.div(2), priceBefore))
+      expect(await user.vBase.balanceOf(user.market.address)).to.be.equal(
+        vBaseBefore.add(rDiv(liquidityWadAmount.div(2), priceBefore))
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vEURlpBalance.add(rDiv(liquidityWadAmount.div(2), priceBefore))
+        vBaselpBalance.add(rDiv(liquidityWadAmount.div(2), priceBefore))
       );
       expect(await user.market.balances(0)).to.be.equal(
-        vUSDlpBalance.add(liquidityWadAmount.div(2))
+        vQuotelpBalance.add(liquidityWadAmount.div(2))
       );
     });
 
@@ -181,16 +181,16 @@ describe('Increment App: Liquidity', function () {
         /* take over curve pool & fund with ether*/
         await impersonateAccountsHardhat([user.market.address], env);
         const marketAccount = await setupUser(user.market.address, {
-          vEUR: user.vEUR,
+          vBase: user.vBase,
         });
         await fundAccountsHardhat([user.market.address], env);
 
         /* withdraw liquidity from curve pool*/
-        await marketAccount.vEUR.transfer(
+        await marketAccount.vBase.transfer(
           DEAD_ADDRESS,
-          await user.vEUR.balanceOf(user.market.address)
+          await user.vBase.balanceOf(user.market.address)
         );
-        expect(await user.vEUR.balanceOf(user.market.address)).to.be.equal(0);
+        expect(await user.vBase.balanceOf(user.market.address)).to.be.equal(0);
 
         // try withdrawal from pool:
         await expect(

@@ -14,8 +14,10 @@ describe('Increment Protocol: Deployment', function () {
       expect(await deployer.perpetual.market()).to.equal(
         deployer.market.address
       );
-      expect(await deployer.perpetual.vBase()).to.equal(deployer.vEUR.address);
-      expect(await deployer.perpetual.vQuote()).to.equal(deployer.vUSD.address);
+      expect(await deployer.perpetual.vBase()).to.equal(deployer.vBase.address);
+      expect(await deployer.perpetual.vQuote()).to.equal(
+        deployer.vQuote.address
+      );
     });
 
     it('Should initialize Vault with its dependencies and Perpetual as its owner', async function () {
@@ -36,15 +38,15 @@ describe('Increment Protocol: Deployment', function () {
     it('Should initialize vBase and vQuote with Perpetual as their owner', async function () {
       const {deployer} = await setup();
 
-      expect(await deployer.vEUR.owner()).to.be.equal(
+      expect(await deployer.vBase.owner()).to.be.equal(
         deployer.perpetual.address
       );
-      expect(await deployer.vEUR.symbol()).to.be.equal('vEUR');
+      expect(await deployer.vBase.symbol()).to.be.equal('vEUR');
 
-      expect(await deployer.vUSD.owner()).to.be.equal(
+      expect(await deployer.vQuote.owner()).to.be.equal(
         deployer.perpetual.address
       );
-      expect(await deployer.vUSD.symbol()).to.be.equal('vUSD');
+      expect(await deployer.vQuote.symbol()).to.be.equal('vUSD');
     });
     it('Should initialize CurveSwap with correct parameters', async function () {
       // const {deployer} = await setup();

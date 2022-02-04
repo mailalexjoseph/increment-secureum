@@ -49,16 +49,16 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   console.log(`Current network is ${env.network.name.toString()}`);
 
   const [DEPLOYER] = await ethers.getSigners();
-  // deploy vEUR & vUSD
+  // deploy vBase & vQuote
   const VBaseFactory = new VBase__factory(DEPLOYER);
-  const vBase = await VBaseFactory.deploy('Long EUR/USD', 'vEUR');
+  const vBase = await VBaseFactory.deploy('Long EUR/USD', 'vBase');
 
   const VQuoteFactory = new VQuote__factory(DEPLOYER);
-  const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vUSD');
+  const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vQuote');
 
   // deploy curve token
   const CurveTokenV5Factory = new CurveTokenV5__factory(DEPLOYER);
-  const curveToken = await CurveTokenV5Factory.deploy('vEUR/vUSD', 'EURUSD');
+  const curveToken = await CurveTokenV5Factory.deploy('vBase/vQuote', 'EURUSD');
 
   // deploy curve pool
   const FundingFactory = new CryptoSwap__factory(DEPLOYER);
@@ -95,7 +95,7 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // transfer minter role to curve pool
   await curveToken.set_minter(cryptoSwap.address);
 
-  console.log('We have deployed vEUR/vUSD curve pool');
+  console.log('We have deployed vBase/vQuote curve pool');
 
   const contracts = {
     market: <CryptoSwap>cryptoSwap,

@@ -33,8 +33,8 @@ export type User = {address: string} & {
   perpetual: TestPerpetual;
   vault: Vault;
   usdc: ERC20;
-  vEUR: VirtualToken;
-  vUSD: VirtualToken;
+  vBase: VirtualToken;
+  vQuote: VirtualToken;
   market: CryptoSwap;
   oracle: Oracle;
   curve: CurveTokenV5;
@@ -53,8 +53,8 @@ export interface TestEnv {
 /// @notice: get all deployed contracts
 const getContracts = async (deployerAccount: string) => {
   return {
-    vEUR: <VirtualToken>await ethers.getContract('VBase', deployerAccount),
-    vUSD: <VirtualToken>await ethers.getContract('VQuote', deployerAccount),
+    vBase: <VirtualToken>await ethers.getContract('VBase', deployerAccount),
+    vQuote: <VirtualToken>await ethers.getContract('VQuote', deployerAccount),
     market: <CryptoSwap>await ethers.getContract('CryptoSwap', deployerAccount),
     oracle: <Oracle>await ethers.getContract('Oracle', deployerAccount),
     vault: <Vault>await ethers.getContract('Vault', deployerAccount),

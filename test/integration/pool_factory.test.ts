@@ -22,7 +22,7 @@ describe('Pool test', () => {
     const vBaseFactory = await ethers.getContractFactory('VBase', owner);
     const vQuoteFactory = await ethers.getContractFactory('VQuote', owner);
     const vBase = await vBaseFactory.deploy('vBase', 'vBase');
-    const vQuote = await vQuoteFactory.deploy('vUSD', 'vUSD');
+    const vQuote = await vQuoteFactory.deploy('vQuote', 'vQuote');
     await vBase.mint(oneUnit);
     await vQuote.mint(oneUnit);
 

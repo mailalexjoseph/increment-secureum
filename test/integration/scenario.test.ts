@@ -88,8 +88,8 @@ describe('Increment App: Scenario', function () {
         // check results
         await checks();
         expect(await lp.usdc.balanceOf(lp.vault.address)).to.be.equal(1);
-        expect(await lp.vEUR.balanceOf(lp.market.address)).to.be.equal('1'); // 1 vBase
-        expect(await lp.vUSD.balanceOf(lp.market.address)).to.be.equal('2'); // 2 vQuote
+        expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal('1'); // 1 vBase
+        expect(await lp.vQuote.balanceOf(lp.market.address)).to.be.equal('2'); // 2 vQuote
       });
       it.skip('1.2. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
         await provideLiquidity(liquidityAmount, lp);
@@ -103,8 +103,8 @@ describe('Increment App: Scenario', function () {
         // check results
         await checks();
         expect(await lp.usdc.balanceOf(lp.vault.address)).to.be.equal(1);
-        expect(await lp.vEUR.balanceOf(lp.market.address)).to.be.equal('1'); // 1 vBase
-        expect(await lp.vUSD.balanceOf(lp.market.address)).to.be.equal('2'); // 2 vQuote
+        expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal('1'); // 1 vBase
+        expect(await lp.vQuote.balanceOf(lp.market.address)).to.be.equal('2'); // 2 vQuote
       });
     });
     describe('2. EUR/USD increases & long trade', async function () {
@@ -413,15 +413,15 @@ async function logMarketBalance(user: User) {
   console.log(
     'market has balance of',
     ethers.utils.formatUnits(
-      await user.vUSD.balanceOf(user.market.address),
+      await user.vQuote.balanceOf(user.market.address),
       18
     ),
-    'vUSD and',
+    'vQuote and',
     ethers.utils.formatUnits(
-      await user.vEUR.balanceOf(user.market.address),
+      await user.vBase.balanceOf(user.market.address),
       18
     ),
-    'vEUR'
+    'vBase'
   );
 }
 
