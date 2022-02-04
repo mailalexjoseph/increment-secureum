@@ -20,7 +20,6 @@ import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 
 // libraries
-import {LibFunding} from "./lib/LibFunding.sol";
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import {LibReserve} from "./lib/LibReserve.sol";
@@ -39,6 +38,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE;
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
+    int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
 
     // dependencies
     ICryptoSwap public override market;
@@ -155,7 +155,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.positionSize = vTokenBought;
         user.profit = 0;
         user.side = direction;
-        user.timeStamp = global.timeStamp; // note: timestamp of the last update of the cumFundingRate
         user.cumFundingRate = global.cumFundingRate;
 
         emit OpenPosition(sender, uint128(block.timestamp), direction, convertedWadAmount, vTokenBought);
@@ -242,27 +241,24 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return vQuoteProceeds;
     }
 
-    /// @notice Calculate the funding rate for the next block
+    /// @notice Calculate the funding rate for the current block
     function updateFundingRate() public {
-        // TODO: improve funding rate calculations
-
-        ////////////////////////////////// @TOOO wrap this into some library
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
-        //  if first trade of block
+        // if first trade of block
         if (currentTime > timeOfLastTrade) {
-            LibFunding.calculateFunding(
-                global,
-                poolTWAPOracle.getEURUSDTWAP(),
-                chainlinkTWAPOracle.getEURUSDTWAP(),
-                currentTime,
-                TWAP_FREQUENCY
-            );
-        }
+            int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
+            int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
 
-        ////////////////////////////////// @TOOO wrap this into some library
+            int256 latestTradePremium = LibMath.wadDiv(marketTWAP - indexTWAP, indexTWAP);
+            int256 cumTradePremium = (currentTime - global.timeOfLastTrade).toInt256() * latestTradePremium;
+            int256 timePassed = (currentTime - global.timeOfLastTrade).toInt256();
+            global.cumFundingRate += (LibMath.wadMul(SENSITIVITY, cumTradePremium) * timePassed) / 1 days;
+
+            global.timeOfLastTrade = uint128(currentTime);
+        }
     }
 
     // get information about position
@@ -274,15 +270,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function settleFundingRate(LibPerpetual.TraderPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
     {
-        if (user.notional != 0 && user.timeStamp < global.timeStamp) {
+        if (user.notional != 0) {
             // update user variables when position opened before last update
             int256 upcomingFundingPayment = getFundingPayments(user, global);
             user.profit += upcomingFundingPayment;
-            emit Settlement(_msgSender(), user.timeStamp, upcomingFundingPayment);
+            emit Settlement(_msgSender(), upcomingFundingPayment);
         }
 
         // update user variables to global state
-        user.timeStamp = global.timeStamp;
         user.cumFundingRate = global.cumFundingRate;
     }
 

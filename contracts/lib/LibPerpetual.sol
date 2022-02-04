@@ -24,7 +24,6 @@ library LibPerpetual {
         uint256 positionSize; // in vBase if side is Long or vQuote if side is Short
         int256 profit;
         Side side;
-        uint128 timeStamp;
         int256 cumFundingRate;
     }
 
@@ -36,7 +35,6 @@ library LibPerpetual {
     struct GlobalPosition {
         int256 cumTradePremium;
         uint128 timeOfLastTrade;
-        uint128 timeStamp;
         int256 premium;
         int256 cumFundingRate;
     }

@@ -23,7 +23,6 @@ import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
 // libraries
 import {LibMath} from "../lib/LibMath.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
-import {LibFunding} from "../lib/LibFunding.sol";
 
 import "hardhat/console.sol";
 
@@ -46,26 +45,14 @@ contract TestPerpetual is Perpetual {
     function setGlobalPosition(
         int256 cumTradePremium,
         uint128 timeOfLastTrade,
-        uint128 timeStamp,
         int256 premium,
         int256 cumFundingRate
     ) public {
         globalPosition = LibPerpetual.GlobalPosition({
             cumTradePremium: cumTradePremium,
             timeOfLastTrade: timeOfLastTrade,
-            timeStamp: timeStamp,
             premium: premium,
             cumFundingRate: cumFundingRate
         });
     }
-
-    // // calculate the funding rate
-    // function calculateFunding(
-    //     int256 marketPrice,
-    //     int256 indexPrice,
-    //     uint256 currentTime,
-    //     uint256 TWAP_FREQUENCY
-    // ) public {
-    //     LibFunding.calculateFunding(globalPosition, marketPrice, indexPrice, currentTime, TWAP_FREQUENCY);
-    // }
 }

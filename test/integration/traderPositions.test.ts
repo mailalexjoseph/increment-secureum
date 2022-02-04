@@ -119,7 +119,6 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(alicePosition.notional.toString()).to.equal(positionNotionalAmount);
     expect(alicePosition.profit.toNumber()).to.equal(0);
     expect(alicePosition.side).to.equal(direction);
-    expect(alicePosition.timeStamp.toNumber()).to.equal(nextBlockTimestamp);
     // cumFundingRate is set at 0 because there's no activity before in this test
     expect(alicePosition.cumFundingRate.toNumber()).to.equal(0);
 

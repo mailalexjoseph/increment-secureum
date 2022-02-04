@@ -75,7 +75,6 @@ describe('Increment: liquidation', () => {
     await bob.perpetual.setGlobalPosition(
       0,
       timestampJustBefore,
-      timestampJustBefore,
       0,
       utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position is below MIN_MARGIN
     );

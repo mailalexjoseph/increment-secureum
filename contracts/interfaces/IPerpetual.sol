@@ -19,7 +19,7 @@ import {LibPerpetual} from "../lib/LibPerpetual.sol";
 interface IPerpetual {
     event Deposit(address indexed user, address indexed asset, uint256 amount);
     event Withdraw(address indexed user, address indexed asset, uint256 amount);
-    event Settlement(address indexed user, uint128 indexed timeStamp, int256 amount);
+    event Settlement(address indexed user, int256 amount);
     event OpenPosition(
         address indexed user,
         uint128 indexed timeStamp,
