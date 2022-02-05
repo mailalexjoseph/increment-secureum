@@ -5,7 +5,7 @@ import {deployMockContract, MockContract} from 'ethereum-waffle';
 
 import ChainlinkOracle from '../../artifacts/contracts/oracles/ChainlinkOracle.sol/ChainlinkOracle.json';
 import {ChainlinkTWAPOracle} from '../../typechain';
-import {rMul, rDiv} from '../helpers/calculations';
+import {rMul, rDiv} from '../helpers/utils/calculations';
 
 let nextBlockTimestamp = 2000000000;
 async function addTimeToNextBlockTimestamp(

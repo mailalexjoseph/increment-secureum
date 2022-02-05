@@ -5,7 +5,7 @@ import {deployMockContract, MockContract} from 'ethereum-waffle';
 
 import CryptoSwap from '../../contracts-vyper/artifacts/CryptoSwap.vy/CryptoSwap.json';
 import {PoolTWAPOracle} from '../../typechain';
-import {rMul, rDiv} from '../helpers/calculations';
+import {rMul, rDiv} from '../helpers/utils/calculations';
 
 let nextBlockTimestamp = 2000000000;
 async function addTimeToNextBlockTimestamp(

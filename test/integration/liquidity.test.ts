@@ -90,16 +90,16 @@ describe('Increment App: Liquidity', function () {
       expect(await user.perpetual.marketPrice()).to.be.equal(price);
       /* balances should increment */
       expect(await user.vQuote.balanceOf(user.market.address)).to.be.equal(
-        vQuoteBefore.add(liquidityWadAmount.div(2))
+        vQuoteBefore.add(liquidityWadAmount)
       );
       expect(await user.vBase.balanceOf(user.market.address)).to.be.equal(
-        vBaseBefore.add(rDiv(liquidityWadAmount.div(2), price))
+        vBaseBefore.add(rDiv(liquidityWadAmount, price))
       );
       expect(await user.market.balances(0)).to.be.equal(
-        vQuotelpBalance.add(liquidityWadAmount.div(2))
+        vQuotelpBalance.add(liquidityWadAmount)
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vBaselpBalance.add(rDiv(liquidityWadAmount.div(2), price))
+        vBaselpBalance.add(rDiv(liquidityWadAmount, price))
       );
     });
 
@@ -133,16 +133,16 @@ describe('Increment App: Liquidity', function () {
 
       /* balances should increment */
       expect(await user.vQuote.balanceOf(user.market.address)).to.be.equal(
-        vQuoteBefore.add(liquidityWadAmount.div(2))
+        vQuoteBefore.add(liquidityWadAmount)
       );
       expect(await user.vBase.balanceOf(user.market.address)).to.be.equal(
-        vBaseBefore.add(rDiv(liquidityWadAmount.div(2), priceBefore))
+        vBaseBefore.add(rDiv(liquidityWadAmount, priceBefore))
       );
       expect(await user.market.balances(1)).to.be.equal(
-        vBaselpBalance.add(rDiv(liquidityWadAmount.div(2), priceBefore))
+        vBaselpBalance.add(rDiv(liquidityWadAmount, priceBefore))
       );
       expect(await user.market.balances(0)).to.be.equal(
-        vQuotelpBalance.add(liquidityWadAmount.div(2))
+        vQuotelpBalance.add(liquidityWadAmount)
       );
     });
 

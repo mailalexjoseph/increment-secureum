@@ -269,8 +269,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Calculate the funding rate for the next block
     function updateFundingRate() public {
-        // TODO: improve funding rate calculations
-
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
@@ -297,7 +295,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         if (user.openNotional != 0) {
             // update user variables when position opened before last update
             upcomingFundingPayment = getFundingPayments(user, global);
-            emit Settlement(_msgSender(), uint128(block.timestamp), upcomingFundingPayment);
+            emit Settlement(_msgSender(), upcomingFundingPayment);
         }
 
         // update user variables to global state
@@ -389,7 +387,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @param amount of liquidity to be removed from the pool (with 18 decimals)
     /// @param  token to be removed from the pool
     function withdrawLiquidity(uint256 amount, IERC20 token) external override {
-        // TODO: should we just hardcode the value here?
+        // TODO: should we just hardcode amount here?
         address sender = _msgSender();
         //console.log("hardhat: amount", amount);
         //console.log("hardhat: userPosition[sender].liquidityBalance", userPosition[sender].liquidityBalance);
@@ -479,27 +477,21 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // all amounts should be expressed in vQuote/USD, otherwise the end result doesn't make sense
         int256 collateral = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
-        int256 unrealizedPositionPnl = getUnrealizedPositionPnl(user.positionSize, user.openNotional);
 
         int256 vQuoteVirtualProceeds = 0;
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-        if (user.side == LibPerpetual.Side.Long) {
-            // vQuoteVirtualProceeds = market.get_dy(VBASE_INDEX, VQUOTE_INDEX, user.positionSize);
-            vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize.toInt256(), poolEURUSDTWAP);
+        if (user.positionSize > 0) {
+            vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
         } else {
-            // uint256 vBaseReceived = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, user.positionSize);
-            int256 vBaseReceived = LibMath.wadDiv(user.positionSize.toInt256(), poolEURUSDTWAP);
-
-            int256 baseOnQuotePrice = indexPrice();
-            vQuoteVirtualProceeds = LibMath.wadMul(vBaseReceived, baseOnQuotePrice);
+            vQuoteVirtualProceeds = LibMath.wadDiv(user.positionSize, poolEURUSDTWAP);
         }
 
-        int256 unrealizedPositionPnl = _calculatePnL(user.notional.toInt256(), vQuoteVirtualProceeds);
+        int256 unrealizedPositionPnl = user.openNotional - vQuoteVirtualProceeds;
 
-        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, user.notional.toInt256());
+        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, user.openNotional);
     }
 
-    function liquidate(address account) external {
+    function liquidate(address account, uint256 amount) external {
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();

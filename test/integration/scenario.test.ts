@@ -68,7 +68,7 @@ async function withdrawLiquidity(user: User) {
   // await logUserBalance(user, 'LP');
 }
 
-async function changeOraclePrice(price: BigNumber) {
+async function changeChainlinkOraclePrice(price: BigNumber) {
   const oracle: AggregatorV3Interface = await ethers.getContractAt(
     'AggregatorV3Interface',
     await getChainlinkOracle(env, 'EUR_USD')
@@ -80,7 +80,6 @@ describe('Increment App: Scenario', function () {
   let deployer: User, trader: User, lp: User;
 
   let liquidityAmount: BigNumber;
-  let chainlinkOracle: AggregatorV3Interface;
 
   beforeEach('Set up', async () => {
     ({lp, deployer, trader} = await setup());
@@ -93,63 +92,6 @@ describe('Increment App: Scenario', function () {
     await provideLiquidity(liquidityAmount, deployer);
   });
 
-  async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
-    await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
-  }
-
-  async function openPosition(amount: BigNumber, user: User, direction: Side) {
-    await user.perpetual.deposit(amount, user.usdc.address);
-    await user.perpetual.openPosition(amount.mul(10), direction); // 10x leverage long
-  }
-  async function closePosition(user: User) {
-    const userPosition = await user.perpetual.getUserPosition(user.address);
-
-    let sellAmount;
-    if (userPosition.positionSize.gt(0)) {
-      sellAmount = userPosition.positionSize;
-    } else {
-      sellAmount = (
-        await TEST_get_exactOutputSwap(
-          trader.market,
-          userPosition.positionSize.abs(),
-          ethers.constants.MaxUint256,
-          0,
-          1
-        )
-      ).amountIn;
-    }
-
-    await user.perpetual.closePosition(sellAmount);
-    const traderDeposits = await trader.vault.getReserveValue(trader.address);
-    await user.perpetual.withdraw(traderDeposits, user.usdc.address);
-  }
-
-  async function withdrawLiquidity(user: User) {
-    const providedLiquidity = (
-      await user.perpetual.getUserPosition(user.address)
-    ).liquidityBalance;
-
-    await user.perpetual.withdrawLiquidity(
-      providedLiquidity,
-      user.usdc.address
-    );
-
-    console.log('**********After withdrawing liquidity**********');
-    await logMarketBalance(user);
-    await logUserPosition(user, 'LP');
-    await logPerpCRVBalance(user);
-    await logPerpetualBalance(user);
-    console.log('**********Close remaining position**********');
-    await closePosition(user);
-  }
-
-  async function changeChainlinkOraclePrice(price: BigNumber) {
-    chainlinkOracle = await ethers.getContractAt(
-      'AggregatorV3Interface',
-      await getChainlinkOracle(env, 'EUR_USD')
-    );
-    await setLatestChainlinkPrice(env, chainlinkOracle, price);
-  }
   let tradeAmount: BigNumber;
   let liquidity0: BigNumber;
 
@@ -178,15 +120,15 @@ describe('Increment App: Scenario', function () {
 
     Why? LPs can remove the deposited amount (minus 1 Wei, see the fct TEST_dust_remove_liquidity for reference).
     This leads to LPs having a positionSize of -1 Wei after withdrawing. But after all liquidity is removed,
-     LPs are not able to buy 1 Wei of vEUR after they withdrew all liquidity.
+     LPs are not able to buy 1 Wei of vBase after they withdrew all liquidity.
     */
     liquidity0 = liquidityAmount;
     await deployer.usdc.approve(deployer.vault.address, liquidity0);
     await provideLiquidity(liquidity0, deployer);
 
     const deployedBalances = [
-      await deployer.vUSD.balanceOf(lp.market.address),
-      await deployer.vEUR.balanceOf(lp.market.address),
+      await deployer.vQuote.balanceOf(lp.market.address),
+      await deployer.vBase.balanceOf(lp.market.address),
     ];
   });
 
