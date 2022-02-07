@@ -1,323 +1,350 @@
-// import {expect} from 'chai';
-// import {utils, BigNumber, ethers} from 'ethers';
-// import env from 'hardhat';
+import {expect} from 'chai';
+import {utils, BigNumber, ethers} from 'ethers';
+import env from 'hardhat';
 
-// import {rMul, rDiv} from '../helpers/utils/calculations';
-// import {setup, funding, User} from '../helpers/setup';
-// import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
-// import {setNextBlockTimestamp} from '../../helpers/misc-utils';
-// import {tokenToWad} from '../../helpers/contracts-helpers';
-// import {Side} from '../helpers/utils/types';
+import {rMul, rDiv} from '../helpers/utils/calculations';
+import {setup, funding, User} from '../helpers/setup';
+import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
+import {setNextBlockTimestamp} from '../../helpers/misc-utils';
+import {tokenToWad} from '../../helpers/contracts-helpers';
+import {Side} from '../helpers/utils/types';
+import {resolvePtr} from 'dns';
 
-// describe('Increment: open/close long/short trading positions', () => {
-//   let alice: User;
-//   let bob: User;
-//   let depositAmount: BigNumber;
-//   let aliceUSDCAmount: BigNumber;
+describe('Increment: open/close long/short trading positions', () => {
+  let alice: User;
+  let bob: User;
+  let depositAmount: BigNumber;
+  let aliceUSDCAmount: BigNumber;
 
-//   // protocol constants
-//   let MIN_MARGIN: BigNumber;
-//   let LIQUIDATION_FEE: BigNumber;
-//   let TWAP_FREQUENCY: BigNumber;
-//   let FEE: BigNumber;
-//   let MIN_MARGIN_AT_CREATION: BigNumber;
-//   let VQUOTE_INDEX: BigNumber;
-//   let VBASE_INDEX: BigNumber;
+  // protocol constants
+  let MIN_MARGIN: BigNumber;
+  let LIQUIDATION_FEE: BigNumber;
+  let TWAP_FREQUENCY: BigNumber;
+  let FEE: BigNumber;
+  let MIN_MARGIN_AT_CREATION: BigNumber;
+  let VQUOTE_INDEX: BigNumber;
+  let VBASE_INDEX: BigNumber;
 
-//   before('Get protocol constants', async () => {
-//     ({alice, bob} = await setup());
+  before('Get protocol constants', async () => {
+    ({alice, bob} = await setup());
 
-//     MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
-//     LIQUIDATION_FEE = await alice.perpetual.LIQUIDATION_FEE();
-//     TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
-//     FEE = await alice.perpetual.FEE();
-//     MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
-//     VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
-//     VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
-//   });
+    MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
+    LIQUIDATION_FEE = await alice.perpetual.LIQUIDATION_FEE();
+    TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
+    FEE = await alice.perpetual.FEE();
+    MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
+    VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
+    VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
+  });
 
-//   beforeEach(
-//     'Give Alice funds and approve transfer by the vault to her balance',
-//     async () => {
-//       ({alice} = await setup());
-//       depositAmount = await funding();
-//       aliceUSDCAmount = depositAmount.div(10); // Alice deposits and exchanges 10% of the pool liquidity
+  beforeEach(
+    'Give Alice funds and approve transfer by the vault to her balance',
+    async () => {
+      ({alice} = await setup());
+      depositAmount = await funding();
+      aliceUSDCAmount = depositAmount.div(10); // Alice deposits and exchanges 10% of the pool liquidity
 
-//       await alice.usdc.approve(alice.vault.address, depositAmount);
-//     }
-//   );
+      await alice.usdc.approve(alice.vault.address, depositAmount);
+    }
+  );
 
-//   it('Should fail if the pool has no liquidity in it', async () => {
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
-//     // no error message as the code fails with the pool
-//     await expect(alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)).to.be
-//       .reverted;
-//   });
+  it('Should fail if the pool has no liquidity in it', async () => {
+    await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    // no error message as the code fails with the pool
+    await expect(alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)).to.be
+      .reverted;
+  });
 
-//   it('Should fail if the amount is null', async () => {
-//     await expect(alice.perpetual.openPosition(0, Side.Long)).to.be.revertedWith(
-//       "The amount can't be null"
-//     );
-//   });
+  it('Should fail if the amount is null', async () => {
+    await expect(alice.perpetual.openPosition(0, Side.Long)).to.be.revertedWith(
+      "The amount can't be null"
+    );
+  });
 
-//   it('Should fail if user already has an open position on this market', async () => {
-//     // set-up
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
-//     await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
+  it('Should fail if user already has an open position on this market', async () => {
+    // set-up
+    await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+    await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
 
-//     // try to create a new trader position for Alice
-//     await expect(
-//       alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)
-//     ).to.be.revertedWith('Cannot open a position with one already opened');
-//   });
+    // try to create a new trader position for Alice
+    await expect(
+      alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)
+    ).to.be.revertedWith('Cannot open a position with one already opened');
+  });
 
-//   it('Should fail if user does not have enough funds deposited in the vault', async () => {
-//     await alice.perpetual.deposit(depositAmount, alice.usdc.address);
+  it.skip('Should fail if user does not have enough funds deposited in the vault', async () => {
+    // TODO: fix this test once marginRequirements are enforced (optimistically)
 
-//     const depositedAmount = await alice.vault.getReserveValue(alice.address);
+    await alice.perpetual.deposit(depositAmount, alice.usdc.address);
 
-//     // get the position amount matching the exact limit of MIN_MARGIN_AT_CREATION
-//     const limitAmount = rDiv(depositedAmount, MIN_MARGIN_AT_CREATION);
-//     // add 1 to it to exceed the margin limit
-//     const exceedingAmount = limitAmount.add(1);
+    const depositedAmount = await alice.vault.getReserveValue(alice.address);
 
-//     await expect(
-//       alice.perpetual.openPosition(exceedingAmount, Side.Long)
-//     ).to.be.revertedWith(
-//       'Not enough funds in the vault for the margin of this position'
-//     );
-//   });
+    // get the position amount matching the exact limit of MIN_MARGIN_AT_CREATION
+    const limitAmount = rDiv(depositedAmount, MIN_MARGIN_AT_CREATION);
+    // add 1 to it to exceed the margin limit
+    const exceedingAmount = limitAmount.add(1);
 
-//   async function _openAndCheckPosition(
-//     direction: Side,
-//     expectedQuoteBought: string
-//   ) {
-//     // set-up
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    await expect(
+      alice.perpetual.openPosition(exceedingAmount, Side.Long)
+    ).to.be.revertedWith(
+      'Not enough funds in the vault for the margin of this position'
+    );
+  });
 
-//     // expected values
-//     const positionNotionalAmount = await tokenToWad(
-//       await alice.vault.getReserveTokenDecimals(),
-//       aliceUSDCAmount
-//     );
+  async function _openAndCheckPosition(
+    direction: Side,
+    expectedTokensBought: string
+  ) {
+    // set-up
+    await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+    await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
 
-//     const nextBlockTimestamp = await setNextBlockTimestamp(env);
-//     await expect(alice.perpetual.openPosition(aliceUSDCAmount, direction))
-//       .to.emit(alice.perpetual, 'OpenPosition')
-//       .withArgs(
-//         alice.address,
-//         nextBlockTimestamp,
-//         direction,
-//         positionNotionalAmount,
-//         expectedQuoteBought
-//       );
+    // expected values
+    const positionNotionalAmount = await tokenToWad(
+      await alice.vault.getReserveTokenDecimals(),
+      aliceUSDCAmount
+    );
 
-//     const alicePosition = await alice.perpetual.getUserPosition(alice.address);
-//     expect(alicePosition.positionSize.toString()).to.equal(expectedQuoteBought);
-//     expect(alicePosition.openNotional.toString()).to.equal(
-//       positionNotionalAmount
-//     );
-//     expect(alicePosition.profit.toNumber()).to.equal(0);
-//     // expect(alicePosition.side).to.equal(direction);
-//     // expect(alicePosition.timeStamp.toNumber()).to.equal(nextBlockTimestamp);
-//     // cumFundingRate is set at 0 because there's no activity before in this test
-//     expect(alicePosition.cumFundingRate.toNumber()).to.equal(0);
+    const nextBlockTimestamp = await setNextBlockTimestamp(env);
 
-//     // the USDC amount (with 6 decimals) must be converted to 18 decimals
-//     expect(
-//       alicePosition.openNotional.div(ethers.utils.parseEther('1'))
-//     ).to.be.above(ethers.BigNumber.from('1'));
-//   }
+    let positionSize, notionalAmount;
+    if (direction === Side.Long) {
+      positionSize = expectedTokensBought;
+      notionalAmount = positionNotionalAmount.mul(-1);
+    } else {
+      throw new Error('Not implemented');
+    }
 
-//   it('Should open LONG position', async () => {
-//     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-//     const expectedQuoteBought = '7811427225010851007'; // vBase amount
-//     await _openAndCheckPosition(Side.Long, expectedQuoteBought);
-//   });
+    await expect(alice.perpetual.openPosition(aliceUSDCAmount, direction))
+      .to.emit(alice.perpetual, 'OpenPosition')
+      .withArgs(
+        alice.address,
+        nextBlockTimestamp,
+        direction,
+        notionalAmount,
+        positionSize
+      );
 
-//   it('Should open SHORT position', async () => {
-//     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-//     const expectedQuoteBought = '8838809567925953140'; // vQuote amount
-//     await _openAndCheckPosition(Side.Short, expectedQuoteBought);
-//   });
+    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    expect(alicePosition.positionSize).to.be.equal(positionSize);
+    expect(alicePosition.openNotional).to.be.equal(notionalAmount);
+    expect(alicePosition.profit).to.be.equal(0);
+    // expect(alicePosition.side).to.be.equal(direction);
+    // expect(alicePosition.timeStamp.toNumber()).to.be.equal(nextBlockTimestamp);
+    // cumFundingRate is set at 0 because there's no activity before in this test
+    expect(alicePosition.cumFundingRate).to.be.equal(0);
 
-//   it('Should work if trader opens position after having closed one', async () => {
-//     // Alice opens and closes a position (without withdrawing her collateral)
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
-//     await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
-//     await alice.perpetual.closePosition();
+    // the USDC amount (with 6 decimals) must be converted to 18 decimals
+    expect(
+      alicePosition.openNotional.abs().div(ethers.utils.parseEther('1'))
+    ).to.be.above(ethers.BigNumber.from('1'));
+  }
 
-//     // expected values
-//     const positionNotionalAmount = await tokenToWad(
-//       await alice.vault.getReserveTokenDecimals(),
-//       aliceUSDCAmount
-//     );
+  it('Should open LONG position', async () => {
+    // slippage is significant as Alice exchanges 10% of the liquidity of the pool
+    const expectedSharesBought = '7811427225010851007'; // vBase amount
+    await _openAndCheckPosition(Side.Long, expectedSharesBought);
+  });
 
-//     const nextBlockTimestamp = await setNextBlockTimestamp(env);
-//     await expect(alice.perpetual.openPosition(aliceUSDCAmount, Side.Long))
-//       .to.emit(alice.perpetual, 'OpenPosition')
-//       .withArgs(
-//         alice.address,
-//         nextBlockTimestamp,
-//         Side.Long,
-//         positionNotionalAmount,
-//         '7806465822543466161'
-//       );
-//   });
+  it.skip('Should open SHORT position', async () => {
+    // TODO: not implemented yet!
+    // slippage is significant as Alice exchanges 10% of the liquidity of the pool
+    const expectedSharesBought = '8838809567925953140'; // vQuote amount
+    await _openAndCheckPosition(Side.Short, expectedSharesBought);
+  });
 
-//   it('Should fail if callee has no opened position at the moment', async () => {
-//     await expect(alice.perpetual.closePosition()).to.be.revertedWith(
-//       'No position currently opened'
-//     );
-//   });
+  it('Should work if trader opens position after having closed one', async () => {
+    // Alice opens and closes a position (without withdrawing her collateral)
 
-//   it.skip('Profit (or loss) should be reflected in the user balance in the Vault', async () => {
-//     // set-up
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+    await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
+    await alice.perpetual.closePosition(
+      (
+        await alice.perpetual.getUserPosition(alice.address)
+      ).positionSize
+    );
 
-//     const aliceVaultBalanceBeforeOpeningPosition = await alice.vault.getBalance(
-//       alice.address
-//     );
+    // expected values
+    const positionNotionalAmount = await tokenToWad(
+      await alice.vault.getReserveTokenDecimals(),
+      aliceUSDCAmount
+    );
 
-//     await alice.perpetual.openPosition(aliceUSDCAmount, Side.Short);
-//     await alice.perpetual.closePosition();
+    const nextBlockTimestamp = await setNextBlockTimestamp(env);
+    await expect(alice.perpetual.openPosition(aliceUSDCAmount, Side.Long))
+      .to.emit(alice.perpetual, 'OpenPosition')
+      .withArgs(
+        alice.address,
+        nextBlockTimestamp,
+        Side.Long,
+        positionNotionalAmount.mul(-1),
+        '7806465822543466161'
+      );
+  });
 
-//     const aliceTraderPosition = await alice.perpetual.getUserPosition(
-//       alice.address
-//     );
-//     expect(aliceTraderPosition.openNotional.toNumber()).to.equal(0);
-//     expect(aliceTraderPosition.positionSize.toNumber()).to.equal(0);
+  it('Should fail if callee has no opened position at the moment', async () => {
+    await expect(alice.perpetual.closePosition(0)).to.be.revertedWith(
+      'No position currently opened'
+    );
+  });
 
-//     // TraderPosition.profit should be reflected in the Vault user's balance
-//     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-//       alice.address
-//     );
-//     const expectedAliceVaultBalanceAfterClosingPosition =
-//       aliceVaultBalanceBeforeOpeningPosition.add(aliceTraderPosition.profit);
+  // it.skip('Profit (or loss) should be reflected in the user balance in the Vault', async () => {
+  //   // set-up
+  //   await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+  //   await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
 
-//     expect(aliceVaultBalanceAfterClosingPosition).to.be.equal(
-//       expectedAliceVaultBalanceAfterClosingPosition
-//     );
-//   });
+  //   const aliceVaultBalanceBeforeOpeningPosition = await alice.vault.getBalance(
+  //     alice.address
+  //   );
 
-//   it.skip('No exchange rate applied when opening and closing LONG positions', async () => {
-//     let aliceTraderPosition;
+  //   await alice.perpetual.openPosition(aliceUSDCAmount, Side.Short);
+  //   await alice.perpetual.closePosition();
 
-//     // set-up
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+  //   const aliceTraderPosition = await alice.perpetual.getUserPosition(
+  //     alice.address
+  //   );
+  //   expect(aliceTraderPosition.openNotional.toNumber()).to.equal(0);
+  //   expect(aliceTraderPosition.positionSize.toNumber()).to.equal(0);
 
-//     const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
-//       VQUOTE_INDEX
-//     );
+  //   // TraderPosition.profit should be reflected in the Vault user's balance
+  //   const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
+  //     alice.address
+  //   );
+  //   const expectedAliceVaultBalanceAfterClosingPosition =
+  //     aliceVaultBalanceBeforeOpeningPosition.add(aliceTraderPosition.profit);
 
-//     await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
+  //   expect(aliceVaultBalanceAfterClosingPosition).to.be.equal(
+  //     expectedAliceVaultBalanceAfterClosingPosition
+  //   );
+  // });
 
-//     const vQuoteLiquidityAfterPositionCreated = await alice.market.balances(
-//       VQUOTE_INDEX
-//     );
-//     aliceTraderPosition = await alice.perpetual.getUserPosition(alice.address);
-//     const alicePositionNotional = aliceTraderPosition.openNotional;
-//     // no exchange rate applied on the notional amount
-//     const expectedAdditionalVQuote = vQuoteLiquidityBeforePositionCreated.add(
-//       alicePositionNotional
-//     );
+  // it.skip('No exchange rate applied when opening and closing LONG positions', async () => {
+  //   let aliceTraderPosition;
 
-//     expect(vQuoteLiquidityAfterPositionCreated).to.equal(
-//       expectedAdditionalVQuote
-//     );
+  //   // set-up
+  //   await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+  //   await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
 
-//     await alice.perpetual.closePosition();
-//     const vQuoteLiquidityAfterPositionClosed = await alice.market.balances(
-//       VQUOTE_INDEX
-//     );
+  //   const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
+  //     VQUOTE_INDEX
+  //   );
 
-//     aliceTraderPosition = await alice.perpetual.getUserPosition(alice.address);
+  //   await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
 
-//     // user.profit = vQuoteProceeds - user.openNotional
-//     // vQuoteProceeds = user.profit + user.openNotional
-//     const alicePositionProfitAfterClose = (
-//       await alice.perpetual.getUserPosition(alice.address)
-//     ).profit;
-//     const expectedVQuoteProceeds = alicePositionProfitAfterClose.add(
-//       alicePositionNotional
-//     );
+  //   const vQuoteLiquidityAfterPositionCreated = await alice.market.balances(
+  //     VQUOTE_INDEX
+  //   );
+  //   aliceTraderPosition = await alice.perpetual.getUserPosition(alice.address);
+  //   const alicePositionNotional = aliceTraderPosition.openNotional;
+  //   // no exchange rate applied on the notional amount
+  //   const expectedAdditionalVQuote = vQuoteLiquidityBeforePositionCreated.add(
+  //     alicePositionNotional
+  //   );
 
-//     // vQuoteReceived = vQuoteBalanceBeforePositionSold - vQuoteBalanceAfterPositionExited
-//     const vQuoteReceived = vQuoteLiquidityAfterPositionCreated.sub(
-//       vQuoteLiquidityAfterPositionClosed
-//     );
+  //   expect(vQuoteLiquidityAfterPositionCreated).to.equal(
+  //     expectedAdditionalVQuote
+  //   );
 
-//     // vQuoteReceived = expectedVQuoteProceeds means that no exchange rate has been applied
-//     // when closing the position
-//     expect(expectedVQuoteProceeds).to.equal(vQuoteReceived);
-//   });
+  //   await alice.perpetual.closePosition();
+  //   const vQuoteLiquidityAfterPositionClosed = await alice.market.balances(
+  //     VQUOTE_INDEX
+  //   );
 
-//   it.skip('EUR_USD exchange rate applied when opening and closing SHORT position', async () => {
-//     const EUR_USD = await alice.perpetual.indexPrice();
+  //   aliceTraderPosition = await alice.perpetual.getUserPosition(alice.address);
 
-//     // set-up
-//     await setUpPoolLiquidity(bob, depositAmount);
-//     await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+  //   // user.profit = vQuoteProceeds - user.openNotional
+  //   // vQuoteProceeds = user.profit + user.openNotional
+  //   const alicePositionProfitAfterClose = (
+  //     await alice.perpetual.getUserPosition(alice.address)
+  //   ).profit;
+  //   const expectedVQuoteProceeds = alicePositionProfitAfterClose.add(
+  //     alicePositionNotional
+  //   );
 
-//     const vBaseLiquidityBeforePositionCreated = await alice.market.balances(
-//       VBASE_INDEX
-//     );
+  //   // vQuoteReceived = vQuoteBalanceBeforePositionSold - vQuoteBalanceAfterPositionExited
+  //   const vQuoteReceived = vQuoteLiquidityAfterPositionCreated.sub(
+  //     vQuoteLiquidityAfterPositionClosed
+  //   );
 
-//     await alice.perpetual.openPosition(aliceUSDCAmount, Side.Short);
+  //   // vQuoteReceived = expectedVQuoteProceeds means that no exchange rate has been applied
+  //   // when closing the position
+  //   expect(expectedVQuoteProceeds).to.equal(vQuoteReceived);
+  // });
 
-//     const vBaseLiquidityAfterPositionCreated = await alice.market.balances(
-//       VBASE_INDEX
-//     );
-//     const alicePositionNotional = (
-//       await alice.perpetual.getUserPosition(alice.address)
-//     ).openNotional;
+  // it.skip('EUR_USD exchange rate applied when opening and closing SHORT position', async () => {
+  //   const EUR_USD = await alice.perpetual.indexPrice();
 
-//     // verify that EUR_USD exchange rate is applied to positionNotionalAmount
-//     // vBaseLiquidityAfterPositionCreated = vBaseLiquidityBeforePositionCreated - rDiv(positionNotionalAmount, EUR_USD)
+  //   // set-up
+  //   await setUpPoolLiquidity(bob, depositAmount.div(2)); // TODO: See Warning (below)
+  //   await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
 
-//     const positionNotionalAmount = await tokenToWad(
-//       await alice.vault.getReserveTokenDecimals(),
-//       aliceUSDCAmount
-//     );
-//     const alicePositionInEuro = rDiv(positionNotionalAmount, EUR_USD);
-//     const expectedVBaseLiquidityAfterPositionCreated =
-//       vBaseLiquidityBeforePositionCreated.add(alicePositionInEuro);
+  //   const vBaseLiquidityBeforePositionCreated = await alice.market.balances(
+  //     VBASE_INDEX
+  //   );
 
-//     expect(vBaseLiquidityAfterPositionCreated).to.equal(
-//       expectedVBaseLiquidityAfterPositionCreated
-//     );
+  //   await alice.perpetual.openPosition(aliceUSDCAmount, Side.Short);
 
-//     await alice.perpetual.closePosition();
+  //   const vBaseLiquidityAfterPositionCreated = await alice.market.balances(
+  //     VBASE_INDEX
+  //   );
+  //   const alicePositionNotional = (
+  //     await alice.perpetual.getUserPosition(alice.address)
+  //   ).openNotional;
 
-//     const vBaseLiquidityAfterPositionClosed = await alice.market.balances(
-//       VBASE_INDEX
-//     );
+  //   // verify that EUR_USD exchange rate is applied to positionNotionalAmount
+  //   // vBaseLiquidityAfterPositionCreated = vBaseLiquidityBeforePositionCreated - rDiv(positionNotionalAmount, EUR_USD)
 
-//     // expectedVBaseReceived = rMul((user.profit + user.openNotional), EUR_USD)
-//     const alicePositionProfit = (
-//       await alice.perpetual.getUserPosition(alice.address)
-//     ).profit;
-//     const expectedVQuoteProceeds = alicePositionProfit.add(
-//       alicePositionNotional
-//     );
-//     const expectedVBaseReceived = rDiv(expectedVQuoteProceeds, EUR_USD);
+  //   const positionNotionalAmount = await tokenToWad(
+  //     await alice.vault.getReserveTokenDecimals(),
+  //     aliceUSDCAmount
+  //   );
+  //   const alicePositionInEuro = rDiv(positionNotionalAmount, EUR_USD);
+  //   const expectedVBaseLiquidityAfterPositionCreated =
+  //     vBaseLiquidityBeforePositionCreated.add(alicePositionInEuro);
 
-//     // expectedVBaseReceived = vBaseLiquidityAfterPositionCreated - vBaseLiquidityAfterPositionClosed
-//     const vBaseLiquidityDiff = vBaseLiquidityAfterPositionCreated.sub(
-//       vBaseLiquidityAfterPositionClosed
-//     );
+  //   expect(vBaseLiquidityAfterPositionCreated).to.equal(
+  //     expectedVBaseLiquidityAfterPositionCreated
+  //   );
 
-//     // there's a difference of 1 wei between the 2 values
-//     // vBaseLiquidityDiff: 8796304059175223295
-//     // expectedVBaseReceived: 8796304059175223294
-//     // probably a rounding error in `rDiv`
-//     expect(vBaseLiquidityDiff).to.be.closeTo(expectedVBaseReceived, 1);
-//   });
+  //   await alice.perpetual.closePosition();
 
-//   //TODO: add tests to assert the impact of the funding rate on the profit
-// });
+  //   const vBaseLiquidityAfterPositionClosed = await alice.market.balances(
+  //     VBASE_INDEX
+  //   );
+
+  //   // expectedVBaseReceived = rMul((user.profit + user.openNotional), EUR_USD)
+  //   const alicePositionProfit = (
+  //     await alice.perpetual.getUserPosition(alice.address)
+  //   ).profit;
+  //   const expectedVQuoteProceeds = alicePositionProfit.add(
+  //     alicePositionNotional
+  //   );
+  //   const expectedVBaseReceived = rDiv(expectedVQuoteProceeds, EUR_USD);
+
+  //   // expectedVBaseReceived = vBaseLiquidityAfterPositionCreated - vBaseLiquidityAfterPositionClosed
+  //   const vBaseLiquidityDiff = vBaseLiquidityAfterPositionCreated.sub(
+  //     vBaseLiquidityAfterPositionClosed
+  //   );
+
+  //   // there's a difference of 1 wei between the 2 values
+  //   // vBaseLiquidityDiff: 8796304059175223295
+  //   // expectedVBaseReceived: 8796304059175223294
+  //   // probably a rounding error in `rDiv`
+  //   expect(vBaseLiquidityDiff).to.be.closeTo(expectedVBaseReceived, 1);
+  // });
+
+  //TODO: add tests to assert the impact of the funding rate on the profit
+});
+
+/*
+    Warning (below)
+
+    The provide liquidity function has to be changed since we now provide liquidity with 2x leverage by default
+    TODO: Change back to providing liquidity with 1x leverage once https://github.com/Increment-Finance/increment-protocol/issues/43 is resolved
+    i.e. change
+    await setUpPoolLiquidity(bob, depositAmount.div(2)); => await setUpPoolLiquidity(bob, depositAmount, leverage (1x))));
+
+
+*/

@@ -82,17 +82,17 @@ export async function getChainlinkPrice(
   /* We have to use the chainlink price here since we use the oracle price to distribute the initial liquidity
   in the perpetual contracts. In case the price changes during deployment, the deployment could (potentially) fail.
   */
-  const oracle = await hre.ethers.getContractAt(
+  const chainlinkOracle = await hre.ethers.getContractAt(
     'AggregatorV3Interface',
     getChainlinkOracle(hre, pair)
   );
-  if (!oracle) {
+  if (!chainlinkOracle) {
     throw new Error(
       `Could not get chainlink oracle for ${pair}, on network ${hre.network}`
     );
   }
-  const answer = await oracle.latestRoundData();
-  const decimals = await oracle.decimals();
+  const answer = await chainlinkOracle.latestRoundData();
+  const decimals = await chainlinkOracle.decimals();
   const priceAsString = hre.ethers.utils.formatUnits(answer.answer, decimals);
   return hre.ethers.utils.parseEther(priceAsString);
 }
