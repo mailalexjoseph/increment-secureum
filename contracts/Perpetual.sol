@@ -110,7 +110,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
-        //console.log("try withdrawing collateral");
+        //console.log("hardhat: try withdrawing collateral");
         require(getUserPosition(_msgSender()).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         vault.withdraw(_msgSender(), amount, token);
@@ -149,15 +149,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(amount > 0, "The amount can't be null");
         require(userPosition[sender].openNotional == 0, "Cannot open a position with one already opened");
 
+        // TODO: replace this: Deposited amount should not depend on source of collateral used => always use 18 decimals of precision
         // transform USDC amount with 6 decimals to a value with 18 decimals
         uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
 
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
-
-        console.log("Current market price");
-        console.log(market.price_oracle());
 
         // open position
         bool isLong = direction == LibPerpetual.Side.Long ? true : false;
@@ -195,10 +193,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             openNotional = _baseForQuote(amount, 0).toInt256();
             positionSize = -amount.toInt256();
         }
-        console.log("positionSize");
-        console.logInt(positionSize);
-        console.log("openNotional");
-        console.logInt(openNotional);
+        // console.log("hardhat: positionSize");
+        // console.logInt(positionSize);
+        // console.log("hardhat: openNotional");
+        // console.logInt(openNotional);
     }
 
     /// @notice Closes position from account holder
@@ -248,13 +246,19 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice user.profit is the sum of funding payments and the position PnL
     function _closePosition(
         LibPerpetual.UserPosition storage user,
-        LibPerpetual.GlobalPosition storage global, // TODO: use once funding rate calculation is done
+        LibPerpetual.GlobalPosition storage global,
         uint256 amount
     ) internal {
         // update user.profit using funding payment info in the `global` struct
-        // user.profit += _settleFundingRate(user, global); TODO: use once funding rate calculation is done
+        // console.log("hardhat: user.profit before settlement");
+        // console.logInt(user.profit);
 
-        user.profit += _closePositionOnMarket(user.positionSize, amount) - user.openNotional; // proceeds - costs = profit
+        user.profit += _settleFundingRate(user, global);
+
+        // console.log("hardhat: user.profit after settlement");
+        // console.logInt(user.profit);
+        // pnL of the position
+        user.profit += _closePositionOnMarket(user.positionSize, amount) + user.openNotional;
     }
 
     function _closePositionOnMarket(int256 positionSize, uint256 notionalAmount)
@@ -264,18 +268,25 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         bool isLong = positionSize > 0 ? true : false;
         uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
         if (isLong) {
+            vBase.mint(position);
             uint256 amount = _baseForQuote(position, 0);
             vQuoteProceeds = amount.toInt256();
         } else {
+            vQuote.mint(notionalAmount);
             uint256 vBaseProceeds = _quoteForBase(notionalAmount, 0);
             require(vBaseProceeds >= position, "Not enough returned");
 
             uint256 baseRemaining = vBaseProceeds - position;
             uint256 additionalProceeds = 0;
+            // console.log("hardhat: Try to sell baseRemaining", baseRemaining);
             if (baseRemaining > 0) {
                 // TODO: can we use a threshold here, where gas cost would exceed the additional revenue?
                 // return remaining base to the vault
-                additionalProceeds = _baseForQuote(baseRemaining, 0);
+                try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseRemaining) {
+                    additionalProceeds = _baseForQuote(baseRemaining, 0);
+                } catch {
+                    // console.log("hardhat: Amount to sell is too low");
+                }
             }
             // sell all remaining tokens
             vQuoteProceeds = -notionalAmount.toInt256() + additionalProceeds.toInt256();
@@ -283,21 +294,21 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
-        // console.log("quoteAmount is", quoteAmount);
-        // console.log("minAmount is", minAmount);
+        // console.log("hardhat: quoteAmount is", quoteAmount);
+        // console.log("hardhat: minAmount is", minAmount);
 
         // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount);
-        // console.log("get_dy returns", amountTest);
+        // console.log("hardhat: get_dy returns", amountTest);
         vQuote.mint(quoteAmount);
         return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
     }
 
     function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        // console.log("baseAmount is", baseAmount);
-        // console.log("minAmount is", minAmount);
+        // console.log("hardhat: baseAmount is", baseAmount);
+        // console.log("hardhat: minAmount is", minAmount);
 
         // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, baseAmount);
-        // console.log("get_dy returns", amountTest);
+        // console.log("hardhat: get_dy returns", amountTest);
         vBase.mint(baseAmount);
         return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
     }
@@ -343,24 +354,24 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         view
         returns (int256 upcomingFundingPayment)
     {
-        /* Funding rates (as defined in our protocol) are paid from shorts to longs
+        /* Funding rates (as defined in our protocol) are paid from longs to shorts
 
-            case 1: user is long => has missed receiving funding payments (positive or negative)
-            case 2: user is short => has missed making funding payments (positive or negative)
+            case 1: user is long  => has missed making funding payments (positive or negative)
+            case 2: user is short => has missed receiving funding payments (positive or negative)
 
             comment: Making an negative funding payment is equivalent to receiving a positive one.
         */
         int256 upcomingFundingRate = 0;
         if (user.cumFundingRate != global.cumFundingRate) {
             if (user.positionSize > 0) {
-                upcomingFundingRate = global.cumFundingRate - user.cumFundingRate;
-            } else {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
+            } else {
+                upcomingFundingRate = global.cumFundingRate - user.cumFundingRate;
             }
             // fundingPayments = fundingRate * openNotional
             upcomingFundingPayment = LibMath.wadMul(upcomingFundingRate, LibMath.abs(user.openNotional));
-            //console.log("upcomingFundingPayment: ");
-            //console.logInt(upcomingFundingPayment);
+            // console.log("hardhat: upcomingFundingPayment: ");
+            // console.logInt(upcomingFundingPayment);
         }
         return upcomingFundingPayment;
     }
@@ -393,15 +404,20 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 basePrice;
         if (totalLiquidityProvided == 0) {
             basePrice = marketPrice();
-            //console.log("hardhat: has provided no liquidity");
+            //console.log("hardhat: hardhat: has provided no liquidity");
+
+            // note: To start the pool we first have to update the funding rate oracle!
+            chainlinkTWAPOracle.updateEURUSDTWAP();
+            poolTWAPOracle.updateEURUSDTWAP();
+            updateFundingRate();
         } else {
             basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
-            //console.log("hardhat: has provided  liquidity");
+            //console.log("hardhat: hardhat: has provided  liquidity");
         }
         uint256 baseAmount = LibMath.wadDiv(wadAmount, basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
 
-        //console.log("hardhat: has wadAmount:", wadAmount);
-        //console.log("hardhat: has baseAmount:", baseAmount);
+        //console.log("hardhat: hardhat: has wadAmount:", wadAmount);
+        //console.log("hardhat: hardhat: has baseAmount:", baseAmount);
 
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
@@ -409,13 +425,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         //uint256 min_mint_amount = 0; // set to zero for now
         uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
-        // increment balances
-
-        userPosition[sender].liquidityBalance += liquidity; // lp tokens
+        // update balances
+        userPosition[sender] = LibPerpetual.UserPosition({
+            openNotional: -wadAmount.toInt256(),
+            positionSize: -baseAmount.toInt256(),
+            cumFundingRate: globalPosition.cumFundingRate,
+            liquidityBalance: liquidity,
+            profit: 0
+        });
         totalLiquidityProvided += liquidity;
-
-        userPosition[sender].openNotional -= wadAmount.toInt256();
-        userPosition[sender].positionSize -= baseAmount.toInt256();
 
         emit LiquidityProvided(sender, address(token), amount);
         return (wadAmount, baseAmount);
@@ -427,11 +445,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function withdrawLiquidity(uint256 amount, IERC20 token) external override {
         // TODO: should we just hardcode amount here?
         address sender = _msgSender();
-        //console.log("hardhat: amount", amount);
-        //console.log("hardhat: userPosition[sender].liquidityBalance", userPosition[sender].liquidityBalance);
+        //console.log("hardhat: hardhat: amount", amount);
+        //console.log("hardhat: hardhat: userPosition[sender].liquidityBalance", userPosition[sender].liquidityBalance);
 
         LibPerpetual.UserPosition storage user = userPosition[sender];
-        // LibPerpetual.GlobalPosition storage global = globalPosition; TODO: use once funding rate calculation is done
+        LibPerpetual.GlobalPosition storage global = globalPosition;
 
         require(user.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
 
@@ -439,7 +457,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.liquidityBalance -= amount;
         totalLiquidityProvided -= amount;
 
-        //console.log("hardhat: trying to withdraw liquidity", amount);
+        //console.log("hardhat: hardhat: trying to withdraw liquidity", amount);
         // remove liquidity from curve pool
         // calc_token_amount
         uint256 baseAmount;
@@ -449,48 +467,51 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
-            //console.log("hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
-            //console.log("hardhat vBaseBalanceBefore", vBaseBalanceBefore);
+            //console.log("hardhat: hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
+            //console.log("hardhat: hardhat vBaseBalanceBefore", vBaseBalanceBefore);
 
             market.remove_liquidity(amount, [uint256(0), uint256(0)]);
 
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
 
-            //console.log("hardhat vQuoteBalanceAfter", vQuoteBalanceAfter);
-            //console.log("hardhat vBaseBalanceAfter", vBaseBalanceAfter);
+            //console.log("hardhat: hardhat vQuoteBalanceAfter", vQuoteBalanceAfter);
+            //console.log("hardhat: hardhat vBaseBalanceAfter", vBaseBalanceAfter);
 
             quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
 
-            //console.log("hardhat quoteAmount", quoteAmount);
-            //console.log("hardhat baseAmount", baseAmount);
+            //console.log("hardhat: hardhat quoteAmount", quoteAmount);
+            //console.log("hardhat: hardhat baseAmount", baseAmount);
         }
-        //console.log("hardhat: has withdrawn", vBaseAmount, vQuoteAmount);
-        //console.log("hardhat: ******before adjustments******");
+        //console.log("hardhat: hardhat: has withdrawn", vBaseAmount, vQuoteAmount);
+        // console.log("hardhat: hardhat: ******before adjustments (withdraw liquidity)******");
 
-        //console.log("hardhat: user.profit");
-        //console.logInt(user.profit);
+        // console.log("hardhat: hardhat: user.cumFundingRate");
+        // console.logInt(user.cumFundingRate);
 
-        //console.log("hardhat: user.openNotional");
-        //console.logInt(user.openNotional);
+        // console.log("hardhat: hardhat: user.profit");
+        // console.logInt(user.profit);
 
-        //console.log("hardhat: user.positionSize");
-        //console.logInt(user.positionSize);
+        // console.log("hardhat: hardhat: user.openNotional");
+        // console.logInt(user.openNotional);
 
-        // user.profit += _settleFundingRate(user, global); TODO: use once funding rate calculation is done
+        // console.log("hardhat: hardhat: user.positionSize");
+        // console.logInt(user.positionSize);
+
+        user.profit += _settleFundingRate(user, global);
         user.openNotional += quoteAmount.toInt256();
         user.positionSize += baseAmount.toInt256();
 
-        //console.log("hardhat: ******after adjustments******");
-        //console.log("hardhat: user.profit");
-        //console.logInt(user.profit);
+        // console.log("hardhat: hardhat: ******after adjustments (withdraw liquidity)******");
+        // console.log("hardhat: hardhat: user.profit");
+        // console.logInt(user.profit);
 
-        //console.log("hardhat: user.openNotional");
-        //console.logInt(user.openNotional);
+        // console.log("hardhat: hardhat: user.openNotional");
+        // console.logInt(user.openNotional);
 
-        //console.log("hardhat: user.positionSize");
-        //console.logInt(user.positionSize);
+        // console.log("hardhat: hardhat: user.positionSize");
+        // console.logInt(user.positionSize);
 
         // if no open position remaining, remove the user
         if (user.positionSize == 0) {

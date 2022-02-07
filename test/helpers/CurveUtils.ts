@@ -54,6 +54,7 @@ export async function TEST_get_dy(
   if (i == j) throw new Error('i==j');
   if (i > 2 || j > 2) throw new Error('i or j > 2');
 
+  // hardcoded for now
   const [PRECISION, PRECISIONS, price_scale] = await getParameterization(
     market
   );
@@ -91,6 +92,10 @@ export async function TEST_get_exactOutputSwap(
     throw new Error('eAmountOut < 0');
   }
 
+  if (amountInMaximum.lt(0)) {
+    throw new Error('amountInMaximum < 0');
+  }
+
   let amountOut: BigNumber = BigNumber.from(0);
 
   // Binary search in [marketPrice * 0.7, marketPrice * 1.3]
@@ -125,7 +130,7 @@ export async function TEST_get_exactOutputSwap(
   // take maxVal to make sure we are above the target
   if (amountOut.lt(eAmountOut)) {
     amountIn = maxVal;
-    amountOut = (await TEST_get_dy(market, inIndex, outIndex, maxVal)).dy;
+    amountOut = await market.get_dy(inIndex, outIndex, maxVal);
   }
 
   if (amountIn.gt(amountInMaximum)) {
@@ -183,9 +188,9 @@ async function calcFees(
 ): Promise<BigNumber> {
   // line: 861
   const fee = await market.fee_test([xp[0], xp[1]]);
-  // console.log('fee', fee.toString());
+  // console.log('CurveUtils: fee', fee.toString());
   const fee_applied = fee.mul(dy).div(10 ** 10);
-  // console.log('fee_applied', fee_applied.toString());
+  // console.log('CurveUtils: fee_applied', fee_applied.toString());
   return fee_applied;
 }
 async function applyFees(
@@ -193,10 +198,13 @@ async function applyFees(
   xp: BigNumber[],
   dy: BigNumber
 ): Promise<{dy: BigNumber; fees: BigNumber}> {
+  //  console.log('CurveUtils: dy before fees', dy.toString());
   const fees = await calcFees(market, xp, dy);
+  //  console.log('CurveUtils: fees', fees.toString());
   dy = dy.sub(fees);
-  // console.log('dy', dy.toString());
-  // console.log('end of get_dy(, i, j, dx, )');
+  //  console.log('CurveUtils: dy after fees', dy.toString());
+
+  // console.log('CurveUtils: end of get_dy(, i, j, dx, )');
   return {dy, fees};
 }
 
@@ -211,23 +219,23 @@ async function calcOutToken(
   // line: 855
   let dy;
   dy = xp[j].sub(y).sub(1);
-  // console.log('dy', dy.toString());
+  //  console.log('CurveUtils: dy', dy.toString());
 
   // line: 856
   xp[j] = y;
-  // console.log('xp[j]', xp[j].toString());
+  //  console.log('CurveUtils: xp[j]', xp[j].toString());
 
   // line: 857
   if (j > 0) {
     // line: 858
     dy = dy.mul(PRECISION).div(price_scale);
-    // console.log('buy base , sell quote');
-    // console.log('dy', dy.toString());
+    //  console.log('CurveUtils: buy base , sell quote');
+    //  console.log('CurveUtils: dy', dy.toString());
   } else {
     // line: 860
     dy = dy.div(PRECISIONS[0]);
-    // console.log('buy quote , sell base');
-    // console.log('dy', dy.toString());
+    //  console.log('CurveUtils: buy quote , sell base');
+    //  console.log('CurveUtils: dy', dy.toString());
   }
   return dy;
 }
@@ -241,23 +249,28 @@ async function calcNewPoolBalances(
   PRECISIONS: BigNumber[],
   price_scale: BigNumber
 ): Promise<[BigNumber[], BigNumber]> {
+  //  console.log('CurveUtils: dx', dx.toString());
+
   // line: 844
   let xp;
   xp = [await market.balances(0), await market.balances(1)];
-  // console.log('xp', xp.toString());
+  //  console.log('CurveUtils: xp', xp.toString());
 
   // line: 846
   const A_gamma = await market.A_gamma_test();
-  // console.log('A_gamma', A_gamma.toString());
+  //  console.log('CurveUtils: A_gamma', A_gamma.toString());
 
   // line: 847
   let D;
   D = await market.D();
-  // console.log('D', D.toString());
+  //  console.log('CurveUtils: D', D.toString());
 
   // line: 848
   const future_A_gamma_time = await market.future_A_gamma_time();
-  // console.log('future_A_gamma_time', future_A_gamma_time.toString());
+  //  console.log(
+  //   'CurveUtils: future_A_gamma_time',
+  //   future_A_gamma_time.toString()
+  // );
   if (future_A_gamma_time.gt(0)) {
     // line: 849
     const xp_tmp = await market.xp_test();
@@ -267,11 +280,11 @@ async function calcNewPoolBalances(
 
   // line: 851
   xp[i] = xp[i].add(dx);
-  // console.log('xp', xp.toString());
+  //  console.log('CurveUtils: xp', xp.toString());
 
   // line: 852
   xp = [xp[0].mul(PRECISIONS[0]), xp[1].mul(price_scale).div(PRECISION)]; // price weighted amount
-  // console.log('xp', xp.toString());
+  //  console.log('CurveUtils: xp', xp.toString());
 
   // line: 854
   const y = await market.newton_y_test(
@@ -302,9 +315,9 @@ async function getParameterization(
 //   PRECISION: BigNumber,
 //   price_scale: BigNumber
 // ): void {
-//   console.log('get_dy(, i, j, dx)');
-//   console.log('i: ', i.toString(), 'j: ', j.toString(), 'dx: ', dx.toString());
-//   console.log('PRECISION: ', PRECISION.toString());
-//   console.log('price_scale', price_scale.toString());
-//   console.log('y', y.toString());
+// //  console.log('CurveUtils: get_dy(, i, j, dx)');
+// //  console.log('CurveUtils: i: ', i.toString(), 'j: ', j.toString(), 'dx: ', dx.toString());
+// //  console.log('CurveUtils: PRECISION: ', PRECISION.toString());
+// //  console.log('CurveUtils: price_scale', price_scale.toString());
+// //  console.log('CurveUtils: y', y.toString());
 // }

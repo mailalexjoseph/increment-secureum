@@ -23,8 +23,8 @@ library LibPerpetual {
         int256 openNotional; // vQuote
         int256 positionSize; // vBase
         int256 cumFundingRate;
-        int256 profit; // TODO: can you remove this?
         uint256 liquidityBalance;
+        int256 profit; // TODO: can you remove this?
     }
 
     struct GlobalPosition {
