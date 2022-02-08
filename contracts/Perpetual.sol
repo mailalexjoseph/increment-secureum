@@ -75,12 +75,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vault = _vault;
 
         // approve all future transfers between Perpetual and market (curve pool)
-        vBase.approve(address(market), type(uint256).max);
-        vQuote.approve(address(market), type(uint256).max);
+        require(vBase.approve(address(market), type(uint256).max));
+        require(vQuote.approve(address(market), type(uint256).max));
     }
 
     // global getter
-    function getLatestPrice() public view override returns (LibPerpetual.Price memory) {
+    function getLatestPrice() external view override returns (LibPerpetual.Price memory) {
         return getPrice(prices.length - 1);
     }
 
@@ -88,7 +88,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return prices[period];
     }
 
-    function getGlobalPosition() public view override returns (LibPerpetual.GlobalPosition memory) {
+    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
         return globalPosition;
     }
 
@@ -104,7 +104,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Deposits tokens into the vault
     function deposit(uint256 amount, IERC20 token) external override {
-        vault.deposit(_msgSender(), amount, token);
+        require(vault.deposit(_msgSender(), amount, token) > 0);
         emit Deposit(_msgSender(), address(token), amount);
     }
 
@@ -113,7 +113,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         //console.log("hardhat: try withdrawing collateral");
         require(getUserPosition(_msgSender()).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
-        vault.withdraw(_msgSender(), amount, token);
+        require(vault.withdraw(_msgSender(), amount, token) > 0);
         emit Withdraw(_msgSender(), address(token), amount);
     }
 
@@ -245,6 +245,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         _closePosition(user, global, tentativeVQuoteAmount);
 
         // apply changes to collateral
+        // TODO: do we want to settle with withdrawal instead?
+        // i.e. https://github.com/MarkuSchick/perp/blob/2e85b00f9428567f1be8fb92fd1defb68c7bc7cf/contracts/Vault.sol#L122
+        // this would
         vault.settleProfit(_msgSender(), user.profit);
         // TODO: only do that if tentativeVQuoteAmount is equal to all of the position of the user
         delete userPosition[_msgSender()];
@@ -323,13 +326,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
     }
 
-    /// @notice Calculate the funding rate for the next block
+    /// @notice Calculate the funding rate for the current block
+
     function updateFundingRate() public {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
         // if first trade of block
+        //slither-disable-next-line timestamp
         if (currentTime > timeOfLastTrade) {
             int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
             int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
@@ -359,6 +364,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Calculate missed funding payments
+    //slither-disable-next-line timestamp
     function getFundingPayments(LibPerpetual.UserPosition memory user, LibPerpetual.GlobalPosition memory global)
         public
         view
@@ -372,6 +378,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             comment: Making an negative funding payment is equivalent to receiving a positive one.
         */
         int256 upcomingFundingRate = 0;
+        //slither-disable-next-line timestamp
         if (user.cumFundingRate != global.cumFundingRate) {
             if (user.positionSize > 0) {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
@@ -392,7 +399,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // @notice Returns the simplified (x/y) market price (TODO: remove this)
-    function realizedMarketPrice() public view returns (uint256) {
+    function realizedMarketPrice() external view returns (uint256) {
         return LibMath.wadDiv(market.balances(0), market.balances(1));
     }
 
@@ -520,8 +527,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // console.log("hardhat: hardhat: user.openNotional");
         // console.logInt(user.openNotional);
 
-        // console.log("hardhat: hardhat: user.positionSize");
-        // console.logInt(user.positionSize);
+        require(vault.withdrawAll(sender, token) > 0); // TODO: withdraw all liquidity
 
         // if no open position remaining, remove the user
         if (user.positionSize == 0) {
@@ -534,7 +540,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function marginIsValid(address account, int256 ratio) public view override returns (bool) {
-        return marginRatio(account) >= ratio;
+        //slither-disable-next-line timestamp
+        return marginRatio(account) <= ratio;
     }
 
     function marginRatio(address account) public view override returns (int256) {

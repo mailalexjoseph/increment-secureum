@@ -32,5 +32,5 @@ interface IVault {
 
     function getReserveTokenDecimals() external view returns (uint256);
 
-    function settleProfit(address user, int256 amount) external returns (int256);
+    function settleProfit(address user, int256 amount) external;
 }

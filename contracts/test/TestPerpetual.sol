@@ -47,7 +47,7 @@ contract TestPerpetual is Perpetual {
         uint128 timeOfLastTrade,
         int256 premium,
         int256 cumFundingRate
-    ) public {
+    ) external {
         globalPosition = LibPerpetual.GlobalPosition({
             cumTradePremium: cumTradePremium,
             timeOfLastTrade: timeOfLastTrade,

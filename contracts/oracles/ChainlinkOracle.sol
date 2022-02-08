@@ -65,7 +65,7 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
         delete priceFeedMap[_asset];
 
         uint256 length = priceFeedKeys.length;
-        for (uint256 i; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             if (priceFeedKeys[i] == _asset) {
                 // if the removal item is the last one, just `pop`
                 if (i != length - 1) {

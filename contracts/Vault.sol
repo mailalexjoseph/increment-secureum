@@ -59,7 +59,7 @@ contract Vault is IVault, Context, IncreOwnable {
 
     /************************* getter *************************/
 
-    function getBalance(address user) public view returns (int256) {
+    function getBalance(address user) external view returns (int256) {
         return balances[user];
     }
 
@@ -148,10 +148,9 @@ contract Vault is IVault, Context, IncreOwnable {
         return 1e18;
     }
 
-    function settleProfit(address user, int256 amount) public override onlyOwner returns (int256) {
+    function settleProfit(address user, int256 amount) external override onlyOwner {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
         balances[user] += settlement;
-        return settlement;
     }
 }

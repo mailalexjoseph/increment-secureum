@@ -56,6 +56,7 @@ contract PoolTWAPOracle {
         timeOfCumulativeAmount = currentTime;
 
         uint256 timeElapsedSinceBeginningOfTWAPPeriodTmp = currentTime - timeOfCumulativeAmountAtBeginningOfPeriodTmp;
+        //slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfTWAPPeriodTmp >= PERIOD) {
             cumulativeAmountAtBeginningOfPeriod = cumulativeAmountAtBeginningOfPeriodTmp;
             timeOfCumulativeAmountAtBeginningOfPeriod = timeOfCumulativeAmountAtBeginningOfPeriodTmp;

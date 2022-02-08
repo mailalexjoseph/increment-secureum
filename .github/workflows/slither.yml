@@ -35,4 +35,4 @@ jobs:
 
       - name: Run slither
         run: |
-          slither . --sarif slither.sarif
+          slither . --sarif slither.sarif --filter-paths node_modules --exclude reentrancy-no-eth,reentrancy-events,reentrancy-benign
