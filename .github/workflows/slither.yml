@@ -35,4 +35,4 @@ jobs:
 
       - name: Run slither
         run: |
-          slither .--filter-paths node_modules --exclude reentrancy-no-eth,reentrancy-events,reentrancy-benign
+          slither . --filter-paths node_modules --exclude reentrancy-no-eth,reentrancy-events,reentrancy-benign
