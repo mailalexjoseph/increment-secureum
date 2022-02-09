@@ -64,6 +64,7 @@
     "gas": "cross-env REPORT_GAS=true hardhat test",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet hardhat coverage",
     "verify": "yarn run compile && yarn run format && yarn run lint && yarn run test",
+    "slither": "docker run --rm -v $PWD:/share -w /share trailofbits/eth-security-toolbox ./slither.sh",
     "dev": "hardhat node --watch --export contractsInfo.json",
     "local:dev": "hardhat --network localhost deploy --watch",
     "execute": "node ./_scripts.js run",
