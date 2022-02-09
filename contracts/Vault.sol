@@ -78,8 +78,6 @@ contract Vault is IVault, Context, IncreOwnable {
     ) external override onlyOwner returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
-        // deposit reserveTokens to contract
-        IERC20(depositToken).safeTransferFrom(user, address(this), amount);
         // this prevents dust from being added to the user account
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
         uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
@@ -87,6 +85,9 @@ contract Vault is IVault, Context, IncreOwnable {
         // increment balance
         balances[user] += convertedWadAmount.toInt256();
         totalReserveToken += convertedWadAmount;
+
+        // deposit reserveTokens to contract
+        IERC20(depositToken).safeTransferFrom(user, address(this), amount);
 
         return convertedWadAmount;
     }
@@ -123,6 +124,7 @@ contract Vault is IVault, Context, IncreOwnable {
         //    console.log("Withdrawing for user (raw)", rawTokenAmount);
         // perform transfer
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
+
         return rawTokenAmount;
     }
 

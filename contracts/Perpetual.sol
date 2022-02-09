@@ -93,7 +93,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     // user getter
-    function getUserPosition(address account) public view override returns (LibPerpetual.UserPosition memory) {
+    function getUserPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return userPosition[account];
     }
 
@@ -111,7 +111,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
         //console.log("hardhat: try withdrawing collateral");
-        require(getUserPosition(_msgSender()).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
+        //slither-disable-next-line incorrect-equality
+        //slither-disable-next-line timestamp // TODO: sounds incorrect
+        require(userPosition[_msgSender()].openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         require(vault.withdraw(_msgSender(), amount, token) > 0);
         emit Withdraw(_msgSender(), address(token), amount);
@@ -157,8 +159,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         address sender = _msgSender();
 
         require(amount > 0, "The amount can't be null");
+        //slither-disable-next-line timestamp // TODO: sounds incorrect
         require(userPosition[sender].openNotional == 0, "Cannot open a position with one already opened");
 
+        //slither-disable-next-line timestamp
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
@@ -208,7 +212,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Closes position from account holder
     /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
-    function closePosition(uint256 tentativeVQuoteAmount) public override {
+    function closePosition(uint256 tentativeVQuoteAmount) external override {
         /*
         after opening the position:
 
@@ -295,6 +299,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             if (baseRemaining > 0) {
                 // TODO: can we use a threshold here, where gas cost would exceed the additional revenue?
                 // return remaining base to the vault
+                //slither-disable-next-line unused-return
                 try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseRemaining) {
                     additionalProceeds = _baseForQuote(baseRemaining, 0);
                 } catch {
@@ -367,7 +372,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     //slither-disable-next-line timestamp
     function getFundingPayments(LibPerpetual.UserPosition memory user, LibPerpetual.GlobalPosition memory global)
         public
-        view
+        pure
         returns (int256 upcomingFundingPayment)
     {
         /* Funding rates (as defined in our protocol) are paid from longs to shorts
@@ -403,7 +408,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return LibMath.wadDiv(market.balances(0), market.balances(1));
     }
 
-    function indexPrice() public view returns (int256) {
+    function indexPrice() external view returns (int256) {
         return chainlinkOracle.getIndexPrice();
     }
 
@@ -412,7 +417,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @param  token to be added to the pool
     function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
         address sender = _msgSender();
+        //slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
+        //slither-disable-next-line timestamp // TODO: sounds incorrect
         require(userPosition[sender].liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
 
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
@@ -468,7 +475,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.UserPosition storage user = userPosition[sender];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
-        require(user.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
+        require(user.liquidityBalance <= amount, "Not enough liquidity provided"); //TODO: can we loosen this?
 
         // lower balances
         user.liquidityBalance -= amount;
@@ -527,12 +534,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // console.log("hardhat: hardhat: user.openNotional");
         // console.logInt(user.openNotional);
 
-        require(vault.withdrawAll(sender, token) > 0); // TODO: withdraw all liquidity
-
         // if no open position remaining, remove the user
+        //slither-disable-next-line incorrect-equality
         if (user.positionSize == 0) {
             vault.settleProfit(sender, user.openNotional);
-            vault.withdrawAll(sender, token);
+            //slither-disable-next-line unused-return // can be zero amount
+            vault.withdrawAll(sender, token); // TODO: withdraw all liquidity
             delete userPosition[sender];
         }
 
@@ -555,6 +562,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         int256 vQuoteVirtualProceeds = 0;
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+        //slither-disable-next-line timestamp // TODO: sounds incorrect
         if (user.positionSize > 0) {
             vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
         } else {
