@@ -549,7 +549,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function marginIsValid(address account, int256 ratio) public view override returns (bool) {
         //slither-disable-next-line timestamp
-        return marginRatio(account) <= ratio;
+        return marginRatio(account) >= ratio;
     }
 
     function marginRatio(address account) public view override returns (int256) {
