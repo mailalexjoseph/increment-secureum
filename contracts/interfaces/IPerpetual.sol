@@ -55,6 +55,8 @@ interface IPerpetual {
 
     // buy/ sell functions
 
+    function openPositionWithUSDC(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
+
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
 
     function closePosition(uint256 amount) external;

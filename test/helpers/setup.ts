@@ -21,6 +21,8 @@ import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
 import {
   ERC20,
   ChainlinkOracle,
+  ChainlinkTWAPOracle,
+  PoolTWAPOracle,
   TestPerpetual,
   Vault,
   VirtualToken,
@@ -37,6 +39,8 @@ export type User = {address: string} & {
   vQuote: VirtualToken;
   market: CryptoSwap;
   chainlinkOracle: ChainlinkOracle;
+  chainlinkTWAPOracle: ChainlinkTWAPOracle;
+  poolTWAPOracle: PoolTWAPOracle;
   curve: CurveTokenV5;
 };
 
@@ -64,6 +68,12 @@ const getContracts = async (deply: string) => {
     curve: <CurveTokenV5>await ethers.getContract('CurveTokenV5', deply),
     chainlinkOracle: <ChainlinkOracle>(
       await ethers.getContract('ChainlinkOracle', deply)
+    ),
+    chainlinkTWAPOracle: <ChainlinkTWAPOracle>(
+      await ethers.getContract('ChainlinkTWAPOracle', deply)
+    ),
+    poolTWAPOracle: <PoolTWAPOracle>(
+      await ethers.getContract('PoolTWAPOracle', deply)
     ),
   };
 };

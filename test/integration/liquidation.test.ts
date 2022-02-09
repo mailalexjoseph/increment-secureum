@@ -9,6 +9,30 @@
 // import {tokenToWad} from '../../helpers/contracts-helpers';
 // import {Side} from '../helpers/utils/types';
 
+// FOR REFERENCE
+// const alicePositionSize = await alice.market.get_dy(0, 1, depositAmount);
+// console.log(`alicePositionSize: ${alicePositionSize.toString()}`);
+
+// const poolEURUSDTWAP = await alice.poolTWAPOracle.getEURUSDTWAP();
+// console.log(`poolEURUSDTWAP: ${poolEURUSDTWAP.toString()}`);
+
+// const vQuoteVirtualProceeds = rMul(alicePositionSize, poolEURUSDTWAP);
+// console.log(`vQuoteVirtualProceeds: ${vQuoteVirtualProceeds.toString()}`);
+
+// const openNotional = depositAmount.mul(-1);
+
+// const unrealizedPositionPnl = vQuoteVirtualProceeds.add(openNotional);
+// console.log(`unrealizedPositionPnl: ${unrealizedPositionPnl.toString()}`);
+
+// const marginRatioRes = rDiv(
+//   depositAmount.add(unrealizedPositionPnl),
+//   depositAmount
+// );
+
+// console.log(`marginRatioRes: ${marginRatioRes.toString()}`);
+
+// console.log(`depositAmount: ${depositAmount}`);
+
 // describe('Increment: liquidation', () => {
 //   let alice: User;
 //   let bob: User;
