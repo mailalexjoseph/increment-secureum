@@ -49,7 +49,7 @@
     "typescript": "^4.3.2"
   },
   "scripts": {
-    "prepare": "node ./.setup.js && hardhat typechain && husky install",
+    "prepare": "node ./.setup.js && hardhat typechain && husky install & pip3 install slither-analyzer",
     "lint": "eslint \"**/*.{js,ts}\" && solhint src/**/*.sol",
     "lint:fix": "eslint --fix \"**/*.{js,ts}\" && solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js,sol}\"",
@@ -64,7 +64,7 @@
     "gas": "cross-env REPORT_GAS=true hardhat test",
     "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet hardhat coverage",
     "verify": "yarn run compile && yarn run format && yarn run lint && yarn run test",
-    "slither": "docker run --rm -v $PWD:/share -w /share trailofbits/eth-security-toolbox ./slither.sh",
+    "slither": "./slither.sh",
     "dev": "hardhat node --watch --export contractsInfo.json",
     "local:dev": "hardhat --network localhost deploy --watch",
     "execute": "node ./_scripts.js run",

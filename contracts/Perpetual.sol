@@ -249,9 +249,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         _closePosition(user, global, tentativeVQuoteAmount);
 
         // apply changes to collateral
-        // TODO: do we want to settle with withdrawal instead?
-        // i.e. https://github.com/MarkuSchick/perp/blob/2e85b00f9428567f1be8fb92fd1defb68c7bc7cf/contracts/Vault.sol#L122
-        // this would
         vault.settleProfit(_msgSender(), user.profit);
         // TODO: only do that if tentativeVQuoteAmount is equal to all of the position of the user
         delete userPosition[_msgSender()];
