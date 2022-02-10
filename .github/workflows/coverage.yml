@@ -33,4 +33,12 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Running tests
-        run: yarn coverageCI && cat coverage/lcov.info | coveralls
+        run: yarn coverage
+        env:
+          ETH_NODE_URI_MAINNET: ${{ secrets.ETH_NODE_URI_MAINNET }}
+          
+      - name: Publish coverage
+        uses: codecov/codecov-action@v2.1.0
+        with:
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
