@@ -29,8 +29,6 @@ contract Vault is IVault, Context, IncreOwnable {
 
     // constants
     uint256 private constant MAX_DECIMALS = 18;
-    uint256 private constant ONE = 1e18;
-    address private constant NO_ORACLE = 0x496E6372656d656E740000000000000000000000; /// 'Increment'
     uint256 private immutable reserveTokenDecimals;
 
     // state
@@ -130,10 +128,10 @@ contract Vault is IVault, Context, IncreOwnable {
 
     /**
      * @notice get the Portfolio value of an account
-     * @param _account Account address
+     * @param account Account address
      */
-    function getReserveValue(address _account) external view override returns (int256) {
-        return PRBMathSD59x18.mul(balances[_account], getAssetPrice());
+    function getReserveValue(address account) external view override returns (int256) {
+        return PRBMathSD59x18.mul(balances[account], getAssetPrice());
     }
 
     /**

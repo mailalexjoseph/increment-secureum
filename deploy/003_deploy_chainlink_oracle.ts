@@ -6,12 +6,11 @@ import {getChainlinkOracleConstructorArgs} from '../helpers/contracts-deployment
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  // TODO: Do we really  need the feed registry here????
-  const chainlinkOracleConstructorArgs = getChainlinkOracleConstructorArgs(hre);
+  // TODO: Do we really  need the feed registry here => No deleted!
+  // const chainlinkOracleConstructorArgs = getChainlinkOracleConstructorArgs(hre);
 
   await hre.deployments.deploy('ChainlinkOracle', {
     from: deployer,
-    args: chainlinkOracleConstructorArgs,
     log: true,
   });
 

@@ -60,7 +60,7 @@ contract TestPerpetual is Perpetual {
         uint256 tokenToSell,
         uint256 tokenToBuy,
         uint256 amountToSell
-    ) public returns (uint256) {
+    ) external returns (uint256) {
         require(tokenToSell < 2, "Index of tokenToSell invalid");
         require(tokenToBuy < 2, "Index of tokenToBuy invalid");
 

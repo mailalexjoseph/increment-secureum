@@ -16,13 +16,10 @@ import {IPerpetual} from "../interfaces/IPerpetual.sol";
 
 contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     using SafeCast for uint256;
-    FeedRegistryInterface private registry;
 
     uint8 constant OUT_DECIMALS = 18;
 
-    constructor(address _registry) {
-        registry = FeedRegistryInterface(_registry);
-    }
+    constructor() {}
 
     // key by currency symbol, eg ETH
     mapping(address => AggregatorV3Interface) public priceFeedMap;
@@ -33,16 +30,16 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     function getIndexPrice() external view override returns (int256) {
         AggregatorV3Interface chainlinkInterface = priceFeedMap[msg.sender];
         require(address(chainlinkInterface) != address(0));
-        return _chainlinkPrice(chainlinkInterface);
+        return chainlinkPrice(chainlinkInterface);
     }
 
     function getAssetPrice(address asset) external view override returns (int256) {
         AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
         require(address(chainlinkInterface) != address(0));
-        return _chainlinkPrice(chainlinkInterface);
+        return chainlinkPrice(chainlinkInterface);
     }
 
-    function _chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
+    function chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
         uint8 chainlinkDecimals = chainlinkInterface.decimals();
         (, int256 price, , uint256 timeStamp, ) = chainlinkInterface.latestRoundData();
         // If the round is not complete yet, timestamp is 0
@@ -52,25 +49,26 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
         return scaledPrice;
     }
 
-    function addAggregator(address _asset, address _aggregator) external override onlyOwner {
-        require(_asset != address(0));
-        if (address(priceFeedMap[_asset]) == address(0)) {
-            priceFeedKeys.push(_asset);
+    function addAggregator(address asset, address aggregator) external override onlyOwner {
+        require(asset != address(0));
+        if (address(priceFeedMap[asset]) == address(0)) {
+            priceFeedKeys.push(asset);
         }
-        priceFeedMap[_asset] = AggregatorV3Interface(_aggregator);
+        priceFeedMap[asset] = AggregatorV3Interface(aggregator);
     }
 
-    function removeAggregator(address _asset) external override onlyOwner {
-        require(_asset != address(0));
-        delete priceFeedMap[_asset];
+    function removeAggregator(address asset) external override onlyOwner {
+        require(asset != address(0));
+        delete priceFeedMap[asset];
 
         uint256 length = priceFeedKeys.length;
         for (uint256 i = 0; i < length; i++) {
-            if (priceFeedKeys[i] == _asset) {
+            if (priceFeedKeys[i] == asset) {
                 // if the removal item is the last one, just `pop`
                 if (i != length - 1) {
                     priceFeedKeys[i] = priceFeedKeys[length - 1];
                 }
+                //slither-disable-next-line costly-loop
                 priceFeedKeys.pop();
                 break;
             }
