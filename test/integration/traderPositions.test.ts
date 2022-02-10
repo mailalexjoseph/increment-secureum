@@ -154,11 +154,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
     await alice.perpetual.openPosition(depositAmount, Side.Long);
-    await alice.perpetual.closePosition(
-      (
-        await alice.perpetual.getUserPosition(alice.address)
-      ).positionSize
-    );
+    await alice.perpetual.closePosition(0);
 
     // expected values
     const positionNotionalAmount = await tokenToWad(
@@ -243,7 +239,7 @@ describe('Increment: open/close long/short trading positions', () => {
       expectedAdditionalVQuote
     );
 
-    await alice.perpetual.closePosition(aliceUserPosition.positionSize);
+    await alice.perpetual.closePosition(0);
     const vQuoteLiquidityAfterPositionClosed = await alice.market.balances(
       VQUOTE_INDEX
     );
