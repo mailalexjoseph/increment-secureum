@@ -1,138 +1,234 @@
-// import {expect} from 'chai';
-// import {utils, BigNumber} from 'ethers';
-// import env from 'hardhat';
+import {expect} from 'chai';
+import {utils, BigNumber} from 'ethers';
+import env from 'hardhat';
 
-// import {rMul, rDiv} from '../helpers/utils/calculations';
-// import {setup, funding, User} from '../helpers/setup';
-// import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
-// import {setNextBlockTimestamp} from '../../helpers/misc-utils';
-// import {tokenToWad} from '../../helpers/contracts-helpers';
-// import {Side} from '../helpers/utils/types';
+import {rMul, rDiv} from '../helpers/utils/calculations';
+import {setup, funding, User} from '../helpers/setup';
+import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
+import {setNextBlockTimestamp} from '../../helpers/misc-utils';
+import {tokenToWad} from '../../helpers/contracts-helpers';
+import {Side} from '../helpers/utils/types';
 
-// FOR REFERENCE
-// const alicePositionSize = await alice.market.get_dy(0, 1, depositAmount);
-// console.log(`alicePositionSize: ${alicePositionSize.toString()}`);
+/*
+ * Test liquidation on the main contract.
+ *
+ * Note: generating successful liquidations because of insufficient `collateral` or `unrealizedPositionPnl`
+ * is very hard to do without mocking the Vault and the PoolTWAPOracle contracts.
+ * As a result, liquidations are only done using unfavorable funding payments.
+ */
+describe('Increment: liquidation', () => {
+  let alice: User;
+  let bob: User;
+  let depositAmountUSDC: BigNumber;
+  let depositAmount: BigNumber; // with 1e18 decimals
+  let aliceUSDCAmount: BigNumber;
+  let aliceAmount: BigNumber;
 
-// const poolEURUSDTWAP = await alice.poolTWAPOracle.getEURUSDTWAP();
-// console.log(`poolEURUSDTWAP: ${poolEURUSDTWAP.toString()}`);
+  // protocol constants
+  let MIN_MARGIN: BigNumber;
+  let LIQUIDATION_REWARD: BigNumber;
+  let TWAP_FREQUENCY: BigNumber;
+  let FEE: BigNumber;
+  let MIN_MARGIN_AT_CREATION: BigNumber;
+  let VQUOTE_INDEX: BigNumber;
+  let VBASE_INDEX: BigNumber;
 
-// const vQuoteVirtualProceeds = rMul(alicePositionSize, poolEURUSDTWAP);
-// console.log(`vQuoteVirtualProceeds: ${vQuoteVirtualProceeds.toString()}`);
+  before('Get protocol constants', async () => {
+    ({alice, bob} = await setup());
 
-// const openNotional = depositAmount.mul(-1);
+    MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
+    LIQUIDATION_REWARD = await alice.perpetual.LIQUIDATION_REWARD();
+    TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
+    FEE = await alice.perpetual.FEE();
+    MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
+    VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
+    VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
+  });
 
-// const unrealizedPositionPnl = vQuoteVirtualProceeds.add(openNotional);
-// console.log(`unrealizedPositionPnl: ${unrealizedPositionPnl.toString()}`);
+  beforeEach(
+    'Give Alice funds and approve transfer by the vault to her balance',
+    async () => {
+      ({alice, bob} = await setup());
+      depositAmountUSDC = await funding(); // amount used for collaterals and liquidity provisioning
+      aliceUSDCAmount = depositAmountUSDC.div(10); // Alice deposits and exchanges 10% of the pool liquidity
+      depositAmount = await tokenToWad(
+        await alice.vault.getReserveTokenDecimals(),
+        depositAmountUSDC
+      );
+      aliceAmount = depositAmount.div(10);
 
-// const marginRatioRes = rDiv(
-//   depositAmount.add(unrealizedPositionPnl),
-//   depositAmount
-// );
+      // bob deposits liquidity, alice opens a position of half this liquidity
+      await setUpPoolLiquidity(bob, depositAmountUSDC);
+      await alice.usdc.approve(alice.vault.address, aliceUSDCAmount);
+      await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+    }
+  );
 
-// console.log(`marginRatioRes: ${marginRatioRes.toString()}`);
+  it('Should fail if liquidator tries to liquidate a position of a user having no position', async () => {
+    await expect(
+      bob.perpetual.liquidate(alice.address, depositAmount)
+    ).to.be.revertedWith('No position currently opened');
+  });
 
-// console.log(`depositAmount: ${depositAmount}`);
+  it('Should fail if user has enough margin', async () => {
+    await alice.perpetual.openPosition(aliceAmount, Side.Long);
 
-// describe('Increment: liquidation', () => {
-//   let alice: User;
-//   let bob: User;
-//   let aliceDepositAmount: BigNumber;
+    await expect(
+      bob.perpetual.liquidate(alice.address, depositAmount)
+    ).to.be.revertedWith('Margin is valid');
+  });
 
-//   // protocol constants
-//   let MIN_MARGIN: BigNumber;
-//   let LIQUIDATION_FEE: BigNumber;
-//   let TWAP_FREQUENCY: BigNumber;
-//   let FEE: BigNumber;
-//   let MIN_MARGIN_AT_CREATION: BigNumber;
-//   let VQUOTE_INDEX: BigNumber;
-//   let VBASE_INDEX: BigNumber;
+  it('Should liquidate LONG position out-of-the-money', async () => {
+    await alice.perpetual.openPosition(aliceAmount, Side.Long);
 
-//   before('Get protocol constants', async () => {
-//     ({alice, bob} = await setup());
+    const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
+      alice.address
+    );
+    const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
+      bob.address
+    );
 
-//     MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
-//     LIQUIDATION_FEE = await alice.perpetual.LIQUIDATION_FEE();
-//     TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
-//     FEE = await alice.perpetual.FEE();
-//     MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
-//     VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
-//     VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
-//   });
+    // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
+    const timestampForkedMainnetBlock = 1639682285;
+    const timestampJustBefore = timestampForkedMainnetBlock - 15;
+    await bob.perpetual.__TestPerpetual_setGlobalPosition(
+      0,
+      timestampJustBefore,
+      0,
+      utils.parseEther('10000') // set very large cumFundingRate so that the position ends up below MIN_MARGIN
+    );
 
-//   beforeEach(
-//     'Give Alice funds and approve transfer by the vault to her balance',
-//     async () => {
-//       ({alice, bob} = await setup());
-//       const depositAmount = await funding();
+    // Check `LiquidationCall` event sent with proper values
+    // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
+    // so we don't check the values of the arguments of the event
+    await expect(bob.perpetual.liquidate(alice.address, 0)).to.emit(
+      alice.perpetual,
+      'LiquidationCall'
+    );
 
-//       // bob deposits liquidity, alice opens a position of half this liquidity
-//       await setUpPoolLiquidity(bob, depositAmount);
-//       aliceDepositAmount = depositAmount.div(2);
-//       await alice.usdc.approve(alice.vault.address, aliceDepositAmount);
-//       await alice.perpetual.deposit(aliceDepositAmount, alice.usdc.address);
-//       await alice.perpetual.openPosition(aliceDepositAmount, Side.Long);
-//     }
-//   );
+    // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
+    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    expect(alicePosition.openNotional).to.eq(0);
+    expect(alicePosition.positionSize).to.eq(0);
 
-//   it('Should fail if user has enough margin', async () => {
-//     await expect(bob.perpetual.liquidate(alice.address)).to.be.revertedWith(
-//       'Margin is valid'
-//     );
-//   });
+    // Check trader's vault.balance is reduced by negative profit and liquidation fee
+    const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
+      alice.address
+    );
+    expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
+      aliceVaultBalanceBeforeClosingPosition
+    );
 
-//   it('Should liquidate the position', async () => {
-//     const timestampForkedMainnetBlock = 1639682285;
-//     const notionalAmount = await tokenToWad(
-//       await alice.vault.getReserveTokenDecimals(),
-//       aliceDepositAmount
-//     );
+    // Check liquidator's vault.balance is increased by the liquidation reward
+    const liquidationReward = rMul(aliceAmount, LIQUIDATION_REWARD);
+    const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
+      bob.address
+    );
+    expect(bobVaultBalanceAfterLiquidation).to.eq(
+      bobVaultBalanceBeforeLiquidation.add(liquidationReward)
+    );
+  });
 
-//     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
-//       alice.address
-//     );
-//     const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
-//       bob.address
-//     );
+  it('Should fail to liquidate SHORT position out-of-the-money if excessive tentativeVQuoteAmount is submitted by liquidator', async () => {
+    await alice.perpetual.openPosition(aliceAmount, Side.Short);
 
-// make the funding rate negative so that the Alice's position drops below MIN_MARGIN
-// const timestampJustBefore = timestampForkedMainnetBlock - 15;
-// await bob.perpetual.setGlobalPosition(
-//   0,
-//   timestampJustBefore,
-//   0,
-//   utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position is below MIN_MARGIN
-// );
+    // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
+    const timestampForkedMainnetBlock = 1639682285;
+    const timestampJustBefore = timestampForkedMainnetBlock - 15;
+    await bob.perpetual.__TestPerpetual_setGlobalPosition(
+      0,
+      timestampJustBefore,
+      0,
+      utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
+    );
 
-//     // Check `LiquidationCall` event sent with proper values
-//     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
-//     // because this value changes from one machine to another (e.g. CI vs local machine).
-//     await expect(bob.perpetual.liquidate(alice.address)).to.emit(
-//       alice.perpetual,
-//       'LiquidationCall'
-//     );
+    const excessiveTentativeVQuoteAmount = aliceAmount.mul(10);
+    await expect(
+      bob.perpetual.liquidate(alice.address, excessiveTentativeVQuoteAmount)
+    ).to.be.revertedWith(
+      'Amount submitted too far from the market price of the position'
+    );
+  });
 
-//     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
-//     const alicePosition = await alice.perpetual.getUserPosition(alice.address);
-//     expect(alicePosition.openNotional).to.eq(0);
-//     expect(alicePosition.positionSize).to.eq(0);
+  it('Should fail if the proposed tentativeVQuoteAmount is insufficient to buy back a SHORT position', async () => {
+    await alice.perpetual.openPosition(aliceAmount, Side.Short);
 
-//     // Check trader's vault.balance is reduced by negative profit and liquidation fee
-//     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-//       alice.address
-//     );
-//     expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
-//       aliceVaultBalanceBeforeClosingPosition
-//     );
+    // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
+    const timestampForkedMainnetBlock = 1639682285;
+    const timestampJustBefore = timestampForkedMainnetBlock - 15;
+    await bob.perpetual.__TestPerpetual_setGlobalPosition(
+      0,
+      timestampJustBefore,
+      0,
+      utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
+    );
 
-//     // Check liquidator's vault.balance is increase by the liquidation fee
-//     const liquidationFee = rMul(notionalAmount, LIQUIDATION_FEE);
-//     const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
-//       bob.address
-//     );
-//     expect(bobVaultBalanceAfterLiquidation).to.eq(
-//       bobVaultBalanceBeforeLiquidation.add(liquidationFee)
-//     );
-//   });
+    const insufficientVQuoteAmountToBuyVBaseShort = aliceAmount;
+    await expect(
+      bob.perpetual.liquidate(
+        alice.address,
+        insufficientVQuoteAmountToBuyVBaseShort
+      )
+    ).to.be.revertedWith('Not enough returned, proposed amount too low');
+  });
 
-//   // Possible improvements: add a success case of liquidation because of a negative unrealizedPositionPnl
-// });
+  it('Should liquidate SHORT position out-of-the-money', async () => {
+    await alice.perpetual.openPosition(aliceAmount, Side.Short);
+    const positionOpenNotional = (
+      await alice.perpetual.getUserPosition(alice.address)
+    ).openNotional;
+
+    const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
+      alice.address
+    );
+    const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
+      bob.address
+    );
+
+    // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
+    const timestampForkedMainnetBlock = 1639682285;
+    const timestampJustBefore = timestampForkedMainnetBlock - 15;
+    await bob.perpetual.__TestPerpetual_setGlobalPosition(
+      0,
+      timestampJustBefore,
+      0,
+      utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
+    );
+
+    // Check `LiquidationCall` event sent with proper values
+    // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
+    // so we don't check the values of the arguments of the event
+    const properVQuoteAmountToBuyBackShortPosition = aliceAmount.add(
+      aliceAmount.div(4)
+    );
+    await expect(
+      bob.perpetual.liquidate(
+        alice.address,
+        properVQuoteAmountToBuyBackShortPosition
+      )
+    ).to.emit(alice.perpetual, 'LiquidationCall');
+
+    // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
+    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    expect(alicePosition.openNotional).to.eq(0);
+    expect(alicePosition.positionSize).to.eq(0);
+
+    // Check trader's vault.balance is reduced by negative profit and liquidation fee
+    const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
+      alice.address
+    );
+    expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
+      aliceVaultBalanceBeforeClosingPosition
+    );
+
+    // Check liquidator's vault.balance is increased by the liquidation reward
+    const liquidationReward = rMul(positionOpenNotional, LIQUIDATION_REWARD);
+    const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
+      bob.address
+    );
+
+    expect(bobVaultBalanceAfterLiquidation).to.eq(
+      bobVaultBalanceBeforeLiquidation.add(liquidationReward)
+    );
+  });
+});

@@ -32,7 +32,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // parameterization
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
-    uint256 public constant LIQUIDATION_FEE = 60e15; // 6%
+    uint256 public constant LIQUIDATION_REWARD = 60e15; // 6%
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 public constant FEE = 3e16; // 3%
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE + 25e15; // initial margin is 2.5% + 3% + 2.5% = 8%
@@ -203,11 +203,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             openNotional = _baseForQuote(amount, 0).toInt256();
             positionSize = -amount.toInt256();
         }
-
-        // console.log("hardhat: positionSize");
-        // console.logInt(positionSize);
-        // console.log("hardhat: openNotional");
-        // console.logInt(openNotional);
     }
 
     /// @notice Closes position from account holder
@@ -251,16 +246,36 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // apply changes to collateral
         vault.settleProfit(_msgSender(), user.profit);
         // TODO: only do that if tentativeVQuoteAmount is equal to all of the position of the user
+        // The problem is to be a bit more complicated than it seems at first...
         delete userPosition[_msgSender()];
     }
 
-    /// @dev Used both by traders closing their own positions and liquidators liquidate other people's positions
+    /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice user.profit is the sum of funding payments and the position PnL
     function _closePosition(
         LibPerpetual.UserPosition storage user,
         LibPerpetual.GlobalPosition storage global,
         uint256 tentativeVQuoteAmount
     ) internal {
+        bool isShort = user.positionSize < 0 ? true : false;
+        if (isShort) {
+            // check that `tentativeVQuoteAmount` isn't too far from the value in the market
+            // to avoid creating large swings in the market (eventhough these swings would be cancelled out
+            // by the fact that we sell any extra vBase bought)
+            int256 marketEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+            // USD_amount = EUR_USD * EUR_amount
+            int256 positivePositionSize = -user.positionSize;
+            int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
+
+            int256 deviation = LibMath.wadDiv(
+                LibMath.abs(tentativeVQuoteAmount.toInt256() - reasonableVQuoteAmount),
+                reasonableVQuoteAmount
+            );
+
+            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
+            require(deviation < 5e17, "Amount submitted too far from the market price of the position");
+        }
+
         // update user.profit using funding payment info in the `global` struct
         // console.log("hardhat: user.profit before settlement");
         // console.logInt(user.profit);
@@ -288,7 +303,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         } else {
             vQuote.mint(tentativeVQuoteAmount);
             uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, 0);
-            require(vBaseProceeds >= position, "Not enough returned");
+            require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
 
             uint256 baseRemaining = vBaseProceeds - position;
             uint256 additionalProceeds = 0;
@@ -380,17 +395,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             comment: Making an negative funding payment is equivalent to receiving a positive one.
         */
         int256 upcomingFundingRate = 0;
+
+        bool isLong = user.positionSize > 0 ? true : false;
         //slither-disable-next-line timestamp
         if (user.cumFundingRate != global.cumFundingRate) {
-            if (user.positionSize > 0) {
+            if (isLong) {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
             } else {
                 upcomingFundingRate = global.cumFundingRate - user.cumFundingRate;
             }
             // fundingPayments = fundingRate * openNotional
             upcomingFundingPayment = LibMath.wadMul(upcomingFundingRate, LibMath.abs(user.openNotional));
-            // console.log("hardhat: upcomingFundingPayment: ");
-            // console.logInt(upcomingFundingPayment);
         }
         return upcomingFundingPayment;
     }
@@ -554,51 +569,51 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition memory global = globalPosition;
 
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.openNotional
-        // all amounts should be expressed in vQuote/USD, otherwise the end result doesn't make sense
+        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
         int256 collateral = vault.getReserveValue(account);
         int256 fundingPayments = getFundingPayments(user, global);
 
-        int256 vQuoteVirtualProceeds = 0;
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-        //slither-disable-next-line timestamp // TODO: sounds incorrect
-        if (user.positionSize > 0) {
-            vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
-        } else {
-            vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
-        }
+        int256 vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
 
+        // in the case of a LONG, user.openNotional is negative but vQuoteVitualProceeds is positive
+        // in the case of a SHORT, user.openNotional is positive while vQuoteVitualProceeds is negative
         int256 unrealizedPositionPnl = user.openNotional + vQuoteVirtualProceeds;
 
         int256 positiveOpenNotional = LibMath.abs(user.openNotional);
-
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
     }
 
-    function liquidate(address account, uint256 amount) external {
+    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
+    function liquidate(address account, uint256 tentativeVQuoteAmount) external {
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
 
-        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
-        address liquidator = _msgSender();
-
-        // TODO: require amount is fair price
         // load information about state
         LibPerpetual.UserPosition storage user = userPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        uint256 openNotional = uint256(user.openNotional); // TODO: is this safe??
+        uint256 positiveOpenNotional = uint256(LibMath.abs(user.openNotional));
 
-        _closePosition(user, global, amount);
+        require(user.openNotional != 0, "No position currently opened");
+        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
+        address liquidator = _msgSender();
 
-        uint256 liquidationFeeAmount = LibMath.wadMul(openNotional, LIQUIDATION_FEE);
+        _closePosition(user, global, tentativeVQuoteAmount);
 
-        // subtract fee from user account
-        int256 reducedProfit = user.profit - liquidationFeeAmount.toInt256();
+        // adjust liquidator vault amount
+        uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
+
+        // subtract reward from user account
+        int256 reducedProfit = user.profit - liquidationRewardAmount.toInt256();
         vault.settleProfit(account, reducedProfit);
+        // A user getting liquidated has his entire position sold by definition
+        // so no risk of leaving money on the side by clearing this data
+        delete userPosition[account];
 
-        // add fee to liquidator account
-        vault.settleProfit(liquidator, liquidationFeeAmount.toInt256());
+        // add reward to liquidator
+        vault.settleProfit(liquidator, liquidationRewardAmount.toInt256());
 
-        emit LiquidationCall(account, liquidator, uint128(block.timestamp), openNotional);
+        emit LiquidationCall(account, liquidator, uint128(block.timestamp), positiveOpenNotional);
     }
 }

@@ -118,7 +118,7 @@
 //       premium = asBigNumber('0');
 //       cumFundingRate = asBigNumber('0');
 
-//       await user.funding.setGlobalPosition(
+//       await user.funding.__TestPerpetual_setGlobalPosition(
 //         cumTradePremium,
 //         timeOfLastTrade,
 //         timeStamp,

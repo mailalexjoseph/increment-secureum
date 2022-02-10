@@ -18,7 +18,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
   // protocol constants
   let MIN_MARGIN: BigNumber;
-  let LIQUIDATION_FEE: BigNumber;
+  let LIQUIDATION_REWARD: BigNumber;
   let TWAP_FREQUENCY: BigNumber;
   let FEE: BigNumber;
   let MIN_MARGIN_AT_CREATION: BigNumber;
@@ -29,7 +29,7 @@ describe('Increment: open/close long/short trading positions', () => {
     const {deployer} = await setup();
 
     MIN_MARGIN = await deployer.perpetual.MIN_MARGIN();
-    LIQUIDATION_FEE = await deployer.perpetual.LIQUIDATION_FEE();
+    LIQUIDATION_REWARD = await deployer.perpetual.LIQUIDATION_REWARD();
     TWAP_FREQUENCY = await deployer.perpetual.TWAP_FREQUENCY();
     FEE = await deployer.perpetual.FEE();
     MIN_MARGIN_AT_CREATION = await deployer.perpetual.MIN_MARGIN_AT_CREATION();
@@ -285,7 +285,10 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // the amount passed to `closePosition` is arbitrary,
     // though large enough to be able to buy the same of amount of vBase short
-    await alice.perpetual.closePosition(aliceOpenNotional.mul(2));
+    const vQuoteAmountToBuyBackVBasePosition = aliceOpenNotional.add(
+      aliceOpenNotional.div(4)
+    );
+    await alice.perpetual.closePosition(vQuoteAmountToBuyBackVBasePosition);
 
     const vQuoteLiquidityAfterPositionClosed = await alice.market.balances(
       VQUOTE_INDEX

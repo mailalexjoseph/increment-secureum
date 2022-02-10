@@ -42,7 +42,7 @@ contract TestPerpetual is Perpetual {
     ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _vault) {}
 
     // simplified setter
-    function setGlobalPosition(
+    function __TestPerpetual_setGlobalPosition(
         int256 cumTradePremium,
         uint128 timeOfLastTrade,
         int256 premium,
@@ -54,5 +54,22 @@ contract TestPerpetual is Perpetual {
             premium: premium,
             cumFundingRate: cumFundingRate
         });
+    }
+
+    function __TestPerpetual_manipulate_market(
+        uint256 tokenToSell,
+        uint256 tokenToBuy,
+        uint256 amountToSell
+    ) public returns (uint256) {
+        require(tokenToSell < 2, "Index of tokenToSell invalid");
+        require(tokenToBuy < 2, "Index of tokenToBuy invalid");
+
+        if (tokenToSell == VQUOTE_INDEX) {
+            vQuote.mint(amountToSell);
+        } else {
+            vBase.mint(amountToSell);
+        }
+
+        return market.exchange(tokenToSell, tokenToBuy, amountToSell, 0);
     }
 }
