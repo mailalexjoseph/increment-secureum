@@ -1,4 +1,4 @@
-import {findPriceSlot} from '../helpers/bruteForce';
+import {findPriceSlot} from './bruteForce';
 import env = require('hardhat');
 
 const EUR_USD_PRICEFEED_ADDRESS = '0xb49f677943BC038e9857d61E7d053CaA2C1734C1';

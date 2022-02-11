@@ -1,8 +1,8 @@
-import {tEthereumAddress} from './types';
+import {tEthereumAddress} from '../../helpers/types';
 import {ethers} from 'hardhat';
 import env = require('hardhat');
 import {utils, constants} from 'ethers';
-import {AggregatorV3Interface} from '../typechain';
+import {AggregatorV3Interface} from '../../typechain';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const encode = (types: any, values: any) =>
