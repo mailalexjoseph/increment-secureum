@@ -161,8 +161,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             openNotional: openNotional,
             positionSize: positionSize,
             cumFundingRate: globalPosition.cumFundingRate,
-            liquidityBalance: 0,
-            profit: 0
+            liquidityBalance: 0
         });
 
         require(marginIsValid(sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
@@ -226,22 +225,22 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
 
-        _closePosition(user, global, tentativeVQuoteAmount);
+        int256 profit = _closePosition(user, global, tentativeVQuoteAmount);
 
         // apply changes to collateral
-        vault.settleProfit(_msgSender(), user.profit);
+        vault.settleProfit(_msgSender(), profit);
         // TODO: only do that if tentativeVQuoteAmount is equal to all of the position of the user
         // The problem is to be a bit more complicated than it seems at first...
         delete userPosition[_msgSender()];
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
-    /// @notice user.profit is the sum of funding payments and the position PnL
+    /// @notice profit is the sum of funding payments and the position PnL
     function _closePosition(
         LibPerpetual.UserPosition storage user,
         LibPerpetual.GlobalPosition storage global,
         uint256 tentativeVQuoteAmount
-    ) internal {
+    ) internal returns (int256 profit) {
         bool isShort = user.positionSize < 0 ? true : false;
         if (isShort) {
             // check that `tentativeVQuoteAmount` isn't too far from the value in the market
@@ -261,11 +260,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             require(deviation < 5e17, "Amount submitted too far from the market price of the position");
         }
 
-        // update user.profit using funding payment info in the `global` struct
-        user.profit += _settleFundingRate(user, global);
+        // update profit using funding payment info in the `global` struct
+        profit += _settleFundingRate(user, global);
 
         // pnL of the position
-        user.profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
+        profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
     }
 
     /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
@@ -332,7 +331,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         }
     }
 
-    /// @notice Applies the funding payments on user.profit
+    /// @notice Applies the funding payments on the profit
     function _settleFundingRate(LibPerpetual.UserPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
         returns (int256 upcomingFundingPayment)
@@ -423,8 +422,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             openNotional: -wadAmount.toInt256(),
             positionSize: -baseAmount.toInt256(),
             cumFundingRate: globalPosition.cumFundingRate,
-            liquidityBalance: liquidity,
-            profit: 0
+            liquidityBalance: liquidity
         });
         totalLiquidityProvided += liquidity;
 
@@ -466,7 +464,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
         }
 
-        user.profit += _settleFundingRate(user, global);
+        int256 profit = _settleFundingRate(user, global); // TODO: what should we do with profit?
         user.openNotional += quoteAmount.toInt256();
         user.positionSize += baseAmount.toInt256();
 
@@ -522,13 +520,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
         address liquidator = _msgSender();
 
-        _closePosition(user, global, tentativeVQuoteAmount);
+        int256 profit = _closePosition(user, global, tentativeVQuoteAmount);
 
         // adjust liquidator vault amount
         uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
 
         // subtract reward from user account
-        int256 reducedProfit = user.profit - liquidationRewardAmount.toInt256();
+        int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
         vault.settleProfit(account, reducedProfit);
         // A user getting liquidated has his entire position sold by definition
         // so no risk of leaving money on the side by clearing this data

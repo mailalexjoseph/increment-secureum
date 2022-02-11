@@ -18,7 +18,6 @@ library LibPerpetual {
         int256 positionSize; // vBase
         int256 cumFundingRate;
         uint256 liquidityBalance;
-        int256 profit; // TODO: can you remove this?
     }
 
     struct GlobalPosition {

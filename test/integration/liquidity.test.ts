@@ -260,7 +260,6 @@ describe('Increment App: Liquidity', function () {
         );
 
         expect(positionAfter.liquidityBalance).to.be.equal(0);
-        expect(positionAfter.profit).to.be.equal(0);
         expect(positionAfter.cumFundingRate).to.be.equal(0);
         expect(positionAfter.positionSize).to.be.equal(-dust.base);
         expect(positionAfter.openNotional).to.be.equal(-dust.quote);

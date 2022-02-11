@@ -128,7 +128,6 @@ describe('Increment: open/close long/short trading positions', () => {
     const alicePosition = await alice.perpetual.getUserPosition(alice.address);
     expect(alicePosition.positionSize).to.be.equal(positionSize);
     expect(alicePosition.openNotional).to.be.equal(notionalAmount);
-    expect(alicePosition.profit).to.be.equal(0);
     // cumFundingRate is set at 0 because there's no activity before in this test
     expect(alicePosition.cumFundingRate).to.be.equal(0);
 
@@ -202,7 +201,7 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(aliceUserPosition.openNotional.toNumber()).to.equal(0);
     expect(aliceUserPosition.positionSize.toNumber()).to.equal(0);
 
-    // UserPosition.profit should be reflected in the Vault user's balance
+    // Profit should be reflected in the Vault user's balance
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
       alice.address
     );
