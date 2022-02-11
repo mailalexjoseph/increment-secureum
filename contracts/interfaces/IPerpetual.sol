@@ -38,6 +38,7 @@ interface IPerpetual {
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
     event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
     event LiquidityWithdrawn(address indexed liquidityProvider, address indexed asset, uint256 amount);
+    event Log(string errorMessage);
 
     function market() external view returns (ICryptoSwap);
 
@@ -60,13 +61,6 @@ interface IPerpetual {
     function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
 
     function closePosition(uint256 amount) external;
-
-    // funding rate functions
-    function getLatestPrice() external view returns (LibPerpetual.Price memory);
-
-    function getPrice(uint256 period) external view returns (LibPerpetual.Price memory);
-
-    function setPrice(LibPerpetual.Price memory newPrice) external;
 
     // integration functions
     function deposit(uint256 amount, IERC20 token) external;

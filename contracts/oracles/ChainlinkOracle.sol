@@ -68,7 +68,7 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
                 if (i != length - 1) {
                     priceFeedKeys[i] = priceFeedKeys[length - 1];
                 }
-                //slither-disable-next-line costly-loop
+                // slither-disable-next-line costly-loop
                 priceFeedKeys.pop();
                 break;
             }

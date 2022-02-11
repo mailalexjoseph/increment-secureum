@@ -51,11 +51,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
-    LibPerpetual.Price[] internal prices;
-
-    uint256 internal totalLiquidityProvided;
-
     mapping(address => LibPerpetual.UserPosition) internal userPosition;
+    uint256 internal totalLiquidityProvided;
 
     constructor(
         IChainlinkOracle _chainlinkOracle,
@@ -79,30 +76,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(vQuote.approve(address(market), type(uint256).max));
     }
 
-    // global getter
-    function getLatestPrice() external view override returns (LibPerpetual.Price memory) {
-        return getPrice(prices.length - 1);
-    }
-
-    function getPrice(uint256 period) public view override returns (LibPerpetual.Price memory) {
-        return prices[period];
-    }
-
     function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
         return globalPosition;
     }
 
-    // user getter
     function getUserPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return userPosition[account];
     }
 
-    // functions. TODO: delete!
-    function setPrice(LibPerpetual.Price memory newPrice) external override {
-        prices.push(newPrice);
-    }
-
-    /// @notice Deposits tokens into the vault
+    /// @notice Deposit tokens into the vault
     function deposit(uint256 amount, IERC20 token) external override {
         require(vault.deposit(_msgSender(), amount, token) > 0);
         emit Deposit(_msgSender(), address(token), amount);
@@ -110,15 +92,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Withdraw tokens from the vault
     function withdraw(uint256 amount, IERC20 token) external override {
-        //console.log("hardhat: try withdrawing collateral");
-        //slither-disable-next-line incorrect-equality
-        //slither-disable-next-line timestamp // TODO: sounds incorrect
+        // slither-disable-next-line incorrect-equality
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(userPosition[_msgSender()].openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         require(vault.withdraw(_msgSender(), amount, token) > 0);
         emit Withdraw(_msgSender(), address(token), amount);
     }
 
+    /// @notice Function to be called by clients depositing USDC as collateral
     function openPositionWithUSDC(uint256 amount, LibPerpetual.Side direction)
         external
         override
@@ -159,10 +141,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         address sender = _msgSender();
 
         require(amount > 0, "The amount can't be null");
-        //slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(userPosition[sender].openNotional == 0, "Cannot open a position with one already opened");
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
+        require(
+            userPosition[sender].openNotional == 0,
+            "Cannot open a position with one already opened or liquidity provided"
+        );
 
-        //slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
@@ -277,19 +262,13 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         }
 
         // update user.profit using funding payment info in the `global` struct
-        // console.log("hardhat: user.profit before settlement");
-        // console.logInt(user.profit);
-
         user.profit += _settleFundingRate(user, global);
 
-        // console.log("hardhat: user.profit after settlement");
-        // console.logInt(user.profit);
         // pnL of the position
         user.profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
     }
 
-    /// @param tentativeVQuoteAmount is totally arbitrary. It's a value, hopefully, big
-    /// enough to be able to close the short position
+    /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
     function _closePositionOnMarket(int256 positionSize, uint256 tentativeVQuoteAmount)
         internal
         returns (int256 vQuoteProceeds)
@@ -307,15 +286,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
             uint256 baseRemaining = vBaseProceeds - position;
             uint256 additionalProceeds = 0;
-            // console.log("hardhat: Try to sell baseRemaining", baseRemaining);
             if (baseRemaining > 0) {
-                // TODO: can we use a threshold here, where gas cost would exceed the additional revenue?
-                // return remaining base to the vault
-                //slither-disable-next-line unused-return
+                // slither-disable-next-line unused-return
                 try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseRemaining) {
                     additionalProceeds = _baseForQuote(baseRemaining, 0);
                 } catch {
-                    // console.log("hardhat: Amount to sell is too low");
+                    emit Log(
+                        "Incorrect tentativeVQuoteAmount, submit a bigger value or one matching more closely the amount of vQuote needed to buy back the short position"
+                    );
                 }
             }
             // sell all remaining tokens
@@ -324,34 +302,23 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
-        // console.log("hardhat: quoteAmount is", quoteAmount);
-        // console.log("hardhat: minAmount is", minAmount);
-
-        // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount);
-        // console.log("hardhat: get_dy returns", amountTest);
         vQuote.mint(quoteAmount);
         return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
     }
 
     function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        // console.log("hardhat: baseAmount is", baseAmount);
-        // console.log("hardhat: minAmount is", minAmount);
-
-        // uint256 amountTest = market.get_dy(VQUOTE_INDEX, VBASE_INDEX, baseAmount);
-        // console.log("hardhat: get_dy returns", amountTest);
         vBase.mint(baseAmount);
         return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
     }
 
     /// @notice Calculate the funding rate for the current block
-
     function updateFundingRate() public {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
         // if first trade of block
-        //slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp
         if (currentTime > timeOfLastTrade) {
             int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
             int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
@@ -376,12 +343,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             emit Settlement(_msgSender(), upcomingFundingPayment);
         }
 
-        // update user variables to global state
         user.cumFundingRate = global.cumFundingRate;
     }
 
     /// @notice Calculate missed funding payments
-    //slither-disable-next-line timestamp
+    // slither-disable-next-line timestamp
     function getFundingPayments(LibPerpetual.UserPosition memory user, LibPerpetual.GlobalPosition memory global)
         public
         pure
@@ -397,7 +363,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         int256 upcomingFundingRate = 0;
 
         bool isLong = user.positionSize > 0 ? true : false;
-        //slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp
         if (user.cumFundingRate != global.cumFundingRate) {
             if (isLong) {
                 upcomingFundingRate = user.cumFundingRate - global.cumFundingRate;
@@ -410,16 +376,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return upcomingFundingPayment;
     }
 
-    // @notice Return the current market price
+    /// @notice Return the current market price
     function marketPrice() public view returns (uint256) {
-        return market.price_oracle(); // vBase / vQuote
+        return market.price_oracle(); // approximately vBase / vQuote
     }
 
-    // @notice Returns the simplified (x/y) market price (TODO: remove this)
-    function realizedMarketPrice() external view returns (uint256) {
-        return LibMath.wadDiv(market.balances(0), market.balances(1));
-    }
-
+    /// @notice Return the current off-chain exchange rate for vBase/vQuote
     function indexPrice() external view returns (int256) {
         return chainlinkOracle.getIndexPrice();
     }
@@ -429,9 +391,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @param  token to be added to the pool
     function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
         address sender = _msgSender();
-        //slither-disable-next-line timestamp // TODO: sounds incorrect
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
-        //slither-disable-next-line timestamp // TODO: sounds incorrect
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(userPosition[sender].liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
 
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
@@ -440,7 +402,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         uint256 basePrice;
         if (totalLiquidityProvided == 0) {
             basePrice = marketPrice();
-            //console.log("hardhat: hardhat: has provided no liquidity");
 
             // note: To start the pool we first have to update the funding rate oracle!
             chainlinkTWAPOracle.updateEURUSDTWAP();
@@ -448,12 +409,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             updateFundingRate();
         } else {
             basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
-            //console.log("hardhat: hardhat: has provided  liquidity");
         }
         uint256 baseAmount = LibMath.wadDiv(wadAmount, basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
-
-        //console.log("hardhat: hardhat: has wadAmount:", wadAmount);
-        //console.log("hardhat: hardhat: has baseAmount:", baseAmount);
 
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
@@ -481,22 +438,18 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function withdrawLiquidity(uint256 amount, IERC20 token) external override {
         // TODO: should we just hardcode amount here?
         address sender = _msgSender();
-        //console.log("hardhat: hardhat: amount", amount);
-        //console.log("hardhat: hardhat: userPosition[sender].liquidityBalance", userPosition[sender].liquidityBalance);
 
         LibPerpetual.UserPosition storage user = userPosition[sender];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
-        //slither-disable-next-line incorrect-equality
+        // slither-disable-next-line incorrect-equality
         require(user.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
 
         // lower balances
         user.liquidityBalance -= amount;
         totalLiquidityProvided -= amount;
 
-        //console.log("hardhat: hardhat: trying to withdraw liquidity", amount);
         // remove liquidity from curve pool
-        // calc_token_amount
         uint256 baseAmount;
         uint256 quoteAmount;
         {
@@ -504,54 +457,24 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
-            //console.log("hardhat: hardhat vQuoteBalanceBefore", vQuoteBalanceBefore);
-            //console.log("hardhat: hardhat vBaseBalanceBefore", vBaseBalanceBefore);
-
             market.remove_liquidity(amount, [uint256(0), uint256(0)]);
 
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
 
-            //console.log("hardhat: hardhat vQuoteBalanceAfter", vQuoteBalanceAfter);
-            //console.log("hardhat: hardhat vBaseBalanceAfter", vBaseBalanceAfter);
-
             quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
-
-            //console.log("hardhat: hardhat quoteAmount", quoteAmount);
-            //console.log("hardhat: hardhat baseAmount", baseAmount);
         }
-        //console.log("hardhat: hardhat: has withdrawn", vBaseAmount, vQuoteAmount);
-        // console.log("hardhat: hardhat: ******before adjustments (withdraw liquidity)******");
-
-        // console.log("hardhat: hardhat: user.cumFundingRate");
-        // console.logInt(user.cumFundingRate);
-
-        // console.log("hardhat: hardhat: user.profit");
-        // console.logInt(user.profit);
-
-        // console.log("hardhat: hardhat: user.openNotional");
-        // console.logInt(user.openNotional);
-
-        // console.log("hardhat: hardhat: user.positionSize");
-        // console.logInt(user.positionSize);
 
         user.profit += _settleFundingRate(user, global);
         user.openNotional += quoteAmount.toInt256();
         user.positionSize += baseAmount.toInt256();
 
-        // console.log("hardhat: hardhat: ******after adjustments (withdraw liquidity)******");
-        // console.log("hardhat: hardhat: user.profit");
-        // console.logInt(user.profit);
-
-        // console.log("hardhat: hardhat: user.openNotional");
-        // console.logInt(user.openNotional);
-
         // if no open position remaining, remove the user
-        //slither-disable-next-line incorrect-equality
+        // slither-disable-next-line incorrect-equality
         if (user.positionSize == 0) {
             vault.settleProfit(sender, user.openNotional);
-            //slither-disable-next-line unused-return // can be zero amount
+            // slither-disable-next-line unused-return // can be zero amount
             vault.withdrawAll(sender, token); // TODO: withdraw all liquidity
             delete userPosition[sender];
         }
@@ -560,7 +483,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function marginIsValid(address account, int256 ratio) public view override returns (bool) {
-        //slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp
         return marginRatio(account) >= ratio;
     }
 

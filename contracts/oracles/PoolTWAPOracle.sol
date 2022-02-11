@@ -8,8 +8,6 @@ import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibMath} from "../lib//LibMath.sol";
 
-// import "hardhat/console.sol";
-
 /*
  * PoolTWAP is used to compute and return a time-weighted average of the vBase/vQuote ratio in the crypto swap pool.
  *
@@ -50,13 +48,11 @@ contract PoolTWAPOracle {
         // uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
         uint256 newPrice = pool.price_oracle();
 
-        // console.log("newPrice: ", newPrice);
-        // console.log("timeElapsed: ", timeElapsed);
         cumulativeAmount = cumulativeAmount + LibMath.wadMul(newPrice, timeElapsed);
         timeOfCumulativeAmount = currentTime;
 
         uint256 timeElapsedSinceBeginningOfTWAPPeriodTmp = currentTime - timeOfCumulativeAmountAtBeginningOfPeriodTmp;
-        //slither-disable-next-line timestamp
+        // slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfTWAPPeriodTmp >= PERIOD) {
             cumulativeAmountAtBeginningOfPeriod = cumulativeAmountAtBeginningOfPeriodTmp;
             timeOfCumulativeAmountAtBeginningOfPeriod = timeOfCumulativeAmountAtBeginningOfPeriodTmp;

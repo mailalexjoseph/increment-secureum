@@ -8,12 +8,6 @@ library LibPerpetual {
     using LibMath for int256;
     using LibMath for uint256;
 
-    struct Price {
-        uint128 roundId;
-        uint128 timeStamp;
-        int256 price;
-    }
-
     enum Side {
         Long,
         Short

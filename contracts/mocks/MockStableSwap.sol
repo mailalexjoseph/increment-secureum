@@ -77,12 +77,10 @@ contract MockStableSwap is Ownable {
     function _updateBalances(uint256 vBaseNew, uint256 vQuoteNew) internal {
         uint256 newPrice = (vBaseNew * DECIMALS) / vQuoteNew;
 
-        //console.log("vamm state before is", pool.price, pool.vBase, pool.vBase);
         pool.price = newPrice;
         pool.vBase = vBaseNew;
         pool.vQuote = vQuoteNew;
 
-        //console.log("vamm state after is", pool.price, pool.vBase, pool.vBase);
         emit NewReserves(vBaseNew, vQuoteNew, newPrice, block.number);
     }
 }
