@@ -1,15 +1,20 @@
 import {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {
+  getCryptoSwap,
+  getCryptoSwapFactory,
+} from '../helpers/contracts-getters';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const pool = await ethers.getContract('CryptoSwap', deployer);
+  const factory = await getCryptoSwapFactory(hre);
+  const cryptoswap = await getCryptoSwap(factory);
 
   await hre.deployments.deploy('PoolTWAPOracle', {
     from: deployer,
-    args: [pool.address],
+    args: [cryptoswap.address],
     log: true,
   });
 

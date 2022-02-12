@@ -48,20 +48,12 @@ subtask('copy-contracts', 'Copy the contract files to the contracts folder')
     // copies all .vy files from contracts-vyper/contracts/
     fs.readdirSync(inFullPath).forEach((file) => {
       if (file.endsWith('.vy')) {
-        if (file != 'CurveTokenV5.vy') {
-          console.log('Found file: ', file);
-          fs.copyFileSync(
-            path.resolve(inFullPath, file),
-            path.join(outDirectoryFullPath, file)
-            // fs.constants.COPYFILE_EXCL // replace existing file
-          );
-        } else {
-          console.log(
-            'Skipping file:' +
-              file +
-              ' because generated typechain object is broken'
-          );
-        }
+        console.log('Found file: ', file);
+        fs.copyFileSync(
+          path.resolve(inFullPath, file),
+          path.join(outDirectoryFullPath, file)
+          // fs.constants.COPYFILE_EXCL // replace existing file
+        );
       }
     });
   });
@@ -121,30 +113,19 @@ subtask(
         if (file.endsWith('.vy')) {
           const contract = [file.split('.')[0], '.ts'].join('');
 
-          if (file != 'CurveTokenV5.vy') {
-            fs.copyFileSync(
-              path.resolve('./typechain', contract),
-              path.resolve(
-                taskArgs.directory,
-                path.join('./typechain', contract)
-              )
-            );
+          fs.copyFileSync(
+            path.resolve('./typechain', contract),
+            path.resolve(taskArgs.directory, path.join('./typechain', contract))
+          );
 
-            const factory = [file.split('.')[0], '__factory.ts'].join('');
-            fs.copyFileSync(
-              path.resolve('./typechain/factories', factory),
-              path.resolve(
-                taskArgs.directory,
-                path.join('./typechain/factories', factory)
-              )
-            );
-          } else {
-            console.log(
-              'Skipping file:' +
-                file +
-                ' because generated typechain object is broken'
-            );
-          }
+          const factory = [file.split('.')[0], '__factory.ts'].join('');
+          fs.copyFileSync(
+            path.resolve('./typechain/factories', factory),
+            path.resolve(
+              taskArgs.directory,
+              path.join('./typechain/factories', factory)
+            )
+          );
         }
       }
     );

@@ -110,7 +110,7 @@ export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
 
 export type ChainlinkOracleConstructorArguments = [tEthereumAddress];
 
-export type CryptoSwapConstructorArguments = {
+export type CurveCryptoContractsConstructorArgumentsSeparate = {
   owner: tEthereumAddress;
   admin_fee_receiver: tEthereumAddress;
   A: BigNumber;
@@ -127,7 +127,18 @@ export type CryptoSwapConstructorArguments = {
   reserve_tokens: [tEthereumAddress, tEthereumAddress];
 };
 
-export type ExactOutputSwapOutput = {
-  amountIn: BigNumber;
-  amountOut: BigNumber;
+export type CurveCryptoContractsConstructorArgumentsFactory = {
+  _name: string[32];
+  _symbol: string[10];
+  _coins: [tEthereumAddress, tEthereumAddress];
+  A: BigNumber;
+  gamma: BigNumber;
+  mid_fee: BigNumber;
+  out_fee: BigNumber;
+  allowed_extra_profit: BigNumber;
+  fee_gamma: BigNumber;
+  adjustment_step: BigNumber;
+  admin_fee: BigNumber;
+  ma_half_time: BigNumber;
+  initial_price: BigNumber;
 };

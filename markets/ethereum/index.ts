@@ -47,11 +47,12 @@ const chainlinkOracles = {
 // Integrations
 // ----------------
 
-// at the time of writing (Dec 2021), the current factory contract is 0xB9fC157394Af804a3578134A6585C0dc9cc990d4
+// at the time of writing (Feb 2022), the current factory contract is 0xF18056Bbd320E96A48e3Fbf8bC061322531aac99
 // but it could change, if so, use the address provider contract at 0x0000000022d53366457f9d5e68ec105046fc4383
 // ref: https://discord.com/channels/729808684359876718/729812922649542758/920105496546013204
+// update for v2 factory: call get_address(6) to get the v2 factory
 export const CURVE_FACTORY_MAINNET =
-  '0xB9fC157394Af804a3578134A6585C0dc9cc990d4';
+  '0xF18056Bbd320E96A48e3Fbf8bC061322531aac99';
 
 export const integrations = {
   [eEthereumNetwork.hardhat]: {

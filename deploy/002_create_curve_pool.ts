@@ -1,48 +1,52 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {getCryptoSwapConstructorArgs} from '../helpers/contracts-deployments';
+import {
+  getCryptoSwapConstructorArgs,
+  getChainlinkPrice,
+} from '../helpers/contracts-deployments';
+import {getCryptoSwapFactory} from '../helpers/contracts-getters';
 import {ethers} from 'hardhat';
-import {getChainlinkPrice} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  // deploy Curve LP Token
-  await hre.deployments.deploy('CurveTokenV5', {
-    from: deployer,
-    args: ['vEUR/vUSD', 'EURUSD'],
-    log: true,
-  });
+  // constructor arguments
+  const vEUR = await ethers.getContract('VBase', deployer);
+  const vUSD = await ethers.getContract('VQuote', deployer);
 
-  // get chainlink price
   const initialPrice = await getChainlinkPrice(hre, 'EUR_USD');
-
   console.log(
     'Use EUR/USD price of ',
     hre.ethers.utils.formatEther(initialPrice)
   );
-  // deploy CryptoSwap
-  const vEUR = await ethers.getContract('VBase', deployer);
-  const vUSD = await ethers.getContract('VQuote', deployer);
-  const curveLPtoken = await ethers.getContract('CurveTokenV5', deployer);
-  const cryptoSwapConstructorArgs = getCryptoSwapConstructorArgs(
-    deployer,
-    initialPrice,
-    curveLPtoken.address,
+
+  const args = getCryptoSwapConstructorArgs(
+    'vEUR/vUSD',
+    'EURUSD',
     vUSD.address,
-    vEUR.address
+    vEUR.address,
+    initialPrice
   );
-  await hre.deployments.deploy('CryptoSwap', {
-    from: deployer,
-    args: Object.values(cryptoSwapConstructorArgs),
-    log: true,
-  });
-  const cryptoSwap = await ethers.getContract('CryptoSwap', deployer);
 
-  // transfer minter role to curve pool
-  await curveLPtoken.set_minter(cryptoSwap.address);
+  // deploy
+  const cryptoSwapFactory = await getCryptoSwapFactory(hre);
+  console.log('Found CryptoSwapFactory at ', cryptoSwapFactory.address);
 
-  console.log('We have deployed vEUR/vUSD curve pool');
+  await cryptoSwapFactory.deploy_pool(
+    args._name,
+    args._symbol,
+    args._coins,
+    args.A,
+    args.gamma,
+    args.mid_fee,
+    args.out_fee,
+    args.allowed_extra_profit,
+    args.fee_gamma,
+    args.adjustment_step,
+    args.admin_fee,
+    args.ma_half_time,
+    args.initial_price
+  );
 };
 
 func.tags = ['CurvePool'];

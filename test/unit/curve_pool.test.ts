@@ -3,8 +3,11 @@ import {ethers, deployments, getNamedAccounts} from 'hardhat';
 import env = require('hardhat');
 
 // typechain objects
-import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
-import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
+import {
+  CurveTokenV5Test,
+  CurveCryptoSwapTest,
+  CurveCryptoSwap2ETH,
+} from '../../contracts-vyper/typechain';
 import {VBase, VQuote, VirtualToken} from '../../typechain';
 
 // utils
@@ -16,19 +19,23 @@ import {
   TEST_dust_remove_liquidity,
   TEST_get_exactOutputSwap,
 } from '../helpers/CurveUtils';
-import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
+import {getCryptoSwapConstructorArgsSeparate} from '../../helpers/contracts-deployments';
 import {setupUser} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
 
 import {VBase__factory, VQuote__factory} from '../../typechain';
-import {CurveTokenV5__factory} from '../../contracts-vyper/typechain/factories/CurveTokenV5__factory';
-import {CryptoSwap__factory} from '../../contracts-vyper/typechain/factories/CryptoSwap__factory';
+import {
+  CurveCryptoSwap2ETH__factory,
+  CurveCryptoSwapTest__factory,
+  CurveTokenV5Test__factory,
+} from '../../contracts-vyper/typechain';
 
 type User = {address: string} & {
   vBase: VBase;
   vQuote: VQuote;
-  market: CryptoSwap;
-  curveToken: CurveTokenV5;
+  market: CurveCryptoSwapTest;
+  market2: CurveCryptoSwap2ETH;
+  curveToken: CurveTokenV5Test;
 };
 
 interface TestEnv {
@@ -59,18 +66,18 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vQuote');
 
   // deploy curve token
-  const CurveTokenV5Factory = new CurveTokenV5__factory(DEPLOYER);
+  const CurveTokenV5Factory = new CurveTokenV5Test__factory(DEPLOYER);
   const curveToken = await CurveTokenV5Factory.deploy('vBase/vQuote', 'EURUSD');
 
   // deploy curve pool
-  const FundingFactory = new CryptoSwap__factory(DEPLOYER);
+  const FundingFactory = new CurveCryptoSwapTest__factory(DEPLOYER);
 
   console.log(
     'Use FIXED EUR/USD price of ',
     env.ethers.utils.formatEther(initialPrice)
   );
   // deploy CryptoSwap
-  const cryptoSwapConstructorArgs = getCryptoSwapConstructorArgs(
+  const cryptoSwapConstructorArgs = getCryptoSwapConstructorArgsSeparate(
     deployer,
     initialPrice,
     curveToken.address,
@@ -99,11 +106,20 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
 
   console.log('We have deployed vBase/vQuote curve pool');
 
+  // Initiate a CurveCryptoSwap2ETH object around the cryptoSwap contract
+  // needed since some functions (i.e. TEST_dust_remove_liquidity(), TEST_get_exactOutputSwap()),
+  // require the CurveCryptoSwap2ETH contract
+  const crytoSwapFactory = new CurveCryptoSwap2ETH__factory(DEPLOYER);
+  const marketAsCurveCryptoSwap2ETH = await crytoSwapFactory.attach(
+    cryptoSwap.address
+  );
+
   const contracts = {
-    market: <CryptoSwap>cryptoSwap,
     vBase: <VBase>vBase,
     vQuote: <VQuote>vQuote,
-    curveToken: <CurveTokenV5>curveToken,
+    curveToken: <CurveTokenV5Test>curveToken,
+    market: <CurveCryptoSwapTest>cryptoSwap,
+    market2: <CurveCryptoSwap2ETH>marketAsCurveCryptoSwap2ETH,
   };
 
   // container
@@ -152,7 +168,7 @@ describe('Cryptoswap: Unit tests', function () {
   }
 
   async function _buyToken(
-    market: CryptoSwap,
+    market: CurveCryptoSwapTest,
     inIndex: number,
     amount: BigNumber
   ) {
@@ -230,7 +246,7 @@ describe('Cryptoswap: Unit tests', function () {
         ma_half_time,
         adjustment_step,
         initial_price,
-      } = getCryptoSwapConstructorArgs(
+      } = getCryptoSwapConstructorArgsSeparate(
         deployer.address,
         initialPrice,
         curveTokenA,
@@ -328,10 +344,11 @@ describe('Cryptoswap: Unit tests', function () {
       expect(lpTokenBalance).to.be.above(0);
 
       // remaining balances
-      const dust = await TEST_dust_remove_liquidity(lp.market, lpTokenBalance, [
-        MIN_MINT_AMOUNT,
-        MIN_MINT_AMOUNT,
-      ]);
+      const dust = await TEST_dust_remove_liquidity(
+        lp.market2,
+        lpTokenBalance,
+        [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+      );
       expect(dust.quote).to.be.equal(2); // quoteDust is 2 (amount is above lpTokenBalance)
       expect(dust.base).to.be.equal(1); // baseDust is 1
       const remainingBalances = [quoteAmount.sub('2'), baseAmount.sub('1')];
@@ -484,7 +501,7 @@ describe('Cryptoswap: Unit tests', function () {
       // swap for exact quote tokens
       const swapAmount = asBigNumber('1');
       const result = await TEST_get_exactOutputSwap(
-        trader.market,
+        trader.market2,
         swapAmount,
         MAX_UINT_AMOUNT,
         0,
@@ -505,7 +522,7 @@ describe('Cryptoswap: Unit tests', function () {
       // swap for exact base tokens
       const swapAmount = asBigNumber('1');
       const result = await TEST_get_exactOutputSwap(
-        trader.market,
+        trader.market2,
         swapAmount,
         MAX_UINT_AMOUNT,
         1,
@@ -617,7 +634,7 @@ describe('Cryptoswap: Unit tests', function () {
       // withdraw liquidity
       const withdrawableAmount = await lp.curveToken.balanceOf(lp.address);
       const eWithdrawAmount = await TEST_get_remove_liquidity(
-        lp.market,
+        lp.market2,
         withdrawableAmount,
         [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
       );

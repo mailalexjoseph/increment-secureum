@@ -6,9 +6,13 @@ import {
 } from 'hardhat';
 import env = require('hardhat');
 
-import {fundAccountWithUSDC} from './utils/manipulateStorage';
 // helpers
-import {getReserveAddress} from '../../helpers/contract-getters';
+import {
+  getReserveAddress,
+  getCryptoSwap,
+  getCryptoSwapFactory,
+  getCurveToken,
+} from '../../helpers/contracts-getters';
 import {
   setupUser,
   setupUsers,
@@ -16,6 +20,7 @@ import {
   getEthereumNetworkFromHRE,
 } from '../../helpers/misc-utils';
 import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
+import {fundAccountWithUSDC} from './utils/manipulateStorage';
 
 // types
 import {
@@ -28,8 +33,11 @@ import {
   VirtualToken,
 } from '../../typechain';
 import {BigNumber} from '../../helpers/types';
-import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
-import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
+import {
+  CurveCryptoSwap2ETH,
+  CurveTokenV5,
+  Factory,
+} from '../../contracts-vyper/typechain';
 
 export type User = {address: string} & {
   perpetual: TestPerpetual;
@@ -37,7 +45,8 @@ export type User = {address: string} & {
   usdc: ERC20;
   vBase: VirtualToken;
   vQuote: VirtualToken;
-  market: CryptoSwap;
+  market: CurveCryptoSwap2ETH;
+  factory: Factory;
   chainlinkOracle: ChainlinkOracle;
   chainlinkTWAPOracle: ChainlinkTWAPOracle;
   poolTWAPOracle: PoolTWAPOracle;
@@ -58,14 +67,19 @@ export interface TestEnv {
 const getContracts = async (deply: string) => {
   const usdcAddress = getReserveAddress('USDC', getEthereumNetworkFromHRE(env));
 
+  const factory = await getCryptoSwapFactory(env);
+  const cryptoswap = await getCryptoSwap(factory);
+
   return {
+    factory: <Factory>factory,
+    market: <CurveCryptoSwap2ETH>cryptoswap,
+    curve: <CurveTokenV5>await getCurveToken(cryptoswap),
+
     vBase: <VirtualToken>await ethers.getContract('VBase', deply),
     vQuote: <VirtualToken>await ethers.getContract('VQuote', deply),
-    market: <CryptoSwap>await ethers.getContract('CryptoSwap', deply),
     vault: <Vault>await ethers.getContract('Vault', deply),
     perpetual: <TestPerpetual>await ethers.getContract('TestPerpetual', deply),
     usdc: <ERC20>await ethers.getContractAt('ERC20', usdcAddress, deply),
-    curve: <CurveTokenV5>await ethers.getContract('CurveTokenV5', deply),
     chainlinkOracle: <ChainlinkOracle>(
       await ethers.getContract('ChainlinkOracle', deply)
     ),

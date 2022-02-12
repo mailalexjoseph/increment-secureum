@@ -3,7 +3,7 @@ import path from 'path';
 
 import 'dotenv/config';
 import 'hardhat-gas-reporter';
-// import '@nomiclabs/hardhat-vyper';
+import '@nomiclabs/hardhat-vyper';
 
 import 'hardhat-deploy';
 import '@typechain/hardhat';
@@ -37,7 +37,7 @@ const getHardhatConf = () => {
       accounts: accounts(process.env.HARDHAT_FORK),
       forking: {
         url: node_url('MAINNET'),
-        blockNumber: 13818037,
+        blockNumber: 14191019,
       },
     };
   }
@@ -142,9 +142,9 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: 0,
   },
-  // vyper: {
-  //   version: '0.3.1',
-  // },
+  vyper: {
+    version: '0.3.1',
+  },
   external: {
     contracts: [
       {

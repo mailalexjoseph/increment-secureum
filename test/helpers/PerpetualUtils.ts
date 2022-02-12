@@ -1,5 +1,5 @@
 import {BigNumber} from 'ethers';
-import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
+import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
 import {User} from './setup';
 
 export async function setUpPoolLiquidity(
@@ -11,7 +11,7 @@ export async function setUpPoolLiquidity(
 }
 
 export async function calcCloseShortPosition(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   amountInMaximum: BigNumber,
   amountOut: BigNumber
 ): Promise<BigNumber> {
@@ -32,7 +32,7 @@ export async function calcCloseShortPosition(
   https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
 */
 export async function calcSwapForExact(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   amountInMaximum: BigNumber,
   amountOut: BigNumber,
   inIndex: number,

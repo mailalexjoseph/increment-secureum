@@ -2,6 +2,10 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 import {getPerpetualVersionToUse} from '../helpers/contracts-deployments';
+import {
+  getCryptoSwap,
+  getCryptoSwapFactory,
+} from '../helpers/contracts-getters';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
@@ -15,7 +19,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
   const vault = await ethers.getContract('Vault', deployer);
-  const market = await ethers.getContract('CryptoSwap', deployer);
+  const factory = await getCryptoSwapFactory(hre);
+  const market = await getCryptoSwap(factory);
 
   const perpetualArgs = [
     chainlinkOracle.address,

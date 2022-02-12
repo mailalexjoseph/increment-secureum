@@ -3,7 +3,7 @@ import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
-import CryptoSwap from '../../contracts-vyper/artifacts/CryptoSwap.vy/CryptoSwap.json';
+import {CurveCryptoSwap2ETH__factory} from '../../contracts-vyper/typechain';
 import {PoolTWAPOracle} from '../../typechain';
 import {rMul, rDiv} from '../helpers/utils/calculations';
 
@@ -43,7 +43,10 @@ describe('PoolTWAPOracle', async function () {
     const [deployer] = await ethers.getSigners();
 
     // deploy curve pool as a mock
-    curvePoolMock = await deployMockContract(deployer, CryptoSwap.abi);
+    curvePoolMock = await deployMockContract(
+      deployer,
+      CurveCryptoSwap2ETH__factory.abi
+    );
 
     const PoolTWAPOracleContract = await ethers.getContractFactory(
       'PoolTWAPOracle'

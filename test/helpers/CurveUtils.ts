@@ -1,15 +1,18 @@
 // typechain objects
-import {CryptoSwap} from '../../contracts-vyper/typechain/CryptoSwap';
+import {
+  CurveCryptoSwapTest,
+  CurveCryptoSwap2ETH,
+} from '../../contracts-vyper/typechain';
 import {CurveTokenV5} from '../../contracts-vyper/typechain/CurveTokenV5';
 
 // utils
-import {BigNumber, ExactOutputSwapOutput} from '../../helpers/types';
+import {BigNumber} from '../../helpers/types';
 import {asBigNumber, rDiv, rMul} from './utils/calculations';
 import {ethers} from 'hardhat';
 
 /// @notice returns the amount of tokens transferred back to the user
 export async function TEST_get_remove_liquidity(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<{quote: BigNumber; base: BigNumber}> {
@@ -26,7 +29,7 @@ export async function TEST_get_remove_liquidity(
 
 /// @notice returns the amount of tokens remaining in the market
 export async function TEST_dust_remove_liquidity(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<{quote: BigNumber; base: BigNumber}> {
@@ -43,7 +46,7 @@ export async function TEST_dust_remove_liquidity(
 
 /// @notice returns the amount of tokens transferred back to the user
 export async function TEST_get_dy(
-  market: CryptoSwap,
+  market: CurveCryptoSwapTest,
   i: number,
   j: number,
   dx: BigNumber
@@ -76,12 +79,15 @@ export async function TEST_get_dy(
 
 /// @notice: perform an exactOutputSwap with curve (i.e. https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps)
 export async function TEST_get_exactOutputSwap(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   eAmountOut: BigNumber,
   amountInMaximum: BigNumber,
   inIndex: number,
   outIndex: number
-): Promise<ExactOutputSwapOutput> {
+): Promise<{
+  amountIn: BigNumber;
+  amountOut: BigNumber;
+}> {
   /*
   references from curve.fi discord channel:
     https://discord.com/channels/729808684359876718/729812922649542758/912804632533823488
@@ -145,7 +151,7 @@ export async function TEST_get_exactOutputSwap(
 
 /******************* HELPER FUNCTIONS  *******************/
 async function calcRemoveLiquidity(
-  market: CryptoSwap,
+  market: CurveCryptoSwap2ETH,
   _amount: BigNumber,
   min_amounts: [BigNumber, BigNumber]
 ): Promise<[[BigNumber, BigNumber], [BigNumber, BigNumber]]> {
@@ -172,7 +178,9 @@ async function calcRemoveLiquidity(
   return [amountReturned, amountRemaining];
 }
 
-async function curveTotalSupply(market: CryptoSwap): Promise<BigNumber> {
+async function curveTotalSupply(
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
   const curveTokenAddress = await market.token();
   const curveLPtoken: CurveTokenV5 = await ethers.getContractAt(
     'CurveTokenV5',
@@ -182,7 +190,7 @@ async function curveTotalSupply(market: CryptoSwap): Promise<BigNumber> {
 }
 
 async function calcFees(
-  market: CryptoSwap,
+  market: CurveCryptoSwapTest,
   xp: BigNumber[],
   dy: BigNumber
 ): Promise<BigNumber> {
@@ -194,7 +202,7 @@ async function calcFees(
   return fee_applied;
 }
 async function applyFees(
-  market: CryptoSwap,
+  market: CurveCryptoSwapTest,
   xp: BigNumber[],
   dy: BigNumber
 ): Promise<{dy: BigNumber; fees: BigNumber}> {
@@ -241,7 +249,7 @@ async function calcOutToken(
 }
 
 async function calcNewPoolBalances(
-  market: CryptoSwap,
+  market: CurveCryptoSwapTest,
   dx: BigNumber,
   i: number,
   j: number,
@@ -298,7 +306,7 @@ async function calcNewPoolBalances(
 }
 
 async function getParameterization(
-  market: CryptoSwap
+  market: CurveCryptoSwapTest
 ): Promise<[BigNumber, BigNumber[], BigNumber]> {
   const PRECISION = asBigNumber('1');
   const PRECISIONS = [BigNumber.from(1), BigNumber.from(1)];

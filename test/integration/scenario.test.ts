@@ -61,8 +61,6 @@ async function withdrawLiquidity(user: User) {
   // await logVaultBalance(user);
 
   // console.log('**********Close remaining position**********');
-  await TEST_get_dy(user.market, 1, 0, BigNumber.from(4));
-
   await closePosition(user);
 
   //   await logVaultBalance(user);
