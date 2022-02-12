@@ -17,7 +17,7 @@ import { FunctionFragment, Result, EventFragment } from "@ethersproject/abi";
 import { Listener, Provider } from "@ethersproject/providers";
 import { TypedEventFilter, TypedEvent, TypedListener, OnEvent } from "./common";
 
-export interface CurveTokenV5Interface extends utils.Interface {
+export interface CurveTokenV5TestInterface extends utils.Interface {
   functions: {
     "transfer(address,uint256)": FunctionFragment;
     "transferFrom(address,address,uint256)": FunctionFragment;
@@ -28,9 +28,10 @@ export interface CurveTokenV5Interface extends utils.Interface {
     "mint(address,uint256)": FunctionFragment;
     "mint_relative(address,uint256)": FunctionFragment;
     "burnFrom(address,uint256)": FunctionFragment;
+    "set_minter(address)": FunctionFragment;
     "decimals()": FunctionFragment;
     "version()": FunctionFragment;
-    "initialize(string,string,address)": FunctionFragment;
+    "set_name(string,string)": FunctionFragment;
     "name()": FunctionFragment;
     "symbol()": FunctionFragment;
     "DOMAIN_SEPARATOR()": FunctionFragment;
@@ -85,11 +86,12 @@ export interface CurveTokenV5Interface extends utils.Interface {
     functionFragment: "burnFrom",
     values: [string, BigNumberish]
   ): string;
+  encodeFunctionData(functionFragment: "set_minter", values: [string]): string;
   encodeFunctionData(functionFragment: "decimals", values?: undefined): string;
   encodeFunctionData(functionFragment: "version", values?: undefined): string;
   encodeFunctionData(
-    functionFragment: "initialize",
-    values: [string, string, string]
+    functionFragment: "set_name",
+    values: [string, string]
   ): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
   encodeFunctionData(functionFragment: "symbol", values?: undefined): string;
@@ -130,9 +132,10 @@ export interface CurveTokenV5Interface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "burnFrom", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "set_minter", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "decimals", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "version", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "initialize", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "set_name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "symbol", data: BytesLike): Result;
   decodeFunctionResult(
@@ -151,10 +154,14 @@ export interface CurveTokenV5Interface extends utils.Interface {
   events: {
     "Approval(address,address,uint256)": EventFragment;
     "Transfer(address,address,uint256)": EventFragment;
+    "SetName(string,string,string,string,address,uint256)": EventFragment;
+    "SetMinter(address,address)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "Approval"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Transfer"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "SetName"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "SetMinter"): EventFragment;
 }
 
 export type ApprovalEvent = TypedEvent<
@@ -171,12 +178,33 @@ export type TransferEvent = TypedEvent<
 
 export type TransferEventFilter = TypedEventFilter<TransferEvent>;
 
-export interface CurveTokenV5 extends BaseContract {
+export type SetNameEvent = TypedEvent<
+  [string, string, string, string, string, BigNumber],
+  {
+    old_name: string;
+    old_symbol: string;
+    name: string;
+    symbol: string;
+    owner: string;
+    time: BigNumber;
+  }
+>;
+
+export type SetNameEventFilter = TypedEventFilter<SetNameEvent>;
+
+export type SetMinterEvent = TypedEvent<
+  [string, string],
+  { _old_minter: string; _new_minter: string }
+>;
+
+export type SetMinterEventFilter = TypedEventFilter<SetMinterEvent>;
+
+export interface CurveTokenV5Test extends BaseContract {
   connect(signerOrProvider: Signer | Provider | string): this;
   attach(addressOrName: string): this;
   deployed(): Promise<this>;
 
-  interface: CurveTokenV5Interface;
+  interface: CurveTokenV5TestInterface;
 
   queryFilter<TEvent extends TypedEvent>(
     event: TypedEventFilter<TEvent>,
@@ -258,14 +286,18 @@ export interface CurveTokenV5 extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
+    set_minter(
+      _minter: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<ContractTransaction>;
+
     decimals(overrides?: CallOverrides): Promise<[number]>;
 
     version(overrides?: CallOverrides): Promise<[string]>;
 
-    initialize(
+    set_name(
       _name: string,
       _symbol: string,
-      _pool: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -350,14 +382,18 @@ export interface CurveTokenV5 extends BaseContract {
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
+  set_minter(
+    _minter: string,
+    overrides?: Overrides & { from?: string | Promise<string> }
+  ): Promise<ContractTransaction>;
+
   decimals(overrides?: CallOverrides): Promise<number>;
 
   version(overrides?: CallOverrides): Promise<string>;
 
-  initialize(
+  set_name(
     _name: string,
     _symbol: string,
-    _pool: string,
     overrides?: Overrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -442,14 +478,15 @@ export interface CurveTokenV5 extends BaseContract {
       overrides?: CallOverrides
     ): Promise<boolean>;
 
+    set_minter(_minter: string, overrides?: CallOverrides): Promise<void>;
+
     decimals(overrides?: CallOverrides): Promise<number>;
 
     version(overrides?: CallOverrides): Promise<string>;
 
-    initialize(
+    set_name(
       _name: string,
       _symbol: string,
-      _pool: string,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -496,6 +533,29 @@ export interface CurveTokenV5 extends BaseContract {
       _to?: string | null,
       _value?: null
     ): TransferEventFilter;
+
+    "SetName(string,string,string,string,address,uint256)"(
+      old_name?: null,
+      old_symbol?: null,
+      name?: null,
+      symbol?: null,
+      owner?: null,
+      time?: null
+    ): SetNameEventFilter;
+    SetName(
+      old_name?: null,
+      old_symbol?: null,
+      name?: null,
+      symbol?: null,
+      owner?: null,
+      time?: null
+    ): SetNameEventFilter;
+
+    "SetMinter(address,address)"(
+      _old_minter?: null,
+      _new_minter?: null
+    ): SetMinterEventFilter;
+    SetMinter(_old_minter?: null, _new_minter?: null): SetMinterEventFilter;
   };
 
   estimateGas: {
@@ -559,14 +619,18 @@ export interface CurveTokenV5 extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
+    set_minter(
+      _minter: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<BigNumber>;
+
     decimals(overrides?: CallOverrides): Promise<BigNumber>;
 
     version(overrides?: CallOverrides): Promise<BigNumber>;
 
-    initialize(
+    set_name(
       _name: string,
       _symbol: string,
-      _pool: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -652,14 +716,18 @@ export interface CurveTokenV5 extends BaseContract {
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
+    set_minter(
+      _minter: string,
+      overrides?: Overrides & { from?: string | Promise<string> }
+    ): Promise<PopulatedTransaction>;
+
     decimals(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     version(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    initialize(
+    set_name(
       _name: string,
       _symbol: string,
-      _pool: string,
       overrides?: Overrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 

@@ -1,5 +1,6 @@
 # from:
 # https://github.com/curvefi/curve-crypto-contract/blob/master/contracts/two/CurveCryptoSwap2.vy
+# has some minor modifications for tests (i.e. getter function at the end of the file)
 
 # @version 0.3.1
 # (c) Curve.Fi, 2021
