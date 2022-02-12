@@ -39,3 +39,5 @@ crytic-export/
 !contracts-vyper/*
 
 slither.sarif
+
+typechain copy/
