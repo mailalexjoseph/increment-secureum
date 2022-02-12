@@ -1,6 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {BigNumber, tEthereumAddress} from '../../../helpers/types';
-import {getReserveAddress} from '../../../helpers/contract-getters';
+import {getReserveAddress} from '../../../helpers/contracts-getters';
 import {getEthereumNetworkFromHRE} from '../../../helpers/misc-utils';
 import {ethers} from 'hardhat';
 
