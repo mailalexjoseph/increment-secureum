@@ -81,5 +81,9 @@ interface IPerpetual {
     // liquidator provider functions
     function provideLiquidity(uint256 amount, IERC20 token) external returns (uint256, uint256);
 
-    function withdrawLiquidity(uint256 amount, IERC20 token) external;
+    function withdrawLiquidity(
+        uint256 amount,
+        IERC20 token,
+        uint256 tentativeVQuoteAmount
+    ) external;
 }

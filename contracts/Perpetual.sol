@@ -402,7 +402,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Withdraw liquidity from the pool
     /// @param amount of liquidity to be removed from the pool (with 18 decimals)
     /// @param  token to be removed from the pool
-    function withdrawLiquidity(uint256 amount, IERC20 token) external override {
+    function withdrawLiquidity(
+        uint256 amount,
+        IERC20 token,
+        uint256 tentativeVQuoteAmount
+    ) external override {
         // TODO: should we just hardcode amount here?
         address sender = _msgSender();
 
@@ -433,14 +437,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
         }
 
-        int256 profit = _settleFundingRate(lp, global); // TODO: what should we do with profit?
+        // add the amounts received from the pool
         lp.openNotional += quoteAmount.toInt256();
         lp.positionSize += baseAmount.toInt256();
 
-        // if no open position remaining, remove the lp
+        // profit     =                 pnL                                + fundingPayments
+        int256 profit = _closePosition(lp, global, tentativeVQuoteAmount) + _settleFundingRate(lp, global);
+        vault.settleProfit(sender, profit);
+
+        // remove the liquidity provider from the list
         // slither-disable-next-line incorrect-equality
-        if (lp.positionSize == 0) {
-            vault.settleProfit(sender, lp.openNotional);
+        if (lp.liquidityBalance == 0) {
             // slither-disable-next-line unused-return // can be zero amount
             vault.withdrawAll(sender, token);
             delete lpPosition[sender];
