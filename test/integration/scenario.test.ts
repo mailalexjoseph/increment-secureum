@@ -21,19 +21,19 @@ async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
 
 async function openPosition(amount: BigNumber, user: User, direction: Side) {
   await user.perpetual.deposit(amount.div(100), user.usdc.address); // invest 1 % of the capital
-  await user.perpetual.openPosition(amount.div(100), direction);
+  await user.perpetual.openPositionWithUSDC(amount.div(100), direction);
 }
 async function closePosition(user: User) {
-  const userPosition = await user.perpetual.getUserPosition(user.address);
+  const traderPosition = await user.perpetual.getTraderPosition(user.address);
 
   let sellAmount;
-  if (userPosition.positionSize.gt(0)) {
-    sellAmount = userPosition.positionSize;
+  if (traderPosition.positionSize.gt(0)) {
+    sellAmount = traderPosition.positionSize;
   } else {
     sellAmount = (
       await TEST_get_exactOutputSwap(
         user.market,
-        userPosition.positionSize.abs(),
+        traderPosition.positionSize.abs(),
         ethers.constants.MaxUint256,
         0,
         1
@@ -48,14 +48,14 @@ async function closePosition(user: User) {
 }
 
 async function withdrawLiquidity(user: User) {
-  const providedLiquidity = (await user.perpetual.getUserPosition(user.address))
+  const providedLiquidity = (await user.perpetual.getLpPosition(user.address))
     .liquidityBalance;
 
   await user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address);
 
   // console.log('**********After withdrawing liquidity**********');
   // await logMarketBalance(user);
-  // await logUserPosition(user, 'LP');
+  // await logLpPosition(user);
   // await logPerpCRVBalance(user);
   // await logPerpetualBalance(user);
   // await logVaultBalance(user);
@@ -104,23 +104,6 @@ describe('Increment App: Scenario', function () {
       liquidityAmount.mul(2)
     );
   }
-
-  beforeEach('Set up', async () => {
-    ({lp, deployer, trader} = await setup());
-    /* important: provide some initial liquidity to the market -> w/o any liquidity left, the liquidity providers will not be able to close their position
-
-    Why? LPs can remove the deposited amount (minus 1 Wei, see the fct TEST_dust_remove_liquidity for reference).
-    This leads to LPs having a positionSize of -1 Wei after withdrawing. But after all liquidity is removed,
-     LPs are not able to buy 1 Wei of vBase after they withdrew all liquidity.
-    */
-    liquidityAmount = await funding();
-    await deployer.usdc.approve(deployer.vault.address, liquidityAmount);
-    await provideLiquidity(liquidityAmount, deployer);
-
-    await lp.usdc.approve(lp.vault.address, liquidityAmount);
-
-    await trader.usdc.approve(trader.vault.address, liquidityAmount);
-  });
 
   describe('One LP & one Trader', async function () {
     describe('1. Should remain solvent with no oracle price change', async function () {
@@ -457,6 +440,7 @@ describe('Increment App: Scenario', function () {
   });
 });
 
+<<<<<<< HEAD
 // async function logMarketBalance(user: User) {
 //   console.log(
 //     'market has balance of',
@@ -540,3 +524,85 @@ describe('Increment App: Scenario', function () {
 //     ethers.utils.formatEther(await user.perpetual.indexPrice())
 //   );
 // }
+=======
+async function logMarketBalance(user: User) {
+  console.log(
+    'market has balance of',
+    ethers.utils.formatUnits(
+      await user.vQuote.balanceOf(user.market.address),
+      18
+    ),
+    'vQuote and',
+    ethers.utils.formatUnits(
+      await user.vBase.balanceOf(user.market.address),
+      18
+    ),
+    'vBase'
+  );
+}
+
+async function logPerpetualBalance(user: User) {
+  console.log(
+    'perpetual has balance of',
+    ethers.utils.formatUnits(
+      await user.vQuote.balanceOf(user.perpetual.address),
+      18
+    ),
+    'vQuote and',
+    ethers.utils.formatUnits(
+      await user.vBase.balanceOf(user.perpetual.address),
+      18
+    ),
+    'vBase'
+  );
+}
+async function logUserBalance(user: User, name: string) {
+  console.log(
+    name,
+    'owns',
+    ethers.utils.formatUnits(
+      await user.usdc.balanceOf(user.address),
+      await user.usdc.decimals()
+    ),
+    'usdc'
+  );
+}
+
+async function logLpPosition(user: User) {
+  console.log(
+    ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
+    (await user.perpetual.getLpPosition(user.address)).toString()
+  );
+}
+
+async function logVaultBalance(user: User) {
+  console.log(
+    'vault owns',
+    ethers.utils.formatUnits(
+      await user.usdc.balanceOf(user.vault.address),
+      await user.usdc.decimals()
+    ),
+    'usdc'
+  );
+}
+
+async function logPerpCRVBalance(user: User) {
+  console.log(
+    'perpetual owns',
+    ethers.utils.formatUnits(
+      await user.curve.balanceOf(user.perpetual.address),
+      await user.curve.decimals()
+    ),
+    'curve'
+  );
+}
+
+async function logMarketPrice(user: User) {
+  console.log(
+    'marketPrice',
+    ethers.utils.formatEther(await user.perpetual.marketPrice()),
+    'indexPrice',
+    ethers.utils.formatEther(await user.perpetual.indexPrice())
+  );
+}
+>>>>>>> 611d9b8 (refactor: separate LibPerpetual.UserPosition into two)

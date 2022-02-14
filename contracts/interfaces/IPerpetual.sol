@@ -68,7 +68,9 @@ interface IPerpetual {
     function withdraw(uint256 amount, IERC20 token) external;
 
     // user position function
-    function getUserPosition(address account) external view returns (LibPerpetual.UserPosition memory);
+    function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
+
+    function getLpPosition(address account) external view returns (LibPerpetual.UserPosition memory);
 
     function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
 

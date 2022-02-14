@@ -162,7 +162,7 @@ describe('Increment App: Liquidity', function () {
 
         // try withdraw
         const providedLiquidity = (
-          await user.perpetual.getUserPosition(user.address)
+          await user.perpetual.getLpPosition(user.address)
         ).liquidityBalance;
 
         await expect(
@@ -211,7 +211,7 @@ describe('Increment App: Liquidity', function () {
 
         // withdraw
         const providedLiquidity = (
-          await user.perpetual.getUserPosition(user.address)
+          await user.perpetual.getLpPosition(user.address)
         ).liquidityBalance;
 
         await expect(
@@ -231,9 +231,7 @@ describe('Increment App: Liquidity', function () {
         expect(userBalanceAfter).to.be.equal(0);
 
         //withdraw;
-        const positionBefore = await user.perpetual.getUserPosition(
-          user.address
-        );
+        const positionBefore = await user.perpetual.getLpPosition(user.address);
 
         const dust = await TEST_dust_remove_liquidity(
           // dust balances remaining in contract
@@ -255,9 +253,7 @@ describe('Increment App: Liquidity', function () {
             positionBefore.liquidityBalance
           );
 
-        const positionAfter = await user.perpetual.getUserPosition(
-          user.address
-        );
+        const positionAfter = await user.perpetual.getLpPosition(user.address);
 
         expect(positionAfter.liquidityBalance).to.be.equal(0);
         expect(positionAfter.cumFundingRate).to.be.equal(0);

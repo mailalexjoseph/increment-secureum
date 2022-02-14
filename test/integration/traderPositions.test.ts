@@ -125,7 +125,9 @@ describe('Increment: open/close long/short trading positions', () => {
         positionSize
       );
 
-    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    const alicePosition = await alice.perpetual.getTraderPosition(
+      alice.address
+    );
     expect(alicePosition.positionSize).to.be.equal(positionSize);
     expect(alicePosition.openNotional).to.be.equal(notionalAmount);
     // cumFundingRate is set at 0 because there's no activity before in this test
@@ -191,11 +193,11 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.perpetual.openPosition(depositAmount.div(10), Side.Short);
     await alice.perpetual.closePosition(
       (
-        await alice.perpetual.getUserPosition(alice.address)
+        await alice.perpetual.getTraderPosition(alice.address)
       ).positionSize.mul(-1) // because it's a short position
     );
 
-    const aliceUserPosition = await alice.perpetual.getUserPosition(
+    const aliceUserPosition = await alice.perpetual.getTraderPosition(
       alice.address
     );
     expect(aliceUserPosition.openNotional.toNumber()).to.equal(0);
@@ -225,7 +227,7 @@ describe('Increment: open/close long/short trading positions', () => {
     const vQuoteLiquidityAfterPositionCreated = await alice.market.balances(
       VQUOTE_INDEX
     );
-    const aliceUserPosition = await alice.perpetual.getUserPosition(
+    const aliceUserPosition = await alice.perpetual.getTraderPosition(
       alice.address
     );
     const aliceOpenNotional = aliceUserPosition.openNotional;
@@ -271,7 +273,7 @@ describe('Increment: open/close long/short trading positions', () => {
     const vQuoteLiquidityAfterPositionCreated = await alice.market.balances(
       VQUOTE_INDEX
     );
-    const aliceUserPosition = await alice.perpetual.getUserPosition(
+    const aliceUserPosition = await alice.perpetual.getTraderPosition(
       alice.address
     );
     const aliceOpenNotional = aliceUserPosition.openNotional;
@@ -326,7 +328,7 @@ describe('Increment: open/close long/short trading positions', () => {
 //     VBASE_INDEX
 //   );
 //   const alicePositionNotional = (
-//     await alice.perpetual.getUserPosition(alice.address)
+//     await alice.perpetual.getTraderPosition(alice.address)
 //   ).openNotional;
 
 //   // verify that EUR_USD exchange rate is applied to positionNotionalAmount
@@ -346,7 +348,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
 //   await alice.perpetual.closePosition(
 //     (
-//       await alice.perpetual.getUserPosition(alice.address)
+//       await alice.perpetual.getTraderPosition(alice.address)
 //     ).positionSize
 //   );
 
@@ -356,7 +358,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
 //   // // expectedVBaseReceived = rMul((user.profit + user.openNotional), EUR_USD)
 //   // const alicePositionProfit = (
-//   //   await alice.perpetual.getUserPosition(alice.address)
+//   //   await alice.perpetual.getTraderPosition(alice.address)
 //   // ).profit;
 //   // const expectedVQuoteProceeds = alicePositionProfit.add(
 //   //   alicePositionNotional

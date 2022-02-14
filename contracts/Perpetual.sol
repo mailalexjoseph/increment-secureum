@@ -51,7 +51,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
-    mapping(address => LibPerpetual.UserPosition) internal userPosition;
+    mapping(address => LibPerpetual.UserPosition) internal traderPosition;
+    mapping(address => LibPerpetual.UserPosition) internal lpPosition;
     uint256 internal totalLiquidityProvided;
 
     constructor(
@@ -76,13 +77,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(vQuote.approve(address(market), type(uint256).max));
     }
 
-    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
-        return globalPosition;
-    }
-
-    function getUserPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
-        return userPosition[account];
-    }
+    ///// TRADER FLOW OPERATIONS \\\\\
 
     /// @notice Deposit tokens into the vault
     function deposit(uint256 amount, IERC20 token) external override {
@@ -94,7 +89,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function withdraw(uint256 amount, IERC20 token) external override {
         // slither-disable-next-line incorrect-equality
         // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(userPosition[_msgSender()].openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
+        require(traderPosition[_msgSender()].openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         require(vault.withdraw(_msgSender(), amount, token) > 0);
         emit Withdraw(_msgSender(), address(token), amount);
@@ -143,7 +138,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         require(amount > 0, "The amount can't be null");
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(
-            userPosition[sender].openNotional == 0,
+            traderPosition[sender].openNotional == 0,
             "Cannot open a position with one already opened or liquidity provided"
         );
 
@@ -157,7 +152,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong);
 
         // update position
-        userPosition[sender] = LibPerpetual.UserPosition({
+        traderPosition[sender] = LibPerpetual.UserPosition({
             openNotional: openNotional,
             positionSize: positionSize,
             cumFundingRate: globalPosition.cumFundingRate,
@@ -195,60 +190,58 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         /*
         after opening the position:
 
-            user has long position:
+            trader has long position:
                 openNotional = vQuote traded   to market   ( < 0)
                 positionSize = vBase  received from market ( > 0)
-            user has short position
+            trader has short position
                 openNotional = vQuote received from market ( > 0)
                 positionSize = vBase  traded   to market   ( < 0)
 
         to close the position:
 
-            user has long position:
+            trader has long position:
                 @tentativeVQuoteAmount := can be anything, as it's not used to close LONG position
                 => User trades the vBase tokens with the curve pool for vQuote tokens
 
-            user has short position:
+            trader has short position:
                 @tentativeVQuoteAmount := amount of vQuote required to repay the vBase debt (an arbitrary amount)
                 => User incurred vBase debt when opening a position and must now trade enough
                   vQuote with the curve pool to repay his vQuote debt in full.
                 => Remaining balances can be traded with the market for vQuote.
 
-                @audit Note that this mechanism can be exploited by inserting a large value here, since users
+                @audit Note that this mechanism can be exploited by inserting a large value here, since traders
                 will have to pay transaction fees anyways (on the curve pool).
         */
-        LibPerpetual.UserPosition storage user = userPosition[_msgSender()];
+        LibPerpetual.UserPosition storage trader = traderPosition[_msgSender()];
         LibPerpetual.GlobalPosition storage global = globalPosition;
-        require(user.openNotional != 0, "No position currently opened");
+        require(trader.openNotional != 0, "No position currently opened");
 
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
 
-        int256 profit = _closePosition(user, global, tentativeVQuoteAmount);
+        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount);
 
         // apply changes to collateral
         vault.settleProfit(_msgSender(), profit);
-        // TODO: only do that if tentativeVQuoteAmount is equal to all of the position of the user
-        // The problem is to be a bit more complicated than it seems at first...
-        delete userPosition[_msgSender()];
+        delete traderPosition[_msgSender()];
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice profit is the sum of funding payments and the position PnL
     function _closePosition(
-        LibPerpetual.UserPosition storage user,
+        LibPerpetual.UserPosition storage trader,
         LibPerpetual.GlobalPosition storage global,
         uint256 tentativeVQuoteAmount
     ) internal returns (int256 profit) {
-        bool isShort = user.positionSize < 0 ? true : false;
+        bool isShort = trader.positionSize < 0 ? true : false;
         if (isShort) {
             // check that `tentativeVQuoteAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (eventhough these swings would be cancelled out
             // by the fact that we sell any extra vBase bought)
             int256 marketEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
             // USD_amount = EUR_USD * EUR_amount
-            int256 positivePositionSize = -user.positionSize;
+            int256 positivePositionSize = -trader.positionSize;
             int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
 
             int256 deviation = LibMath.wadDiv(
@@ -261,10 +254,10 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         }
 
         // update profit using funding payment info in the `global` struct
-        profit += _settleFundingRate(user, global);
+        profit += _settleFundingRate(trader, global);
 
         // pnL of the position
-        profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
+        profit += _closePositionOnMarket(trader.positionSize, tentativeVQuoteAmount) + trader.openNotional;
     }
 
     /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
@@ -309,6 +302,163 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vBase.mint(baseAmount);
         return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
     }
+
+    function marginIsValid(address account, int256 ratio) public view override returns (bool) {
+        // slither-disable-next-line timestamp
+        return marginRatio(account) >= ratio;
+    }
+
+    function marginRatio(address account) public view override returns (int256) {
+        LibPerpetual.UserPosition memory trader = traderPosition[account];
+        LibPerpetual.GlobalPosition memory global = globalPosition;
+
+        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
+        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
+        int256 collateral = vault.getReserveValue(account);
+        int256 fundingPayments = getFundingPayments(trader, global);
+
+        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+        int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
+
+        // in the case of a LONG, trader.openNotional is negative but vQuoteVitualProceeds is positive
+        // in the case of a SHORT, trader.openNotional is positive while vQuoteVitualProceeds is negative
+        int256 unrealizedPositionPnl = trader.openNotional + vQuoteVirtualProceeds;
+
+        int256 positiveOpenNotional = LibMath.abs(trader.openNotional);
+        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
+    }
+
+    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
+    function liquidate(address account, uint256 tentativeVQuoteAmount) external {
+        chainlinkTWAPOracle.updateEURUSDTWAP();
+        poolTWAPOracle.updateEURUSDTWAP();
+        updateFundingRate();
+
+        // load information about state
+        LibPerpetual.UserPosition storage trader = traderPosition[account];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 positiveOpenNotional = uint256(LibMath.abs(trader.openNotional));
+
+        require(trader.openNotional != 0, "No position currently opened");
+        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
+        address liquidator = _msgSender();
+
+        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount);
+
+        // adjust liquidator vault amount
+        uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
+
+        // subtract reward from trader account
+        int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
+        vault.settleProfit(account, reducedProfit);
+        // A trader getting liquidated has his entire position sold by definition
+        // so no risk of leaving money on the side by clearing this data
+        delete traderPosition[account];
+
+        // add reward to liquidator
+        vault.settleProfit(liquidator, liquidationRewardAmount.toInt256());
+
+        emit LiquidationCall(account, liquidator, uint128(block.timestamp), positiveOpenNotional);
+    }
+
+    ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
+
+    /// @notice Provide liquidity to the pool
+    /// @param amount of token to be added to the pool (with token decimals)
+    /// @param  token to be added to the pool
+    function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
+        address sender = _msgSender();
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
+        require(amount != 0, "Zero amount");
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
+        require(lpPosition[sender].liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
+
+        // split liquidity between long and short (TODO: account for value of liquidity provider already made)
+        uint256 wadAmount = vault.deposit(_msgSender(), amount, token);
+
+        uint256 basePrice;
+        if (totalLiquidityProvided == 0) {
+            basePrice = marketPrice();
+
+            // note: To start the pool we first have to update the funding rate oracle!
+            chainlinkTWAPOracle.updateEURUSDTWAP();
+            poolTWAPOracle.updateEURUSDTWAP();
+            updateFundingRate();
+        } else {
+            basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
+        }
+        uint256 baseAmount = LibMath.wadDiv(wadAmount, basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
+
+        // supply liquidity to curve pool
+        vQuote.mint(wadAmount);
+        vBase.mint(baseAmount);
+        //uint256 min_mint_amount = 0; // set to zero for now
+        uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
+
+        // update balances
+        lpPosition[sender] = LibPerpetual.UserPosition({
+            openNotional: -wadAmount.toInt256(),
+            positionSize: -baseAmount.toInt256(),
+            cumFundingRate: globalPosition.cumFundingRate,
+            liquidityBalance: liquidity
+        });
+        totalLiquidityProvided += liquidity;
+
+        emit LiquidityProvided(sender, address(token), amount);
+        return (wadAmount, baseAmount);
+    }
+
+    /// @notice Withdraw liquidity from the pool
+    /// @param amount of liquidity to be removed from the pool (with 18 decimals)
+    /// @param  token to be removed from the pool
+    function withdrawLiquidity(uint256 amount, IERC20 token) external override {
+        // TODO: should we just hardcode amount here?
+        address sender = _msgSender();
+
+        LibPerpetual.UserPosition storage lp = lpPosition[sender];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+
+        // slither-disable-next-line incorrect-equality
+        require(lp.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
+
+        // lower balances
+        lp.liquidityBalance -= amount;
+        totalLiquidityProvided -= amount;
+
+        // remove liquidity from curve pool
+        uint256 baseAmount;
+        uint256 quoteAmount;
+        {
+            // to avoid stack to deep errors
+            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
+            uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
+
+            market.remove_liquidity(amount, [uint256(0), uint256(0)]);
+
+            uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
+            uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
+
+            quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
+            baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
+        }
+
+        int256 profit = _settleFundingRate(lp, global); // TODO: what should we do with profit?
+        lp.openNotional += quoteAmount.toInt256();
+        lp.positionSize += baseAmount.toInt256();
+
+        // if no open position remaining, remove the lp
+        // slither-disable-next-line incorrect-equality
+        if (lp.positionSize == 0) {
+            vault.settleProfit(sender, lp.openNotional);
+            // slither-disable-next-line unused-return // can be zero amount
+            vault.withdrawAll(sender, token);
+            delete lpPosition[sender];
+        }
+
+        emit LiquidityWithdrawn(sender, address(token), amount);
+    }
+
+    ///// COMMON OPERATIONS \\\\\
 
     /// @notice Calculate the funding rate for the current block
     function updateFundingRate() public {
@@ -385,156 +535,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return chainlinkOracle.getIndexPrice();
     }
 
-    /// @notice Provide liquidity to the pool
-    /// @param amount of token to be added to the pool (with token decimals)
-    /// @param  token to be added to the pool
-    function provideLiquidity(uint256 amount, IERC20 token) external override returns (uint256, uint256) {
-        address sender = _msgSender();
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(amount != 0, "Zero amount");
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(userPosition[sender].liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
-
-        // split liquidity between long and short (TODO: account for value of liquidity provider already made)
-        uint256 wadAmount = vault.deposit(_msgSender(), amount, token);
-
-        uint256 basePrice;
-        if (totalLiquidityProvided == 0) {
-            basePrice = marketPrice();
-
-            // note: To start the pool we first have to update the funding rate oracle!
-            chainlinkTWAPOracle.updateEURUSDTWAP();
-            poolTWAPOracle.updateEURUSDTWAP();
-            updateFundingRate();
-        } else {
-            basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
-        }
-        uint256 baseAmount = LibMath.wadDiv(wadAmount, basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
-
-        // supply liquidity to curve pool
-        vQuote.mint(wadAmount);
-        vBase.mint(baseAmount);
-        //uint256 min_mint_amount = 0; // set to zero for now
-        uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
-
-        // update balances
-        userPosition[sender] = LibPerpetual.UserPosition({
-            openNotional: -wadAmount.toInt256(),
-            positionSize: -baseAmount.toInt256(),
-            cumFundingRate: globalPosition.cumFundingRate,
-            liquidityBalance: liquidity
-        });
-        totalLiquidityProvided += liquidity;
-
-        emit LiquidityProvided(sender, address(token), amount);
-        return (wadAmount, baseAmount);
+    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
+        return globalPosition;
     }
 
-    /// @notice Withdraw liquidity from the pool
-    /// @param amount of liquidity to be removed from the pool (with 18 decimals)
-    /// @param  token to be removed from the pool
-    function withdrawLiquidity(uint256 amount, IERC20 token) external override {
-        // TODO: should we just hardcode amount here?
-        address sender = _msgSender();
-
-        LibPerpetual.UserPosition storage user = userPosition[sender];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-
-        // slither-disable-next-line incorrect-equality
-        require(user.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
-
-        // lower balances
-        user.liquidityBalance -= amount;
-        totalLiquidityProvided -= amount;
-
-        // remove liquidity from curve pool
-        uint256 baseAmount;
-        uint256 quoteAmount;
-        {
-            // to avoid stack to deep errors
-            uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
-            uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
-
-            market.remove_liquidity(amount, [uint256(0), uint256(0)]);
-
-            uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
-            uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
-
-            quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
-            baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
-        }
-
-        int256 profit = _settleFundingRate(user, global); // TODO: what should we do with profit?
-        user.openNotional += quoteAmount.toInt256();
-        user.positionSize += baseAmount.toInt256();
-
-        // if no open position remaining, remove the user
-        // slither-disable-next-line incorrect-equality
-        if (user.positionSize == 0) {
-            vault.settleProfit(sender, user.openNotional);
-            // slither-disable-next-line unused-return // can be zero amount
-            vault.withdrawAll(sender, token); // TODO: withdraw all liquidity
-            delete userPosition[sender];
-        }
-
-        emit LiquidityWithdrawn(sender, address(token), amount);
+    function getTraderPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
+        return traderPosition[account];
     }
 
-    function marginIsValid(address account, int256 ratio) public view override returns (bool) {
-        // slither-disable-next-line timestamp
-        return marginRatio(account) >= ratio;
-    }
-
-    function marginRatio(address account) public view override returns (int256) {
-        LibPerpetual.UserPosition memory user = userPosition[account];
-        LibPerpetual.GlobalPosition memory global = globalPosition;
-
-        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.openNotional
-        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
-        int256 collateral = vault.getReserveValue(account);
-        int256 fundingPayments = getFundingPayments(user, global);
-
-        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-        int256 vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
-
-        // in the case of a LONG, user.openNotional is negative but vQuoteVitualProceeds is positive
-        // in the case of a SHORT, user.openNotional is positive while vQuoteVitualProceeds is negative
-        int256 unrealizedPositionPnl = user.openNotional + vQuoteVirtualProceeds;
-
-        int256 positiveOpenNotional = LibMath.abs(user.openNotional);
-        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
-    }
-
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
-    function liquidate(address account, uint256 tentativeVQuoteAmount) external {
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
-
-        // load information about state
-        LibPerpetual.UserPosition storage user = userPosition[account];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-        uint256 positiveOpenNotional = uint256(LibMath.abs(user.openNotional));
-
-        require(user.openNotional != 0, "No position currently opened");
-        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
-        address liquidator = _msgSender();
-
-        int256 profit = _closePosition(user, global, tentativeVQuoteAmount);
-
-        // adjust liquidator vault amount
-        uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
-
-        // subtract reward from user account
-        int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
-        vault.settleProfit(account, reducedProfit);
-        // A user getting liquidated has his entire position sold by definition
-        // so no risk of leaving money on the side by clearing this data
-        delete userPosition[account];
-
-        // add reward to liquidator
-        vault.settleProfit(liquidator, liquidationRewardAmount.toInt256());
-
-        emit LiquidationCall(account, liquidator, uint128(block.timestamp), positiveOpenNotional);
+    function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
+        return lpPosition[account];
     }
 }

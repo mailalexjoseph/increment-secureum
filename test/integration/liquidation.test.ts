@@ -107,7 +107,9 @@ describe('Increment: liquidation', () => {
     );
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
-    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    const alicePosition = await alice.perpetual.getTraderPosition(
+      alice.address
+    );
     expect(alicePosition.openNotional).to.eq(0);
     expect(alicePosition.positionSize).to.eq(0);
 
@@ -175,7 +177,7 @@ describe('Increment: liquidation', () => {
   it('Should liquidate SHORT position out-of-the-money', async () => {
     await alice.perpetual.openPosition(aliceAmount, Side.Short);
     const positionOpenNotional = (
-      await alice.perpetual.getUserPosition(alice.address)
+      await alice.perpetual.getTraderPosition(alice.address)
     ).openNotional;
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
@@ -210,7 +212,9 @@ describe('Increment: liquidation', () => {
     ).to.emit(alice.perpetual, 'LiquidationCall');
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
-    const alicePosition = await alice.perpetual.getUserPosition(alice.address);
+    const alicePosition = await alice.perpetual.getTraderPosition(
+      alice.address
+    );
     expect(alicePosition.openNotional).to.eq(0);
     expect(alicePosition.positionSize).to.eq(0);
 
