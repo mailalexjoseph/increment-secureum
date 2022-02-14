@@ -142,10 +142,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             "Cannot open a position with one already opened or liquidity provided"
         );
 
-        // slither-disable-next-line timestamp
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
+        updateGenericProtocolState();
 
         // open position
         bool isLong = direction == LibPerpetual.Side.Long ? true : false;
@@ -216,9 +213,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         require(trader.openNotional != 0, "No position currently opened");
 
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
+        updateGenericProtocolState();
 
         int256 profit = _closePosition(trader, global, tentativeVQuoteAmount);
 
@@ -330,9 +325,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
     function liquidate(address account, uint256 tentativeVQuoteAmount) external {
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
+        updateGenericProtocolState();
 
         // load information about state
         LibPerpetual.UserPosition storage trader = traderPosition[account];
@@ -381,9 +374,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             basePrice = marketPrice();
 
             // note: To start the pool we first have to update the funding rate oracle!
-            chainlinkTWAPOracle.updateEURUSDTWAP();
-            poolTWAPOracle.updateEURUSDTWAP();
-            updateFundingRate();
+            updateGenericProtocolState();
         } else {
             basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
         }
@@ -523,6 +514,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             upcomingFundingPayment = LibMath.wadMul(upcomingFundingRate, LibMath.abs(user.openNotional));
         }
         return upcomingFundingPayment;
+    }
+
+    function updateGenericProtocolState() public {
+        chainlinkTWAPOracle.updateEURUSDTWAP();
+        poolTWAPOracle.updateEURUSDTWAP();
+        updateFundingRate();
     }
 
     /// @notice Return the current market price
