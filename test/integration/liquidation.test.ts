@@ -172,7 +172,7 @@ describe('Increment: liquidation', () => {
     ).to.be.revertedWith('Not enough returned, proposed amount too low');
   });
 
-  it.skip('Should liquidate SHORT position out-of-the-money', async () => {
+  it('Should liquidate SHORT position out-of-the-money', async () => {
     await alice.perpetual.openPosition(aliceAmount, Side.Short);
     const positionOpenNotional = (
       await alice.perpetual.getUserPosition(alice.address)
@@ -186,8 +186,8 @@ describe('Increment: liquidation', () => {
     );
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
-    const timestampForkedMainnetBlock = await getBlockTime();
-    // const timestampForkedMainnetBlock = 1639682285;
+    //const timestampForkedMainnetBlock = await getBlockTime();
+    const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
     await bob.perpetual.__TestPerpetual_setGlobalPosition(
       0,
@@ -228,8 +228,10 @@ describe('Increment: liquidation', () => {
       bob.address
     );
 
-    expect(bobVaultBalanceAfterLiquidation).to.eq(
-      bobVaultBalanceBeforeLiquidation.add(liquidationReward)
+    // closeTo is used to avoid error of 1 wei here
+    expect(bobVaultBalanceAfterLiquidation).to.be.closeTo(
+      bobVaultBalanceBeforeLiquidation.add(liquidationReward),
+      1
     );
   });
 });

@@ -138,9 +138,9 @@ describe('Increment: open/close long/short trading positions', () => {
     ).to.be.above(ethers.BigNumber.from('1'));
   }
 
-  it.skip('Should open LONG position', async () => {
+  it('Should open LONG position', async () => {
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-    const expectedSharesBought = '7811427225010851007'; // vBase amount
+    const expectedSharesBought = '7788801268869637352'; // vBase amount
     await _openAndCheckPosition(Side.Long, expectedSharesBought);
   });
 
@@ -150,7 +150,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await _openAndCheckPosition(Side.Short, expectedSharesBought);
   });
 
-  it.skip('Should work if trader opens position after having closed one', async () => {
+  it('Should work if trader opens position after having closed one', async () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
     await alice.perpetual.openPosition(depositAmount, Side.Long);
@@ -170,7 +170,7 @@ describe('Increment: open/close long/short trading positions', () => {
         nextBlockTimestamp,
         Side.Long,
         positionNotionalAmount.mul(-1),
-        '7755337237816162518' // very brittle
+        '7732665341504984598' // very brittle
       );
   });
 
