@@ -10,7 +10,7 @@ import {getChainlinkOracle} from '../../helpers/contracts-deployments';
 import {setLatestChainlinkPrice} from '../helpers/utils/manipulateStorage';
 import {AggregatorV3Interface} from '../../typechain';
 
-import {TEST_get_dy, TEST_get_exactOutputSwap} from '../helpers/CurveUtils';
+import {TEST_get_exactOutputSwap} from '../helpers/CurveUtils';
 
 // https://docs.chain.link/docs/ethereum-addresses/
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
@@ -457,86 +457,86 @@ describe('Increment App: Scenario', function () {
   });
 });
 
-async function logMarketBalance(user: User) {
-  console.log(
-    'market has balance of',
-    ethers.utils.formatUnits(
-      await user.vQuote.balanceOf(user.market.address),
-      18
-    ),
-    'vQuote and',
-    ethers.utils.formatUnits(
-      await user.vBase.balanceOf(user.market.address),
-      18
-    ),
-    'vBase'
-  );
-}
+// async function logMarketBalance(user: User) {
+//   console.log(
+//     'market has balance of',
+//     ethers.utils.formatUnits(
+//       await user.vQuote.balanceOf(user.market.address),
+//       18
+//     ),
+//     'vQuote and',
+//     ethers.utils.formatUnits(
+//       await user.vBase.balanceOf(user.market.address),
+//       18
+//     ),
+//     'vBase'
+//   );
+// }
 
-async function logPerpetualBalance(user: User) {
-  console.log(
-    'perpetual has balance of',
-    ethers.utils.formatUnits(
-      await user.vQuote.balanceOf(user.perpetual.address),
-      18
-    ),
-    'vQuote and',
-    ethers.utils.formatUnits(
-      await user.vBase.balanceOf(user.perpetual.address),
-      18
-    ),
-    'vBase'
-  );
-}
-async function logUserBalance(user: User, name: string) {
-  console.log(
-    name,
-    'owns',
-    ethers.utils.formatUnits(
-      await user.usdc.balanceOf(user.address),
-      await user.usdc.decimals()
-    ),
-    'usdc'
-  );
-}
+// async function logPerpetualBalance(user: User) {
+//   console.log(
+//     'perpetual has balance of',
+//     ethers.utils.formatUnits(
+//       await user.vQuote.balanceOf(user.perpetual.address),
+//       18
+//     ),
+//     'vQuote and',
+//     ethers.utils.formatUnits(
+//       await user.vBase.balanceOf(user.perpetual.address),
+//       18
+//     ),
+//     'vBase'
+//   );
+// }
+// async function logUserBalance(user: User, name: string) {
+//   console.log(
+//     name,
+//     'owns',
+//     ethers.utils.formatUnits(
+//       await user.usdc.balanceOf(user.address),
+//       await user.usdc.decimals()
+//     ),
+//     'usdc'
+//   );
+// }
 
-async function logUserPosition(user: User, name: string) {
-  console.log(
-    name,
-    ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
-    (await user.perpetual.getUserPosition(user.address)).toString()
-  );
-}
+// async function logUserPosition(user: User, name: string) {
+//   console.log(
+//     name,
+//     ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
+//     (await user.perpetual.getUserPosition(user.address)).toString()
+//   );
+// }
 
-async function logVaultBalance(user: User) {
-  console.log(
-    'vault owns',
-    ethers.utils.formatUnits(
-      await user.usdc.balanceOf(user.vault.address),
-      await user.usdc.decimals()
-    ),
-    'usdc'
-  );
-}
+// async function logVaultBalance(user: User) {
+//   console.log(
+//     'vault owns',
+//     ethers.utils.formatUnits(
+//       await user.usdc.balanceOf(user.vault.address),
+//       await user.usdc.decimals()
+//     ),
+//     'usdc'
+//   );
+// }
 
-async function logPerpCRVBalance(user: User) {
-  console.log(
-    'perpetual owns',
-    ethers.utils.formatUnits(
-      await user.curve.balanceOf(user.perpetual.address),
-      await user.curve.decimals()
-    ),
-    'curve'
-  );
-}
+// async function logPerpCRVBalance(user: User) {
+//   console.log(
+//     'perpetual owns',
+//     ethers.utils.formatUnits(
+//       await user.curve.balanceOf(user.perpetual.address),
+//       await user.curve.decimals()
+//     ),
+//     'curve'
+//   );
+// }
 
-async function logMarketPrice(user: User) {
-  console.log(
-    'realizedMarketPrice',
-    ethers.utils.formatEther(await user.perpetual.realizedMarketPrice()),
-    'marketPrice',
-    ethers.utils.formatEther(await user.perpetual.marketPrice()),
-    'indexPrice',
-    ethers.utils.formatEther(await user.perpetual.indexPrice())
-  );
-}
+// async function logMarketPrice(user: User) {
+//   console.log(
+//     'realizedMarketPrice',
+//     ethers.utils.formatEther(await user.perpetual.realizedMarketPrice()),
+//     'marketPrice',
+//     ethers.utils.formatEther(await user.perpetual.marketPrice()),
+//     'indexPrice',
+//     ethers.utils.formatEther(await user.perpetual.indexPrice())
+//   );
+// }
