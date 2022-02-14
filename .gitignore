@@ -28,6 +28,9 @@ depreciated/
 contracts/depreciated/
 contracts/external/
 
+docs/.docusaurus/
+docs/node_modules/
+
 docgen/
 *.png
 

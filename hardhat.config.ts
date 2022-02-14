@@ -15,6 +15,7 @@ import '@nomiclabs/hardhat-waffle';
 import 'solidity-coverage';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
+import '@primitivefi/hardhat-dodoc';
 import {HardhatUserConfig} from 'hardhat/types';
 import {node_url, accounts} from './helpers/network';
 
@@ -170,6 +171,8 @@ const config: HardhatUserConfig = {
       'PoolTWAPOracle',
       'ClearingHouse',
     ],
+  dodoc: {
+    outputDir: 'docs/docs/contracts',
   },
 };
 export default config;
