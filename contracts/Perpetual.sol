@@ -414,7 +414,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
         // slither-disable-next-line incorrect-equality
-        require(lp.liquidityBalance == amount, "Not enough liquidity provided"); //TODO: can we loosen this?
+        require(amount <= lp.liquidityBalance, "Not enough liquidity provided"); //TODO: can we loosen this?
 
         // lower balances
         lp.liquidityBalance -= amount;
