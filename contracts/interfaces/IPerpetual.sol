@@ -12,6 +12,7 @@ import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IChainlinkOracle} from "./IChainlinkOracle.sol";
 import {IVirtualToken} from "./IVirtualToken.sol";
+import {IInsurance} from "./IInsurance.sol";
 
 // libraries
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
@@ -50,6 +51,8 @@ interface IPerpetual {
     function chainlinkTWAPOracle() external view returns (ChainlinkTWAPOracle);
 
     function vBase() external view returns (IVirtualToken);
+
+    function insurance() external view returns (IInsurance);
 
     function vQuote() external view returns (IVirtualToken);
 

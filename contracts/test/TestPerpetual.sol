@@ -19,6 +19,7 @@ import {IVault} from "../interfaces/IVault.sol";
 import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
+import {IInsurance} from "../interfaces/IInsurance.sol";
 
 // libraries
 import {LibMath} from "../lib/LibMath.sol";
@@ -38,8 +39,20 @@ contract TestPerpetual is Perpetual {
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
-        IVault _vault
-    ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _vault) {}
+        IVault _vault,
+        IInsurance _insurance
+    )
+        Perpetual(
+            _chainlinkOracle,
+            _poolTWAPOracle,
+            _chainlinkTWAPOracle,
+            _vBase,
+            _vQuote,
+            _curvePool,
+            _vault,
+            _insurance
+        )
+    {}
 
     // simplified setter
     function __TestPerpetual_setGlobalPosition(

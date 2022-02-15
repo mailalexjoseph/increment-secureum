@@ -18,6 +18,7 @@ import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
+import {IInsurance} from "./interfaces/IInsurance.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -39,6 +40,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
     int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
+    int256 public constant INSURANCE_FEE = 1e15; // 0.1%
 
     // dependencies
     ICryptoSwap public override market;
@@ -48,6 +50,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     IVirtualToken public override vBase;
     IVirtualToken public override vQuote;
     IVault public override vault;
+    IInsurance public override insurance;
 
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
@@ -62,7 +65,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
-        IVault _vault
+        IVault _vault,
+        IInsurance _insurance
     ) {
         chainlinkOracle = _chainlinkOracle;
         poolTWAPOracle = _poolTWAPOracle;
@@ -71,6 +75,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         vQuote = _vQuote;
         market = _curvePool;
         vault = _vault;
+        insurance = _insurance;
 
         // approve all future transfers between Perpetual and market (curve pool)
         require(vBase.approve(address(market), type(uint256).max));
@@ -147,6 +152,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // open position
         bool isLong = direction == LibPerpetual.Side.Long ? true : false;
         (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong);
+
+        // pay insurance fee: TODO: can never withdraw this amount!
+        int256 insuranceFee = LibMath.abs(openNotional) * INSURANCE_FEE;
+        vault.settleProfit(sender, -insuranceFee);
+        vault.settleProfit(address(insurance), insuranceFee);
 
         // update position
         traderPosition[sender] = LibPerpetual.UserPosition({

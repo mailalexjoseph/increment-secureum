@@ -21,6 +21,9 @@ describe.only('Increment Protocol: Deployment', function () {
       expect(await deployer.perpetual.vQuote()).to.equal(
         deployer.vQuote.address
       );
+      expect(await deployer.perpetual.insurance()).to.equal(
+        deployer.insurance.address
+      );
     });
 
     it('Should initialize Vault with its dependencies and Perpetual as its owner', async function () {
