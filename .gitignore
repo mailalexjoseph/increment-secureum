@@ -30,6 +30,7 @@ contracts/external/
 
 docs/.docusaurus/
 docs/node_modules/
+docs/build/
 
 docgen/
 *.png
