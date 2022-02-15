@@ -61,7 +61,6 @@ async function withdrawLiquidity(user: User) {
   // await logVaultBalance(user);
 
   // console.log('**********Close remaining position**********');
-  await closePosition(user);
 
   //   await logVaultBalance(user);
   //   await logUserBalance(user, 'LP');
@@ -110,14 +109,20 @@ describe('Increment App: Scenario', function () {
       it('1.1. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
         await provideLiquidity(liquidityAmount, lp);
 
+        console.log('after provideLiquidity');
+
         await openPosition(liquidityAmount, trader, Side.Long);
+        console.log('after openPosition');
 
         await closePosition(trader);
+        console.log('after closePosition');
 
         await withdrawLiquidity(lp);
+        console.log('after withdrawLiquidity');
 
         // check results
         await checks();
+        console.log('after checks');
         // await logUserBalance(lp, 'lp');
         // await logUserBalance(trader, 'trader');
         // await logVaultBalance(lp);
@@ -440,7 +445,6 @@ describe('Increment App: Scenario', function () {
   });
 });
 
-<<<<<<< HEAD
 // async function logMarketBalance(user: User) {
 //   console.log(
 //     'market has balance of',
@@ -484,11 +488,10 @@ describe('Increment App: Scenario', function () {
 //   );
 // }
 
-// async function logUserPosition(user: User, name: string) {
+// async function logLpPosition(user: User) {
 //   console.log(
-//     name,
 //     ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
-//     (await user.perpetual.getUserPosition(user.address)).toString()
+//     (await user.perpetual.getLpPosition(user.address)).toString()
 //   );
 // }
 
@@ -516,93 +519,9 @@ describe('Increment App: Scenario', function () {
 
 // async function logMarketPrice(user: User) {
 //   console.log(
-//     'realizedMarketPrice',
-//     ethers.utils.formatEther(await user.perpetual.realizedMarketPrice()),
 //     'marketPrice',
 //     ethers.utils.formatEther(await user.perpetual.marketPrice()),
 //     'indexPrice',
 //     ethers.utils.formatEther(await user.perpetual.indexPrice())
 //   );
 // }
-=======
-async function logMarketBalance(user: User) {
-  console.log(
-    'market has balance of',
-    ethers.utils.formatUnits(
-      await user.vQuote.balanceOf(user.market.address),
-      18
-    ),
-    'vQuote and',
-    ethers.utils.formatUnits(
-      await user.vBase.balanceOf(user.market.address),
-      18
-    ),
-    'vBase'
-  );
-}
-
-async function logPerpetualBalance(user: User) {
-  console.log(
-    'perpetual has balance of',
-    ethers.utils.formatUnits(
-      await user.vQuote.balanceOf(user.perpetual.address),
-      18
-    ),
-    'vQuote and',
-    ethers.utils.formatUnits(
-      await user.vBase.balanceOf(user.perpetual.address),
-      18
-    ),
-    'vBase'
-  );
-}
-async function logUserBalance(user: User, name: string) {
-  console.log(
-    name,
-    'owns',
-    ethers.utils.formatUnits(
-      await user.usdc.balanceOf(user.address),
-      await user.usdc.decimals()
-    ),
-    'usdc'
-  );
-}
-
-async function logLpPosition(user: User) {
-  console.log(
-    ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
-    (await user.perpetual.getLpPosition(user.address)).toString()
-  );
-}
-
-async function logVaultBalance(user: User) {
-  console.log(
-    'vault owns',
-    ethers.utils.formatUnits(
-      await user.usdc.balanceOf(user.vault.address),
-      await user.usdc.decimals()
-    ),
-    'usdc'
-  );
-}
-
-async function logPerpCRVBalance(user: User) {
-  console.log(
-    'perpetual owns',
-    ethers.utils.formatUnits(
-      await user.curve.balanceOf(user.perpetual.address),
-      await user.curve.decimals()
-    ),
-    'curve'
-  );
-}
-
-async function logMarketPrice(user: User) {
-  console.log(
-    'marketPrice',
-    ethers.utils.formatEther(await user.perpetual.marketPrice()),
-    'indexPrice',
-    ethers.utils.formatEther(await user.perpetual.indexPrice())
-  );
-}
->>>>>>> 611d9b8 (refactor: separate LibPerpetual.UserPosition into two)
