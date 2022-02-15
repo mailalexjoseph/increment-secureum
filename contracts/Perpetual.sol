@@ -259,7 +259,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
-        int256 collateral = vault.getReserveValue(account);
+        int256 collateral = vault.getReserveValue(account, IPerpetual(address(this)));
         int256 fundingPayments = getFundingPayments(trader, global);
 
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
@@ -552,6 +552,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             emit Log(
                 "Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange"
             );
+            return 0;
         }
     }
 
@@ -566,6 +567,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             emit Log(
                 "Incorrect amount, submit a bigger value or one matching more closely the amount of vBase needed to perform the exchange"
             );
+            return 0;
         }
     }
 
@@ -587,61 +589,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return traderPosition[account];
     }
 
-    function marginIsValid(address account, int256 ratio) public view override returns (bool) {
-        //slither-disable-next-line timestamp
-        return marginRatio(account) >= ratio;
-    }
-
-    function marginRatio(address account) public view override returns (int256) {
-        LibPerpetual.UserPosition memory user = traderPosition[account];
-        LibPerpetual.GlobalPosition memory global = globalPosition;
-
-        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / user.openNotional
-        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
-        int256 collateral = vault.getReserveValue(account, IPerpetual(address(this)));
-        int256 fundingPayments = getFundingPayments(user, global);
-
-        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-        int256 vQuoteVirtualProceeds = LibMath.wadMul(user.positionSize, poolEURUSDTWAP);
-
-        // in the case of a LONG, user.openNotional is negative but vQuoteVitualProceeds is positive
-        // in the case of a SHORT, user.openNotional is positive while vQuoteVitualProceeds is negative
-        int256 unrealizedPositionPnl = user.openNotional + vQuoteVirtualProceeds;
-
-        int256 positiveOpenNotional = LibMath.abs(user.openNotional);
-        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
-    }
-
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
-    function liquidate(address account, uint256 tentativeVQuoteAmount) external {
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
-
-        // load information about state
-        LibPerpetual.UserPosition storage user = traderPosition[account];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-        uint256 positiveOpenNotional = uint256(LibMath.abs(user.openNotional));
-
-        require(user.openNotional != 0, "No position currently opened");
-        require(!marginIsValid(account, MIN_MARGIN), "Margin is valid");
-        address liquidator = _msgSender();
-
-        _closePosition(user, global, tentativeVQuoteAmount);
-
-        // adjust liquidator vault amount
-        uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
-
-        // subtract reward from user account
-        int256 reducedProfit = user.profit - liquidationRewardAmount.toInt256();
-        vault.settleProfit(account, reducedProfit);
-        // A user getting liquidated has his entire position sold by definition
-        // so no risk of leaving money on the side by clearing this data
-        delete traderPosition[account];
-
-        // add reward to liquidator
-        vault.settleProfit(liquidator, liquidationRewardAmount.toInt256());
-
-        emit LiquidationCall(account, liquidator, uint128(block.timestamp), positiveOpenNotional);
+    function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
+        return lpPosition[account];
     }
 }
