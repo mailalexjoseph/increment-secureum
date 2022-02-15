@@ -82,10 +82,12 @@ describe('Increment: liquidation', () => {
     await alice.perpetual.openPosition(aliceAmount, Side.Long);
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
     const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
-      bob.address
+      bob.address,
+      bob.perpetual.address
     );
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
@@ -115,7 +117,8 @@ describe('Increment: liquidation', () => {
 
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
     expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
       aliceVaultBalanceBeforeClosingPosition
@@ -124,7 +127,8 @@ describe('Increment: liquidation', () => {
     // Check liquidator's vault.balance is increased by the liquidation reward
     const liquidationReward = rMul(aliceAmount, LIQUIDATION_REWARD);
     const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
-      bob.address
+      bob.address,
+      bob.perpetual.address
     );
     expect(bobVaultBalanceAfterLiquidation).to.eq(
       bobVaultBalanceBeforeLiquidation.add(liquidationReward)
@@ -181,10 +185,12 @@ describe('Increment: liquidation', () => {
     ).openNotional;
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
     const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
-      bob.address
+      bob.address,
+      bob.perpetual.address
     );
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
@@ -220,7 +226,8 @@ describe('Increment: liquidation', () => {
 
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
     expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
       aliceVaultBalanceBeforeClosingPosition
@@ -229,7 +236,8 @@ describe('Increment: liquidation', () => {
     // Check liquidator's vault.balance is increased by the liquidation reward
     const liquidationReward = rMul(positionOpenNotional, LIQUIDATION_REWARD);
     const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
-      bob.address
+      bob.address,
+      bob.perpetual.address
     );
 
     // closeTo is used to avoid error of 1 wei here

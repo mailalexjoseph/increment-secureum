@@ -21,7 +21,7 @@ describe('Increment App: Reserve', function () {
       expect(await user.usdc.balanceOf(user.address)).to.be.equal(
         depositAmount
       );
-      // should succesfully approve
+      // should successfully approve
       expect(
         await user.usdc.allowance(user.address, user.vault.address)
       ).to.be.equal(depositAmount);
@@ -41,7 +41,9 @@ describe('Increment App: Reserve', function () {
 
       // should notice deposited amount in asset value / portfolio value
       expect(
-        utils.formatEther(await user.vault.getReserveValue(user.address))
+        utils.formatEther(
+          await user.vault.getReserveValue(user.address, user.perpetual.address)
+        )
       ).to.be.equal(await convertToCurrencyUnits(user.usdc, depositAmount));
     });
   });
@@ -49,7 +51,10 @@ describe('Increment App: Reserve', function () {
   it('Should withdraw USDC', async function () {
     // deposit
     await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(user.address);
+    const userDeposits = await user.vault.getReserveValue(
+      user.address,
+      user.perpetual.address
+    );
 
     // withdrawal should fire up withdrawal event
     await expect(user.perpetual.withdraw(userDeposits, user.usdc.address))
@@ -63,7 +68,10 @@ describe('Increment App: Reserve', function () {
   it('Should not withdraw more USDC then deposited', async function () {
     // deposit
     await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(user.address);
+    const userDeposits = await user.vault.getReserveValue(
+      user.address,
+      user.perpetual.address
+    );
     const tooLargeWithdrawal = userDeposits.add(1);
 
     // should not be able to withdraw more than deposited
@@ -75,7 +83,10 @@ describe('Increment App: Reserve', function () {
   it('Should not withdraw other token then deposited', async function () {
     // deposit
     await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(user.address);
+    const userDeposits = await user.vault.getReserveValue(
+      user.address,
+      user.perpetual.address
+    );
 
     // should not be able to withdraw other token then deposited
     const wrongToken = '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3';
@@ -87,14 +98,14 @@ describe('Increment App: Reserve', function () {
   it('User should not be able to access vault directly', async function () {
     await expect(
       user.vault.deposit(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NOT_OWNER');
+    ).to.be.revertedWith('NOT_PERPETUAL');
 
     await expect(
       user.vault.withdraw(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NOT_OWNER');
+    ).to.be.revertedWith('NOT_PERPETUAL');
 
     await expect(user.vault.settleProfit(user.address, 0)).to.be.revertedWith(
-      'NOT_OWNER'
+      'NOT_PERPETUAL'
     );
   });
 });

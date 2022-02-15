@@ -14,6 +14,7 @@ import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
+import {IPerpetual} from "./interfaces/IPerpetual.sol";
 
 // libraries
 import {LibReserve} from "./lib/LibReserve.sol";
@@ -35,9 +36,12 @@ contract Vault is IVault, Context, IncreOwnable {
     IChainlinkOracle public immutable override chainlinkOracle;
     IERC20 public immutable override reserveToken;
     uint256 public override totalReserveToken;
-    //      amm     =>         trader =>            ERC20 => balances
-    // mapping(address => mapping(address => mapping(address => int256))) private balancesNested;
-    mapping(address => int256) private balances;
+
+    //      trader     =>      market  => balances
+    mapping(address => mapping(IPerpetual => int256)) private balances;
+
+    // allow listed markets
+    mapping(IPerpetual => bool) private allowListedMarkets;
 
     constructor(IChainlinkOracle _chainlinkOracle, IERC20 _reserveToken) {
         require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
@@ -57,23 +61,39 @@ contract Vault is IVault, Context, IncreOwnable {
 
     /************************* getter *************************/
 
-    function getBalance(address user) external view returns (int256) {
-        return balances[user];
+    function getBalance(address user, IPerpetual market) external view override returns (int256) {
+        return balances[user][market];
     }
 
     /************************* functions *************************/
 
+    modifier onlyPerpetual() {
+        require(allowListedMarkets[IPerpetual(msg.sender)], "NOT_PERPETUAL");
+        _;
+    }
+
+    function isAllowListed(IPerpetual market) external view override returns (bool) {
+        return allowListedMarkets[market];
+    }
+
+    function addMarket(IPerpetual market) external override onlyOwner {
+        require(!allowListedMarkets[market]);
+        allowListedMarkets[market] = true;
+
+        emit MarketAdded(market);
+    }
+
     /**
      * @notice Deposit reserveTokens to account
      * @param  amount  Amount of reserveTokens with token decimals
-     * @param  depositToken Token address deposited (used for backwards compatability)
+     * @param  depositToken Token address deposited (used for backwards compatibility)
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
     function deposit(
         address user,
         uint256 amount,
         IERC20 depositToken
-    ) external override onlyOwner returns (uint256) {
+    ) external override onlyPerpetual returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
         // this prevents dust from being added to the user account
@@ -81,7 +101,7 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
         // increment balance
-        balances[user] += convertedWadAmount.toInt256();
+        balances[user][IPerpetual(msg.sender)] += convertedWadAmount.toInt256();
         totalReserveToken += convertedWadAmount;
 
         // deposit reserveTokens to contract
@@ -94,8 +114,8 @@ contract Vault is IVault, Context, IncreOwnable {
      * @notice Withdraw all ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
      */
-    function withdrawAll(address user, IERC20 withdrawToken) external override onlyOwner returns (uint256) {
-        return withdraw(user, balances[user].toUint256(), withdrawToken);
+    function withdrawAll(address user, IERC20 withdrawToken) external override onlyPerpetual returns (uint256) {
+        return withdraw(user, balances[user][IPerpetual(msg.sender)].toUint256(), withdrawToken);
     }
 
     /**
@@ -107,15 +127,15 @@ contract Vault is IVault, Context, IncreOwnable {
         address user,
         uint256 amount,
         IERC20 withdrawToken
-    ) public override onlyOwner returns (uint256) {
-        require(amount.toInt256() <= balances[user], "Not enough balance");
+    ) public override onlyPerpetual returns (uint256) {
+        require(amount.toInt256() <= balances[user][IPerpetual(msg.sender)], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
         //    console.log("hardhat: Withdrawing for user", amount);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
 
-        balances[user] -= amount.toInt256();
+        balances[user][IPerpetual(msg.sender)] -= amount.toInt256();
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
 
@@ -130,8 +150,8 @@ contract Vault is IVault, Context, IncreOwnable {
      * @notice get the Portfolio value of an account
      * @param account Account address
      */
-    function getReserveValue(address account) external view override returns (int256) {
-        return PRBMathSD59x18.mul(balances[account], getAssetPrice());
+    function getReserveValue(address account, IPerpetual market) external view override returns (int256) {
+        return PRBMathSD59x18.mul(balances[account][market], getAssetPrice());
     }
 
     /**
@@ -148,9 +168,9 @@ contract Vault is IVault, Context, IncreOwnable {
         return 1e18;
     }
 
-    function settleProfit(address user, int256 amount) external override onlyOwner {
+    function settleProfit(address user, int256 amount) external override onlyPerpetual {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
-        balances[user] += settlement;
+        balances[user][IPerpetual(msg.sender)] += settlement;
     }
 }

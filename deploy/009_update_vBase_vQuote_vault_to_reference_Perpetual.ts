@@ -15,7 +15,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await vEUR.transferOwner(perpetual.address, true);
   await vUSD.transferOwner(perpetual.address, true);
-  await vault.transferOwner(perpetual.address, true);
+  await vault.addMarket(perpetual.address);
 
   console.log(
     'We have updated the references of vEUR, vUSD and Vault to Perpetual'

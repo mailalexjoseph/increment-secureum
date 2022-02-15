@@ -192,7 +192,8 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
 
     const aliceVaultBalanceBeforeOpeningPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
 
     const perpetualVQuoteAmountBeforeOpenPosition =
@@ -229,7 +230,8 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // Profit should be reflected in the Vault user's balance
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      alice.address
+      alice.address,
+      alice.perpetual.address
     );
 
     expect(aliceVaultBalanceBeforeOpeningPosition).to.not.equal(
@@ -259,7 +261,10 @@ describe('Increment: open/close long/short trading positions', () => {
       aliceOpenNotional.mul(-1)
     );
 
-    const initialVaultBalance = await alice.vault.getBalance(alice.address);
+    const initialVaultBalance = await alice.vault.getBalance(
+      alice.address,
+      alice.perpetual.address
+    );
     expect(vQuoteLiquidityAfterPositionCreated).to.equal(
       expectedAdditionalVQuote
     );
@@ -277,7 +282,10 @@ describe('Increment: open/close long/short trading positions', () => {
 
     const expectedNewVaultBalance = initialVaultBalance.add(expectedProfit);
 
-    const newVaultBalance = await alice.vault.getBalance(alice.address);
+    const newVaultBalance = await alice.vault.getBalance(
+      alice.address,
+      alice.perpetual.address
+    );
 
     expect(expectedNewVaultBalance).to.equal(newVaultBalance);
   });
@@ -286,7 +294,10 @@ describe('Increment: open/close long/short trading positions', () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
-    const initialVaultBalance = await alice.vault.getBalance(alice.address);
+    const initialVaultBalance = await alice.vault.getBalance(
+      alice.address,
+      alice.perpetual.address
+    );
 
     const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
       VQUOTE_INDEX
@@ -327,7 +338,10 @@ describe('Increment: open/close long/short trading positions', () => {
 
     const expectedNewVaultBalance = initialVaultBalance.add(expectedProfit);
 
-    const newVaultBalance = await alice.vault.getBalance(alice.address);
+    const newVaultBalance = await alice.vault.getBalance(
+      alice.address,
+      alice.perpetual.address
+    );
 
     expect(expectedNewVaultBalance).to.equal(newVaultBalance);
   });

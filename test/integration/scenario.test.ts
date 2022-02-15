@@ -43,7 +43,10 @@ async function closePosition(user: User) {
 
   await user.perpetual.closePosition(sellAmount);
 
-  const userDeposits = await user.vault.getReserveValue(user.address);
+  const userDeposits = await user.vault.getReserveValue(
+    user.address,
+    user.perpetual.address
+  );
   await user.perpetual.withdraw(userDeposits, user.usdc.address);
 }
 

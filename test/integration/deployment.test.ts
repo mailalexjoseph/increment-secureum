@@ -23,9 +23,10 @@ describe('Increment Protocol: Deployment', function () {
     it('Should initialize Vault with its dependencies and Perpetual as its owner', async function () {
       const {deployer} = await setup();
 
-      expect(await deployer.vault.owner()).to.be.equal(
-        deployer.perpetual.address
-      );
+      expect(await deployer.vault.owner()).to.be.equal(deployer.address);
+      expect(await deployer.vault.owner()).to.be.equal(deployer.address);
+      expect(await deployer.vault.isAllowListed(deployer.perpetual.address)).to
+        .be.true;
       expect(await deployer.vault.reserveToken()).to.be.equal(
         deployer.usdc.address
       );
