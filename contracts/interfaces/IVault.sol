@@ -5,6 +5,7 @@ pragma solidity 0.8.4;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IChainlinkOracle} from "./IChainlinkOracle.sol";
 import {IPerpetual} from "./IPerpetual.sol";
+import {IInsurance} from "./IInsurance.sol";
 
 // @dev: deposit uint and withdraw int
 // @author: The interface used in other contracts
@@ -14,6 +15,8 @@ interface IVault {
     function chainlinkOracle() external view returns (IChainlinkOracle);
 
     function reserveToken() external view returns (IERC20);
+
+    function insurance() external view returns (IInsurance);
 
     function totalReserveToken() external view returns (uint256);
 

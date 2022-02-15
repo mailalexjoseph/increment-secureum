@@ -3,11 +3,8 @@ import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 import {expect} from 'chai';
 
-import {
-  getChainlinkOracle,
-  getPerpetualVersionToUse,
-} from '../helpers/contracts-deployments';
-
+import {getPerpetualVersionToUse} from '../helpers/contracts-deployments';
+import {getChainlinkOracle} from '../helpers/contracts-getters';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 

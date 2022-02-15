@@ -1,9 +1,12 @@
 import {expect} from 'chai';
+import env = require('hardhat');
 
 import {setup} from '../helpers/setup';
+import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
+import {getChainlinkPrice} from '../../helpers/contracts-getters';
 
-describe('Increment Protocol: Deployment', function () {
-  describe('Deployment', function () {
+describe.only('Increment Protocol: Deployment', function () {
+  describe.only('Deployment', function () {
     it('Should initialize Perpetual with its dependencies', async function () {
       const {deployer} = await setup();
 
@@ -50,112 +53,65 @@ describe('Increment Protocol: Deployment', function () {
       expect(await deployer.vQuote.symbol()).to.be.equal('vUSD');
     });
     it('Should initialize CurveSwap with correct parameters', async function () {
-      // const {deployer} = await setup();
-      // expect(await deployer.market.owner()).to.be.equal(deployer.address);
-      // console.log('await deployer.market.token()');
-      // console.log((await deployer.market.token()).toString());
-      // console.log('await deployer.market.A()');
-      // console.log((await deployer.market.A()).toString());
-      // console.log('await deployer.market.gamma()');
-      // console.log((await deployer.market.gamma()).toString());
-      // console.log('await deployer.market.price_scale()');
-      // console.log((await deployer.market.price_scale()).toString());
-      // console.log('await deployer.market.price_chainlinkOracle()');
-      // console.log((await deployer.market.price_chainlinkOracle()).toString());
-      // console.log('await deployer.market.last_prices()');
-      // console.log((await deployer.market.last_prices()).toString());
-      // console.log('await deployer.market.last_prices_timestamp()');
-      // console.log((await deployer.market.last_prices_timestamp()).toString());
-      // console.log('await deployer.market.initial_A_gamma()');
-      // console.log((await deployer.market.initial_A_gamma()).toString());
-      // console.log('await deployer.market.future_A_gamma()');
-      // console.log((await deployer.market.future_A_gamma()).toString());
-      // console.log('await deployer.market.initial_A_gamma_time()');
-      // console.log((await deployer.market.initial_A_gamma_time()).toString());
-      // console.log('await deployer.market.future_A_gamma_time()');
-      // console.log((await deployer.market.future_A_gamma_time()).toString());
-      // console.log('await deployer.market.allowed_extra_profit()');
-      // console.log((await deployer.market.allowed_extra_profit()).toString());
-      // console.log('await deployer.market.future_allowed_extra_profit()');
-      // console.log(
-      //   (await deployer.market.future_allowed_extra_profit()).toString()
-      // );
-      // console.log('await deployer.market.fee_gamma()');
-      // console.log((await deployer.market.fee_gamma()).toString());
-      // console.log('await deployer.market.future_fee_gamma()');
-      // console.log((await deployer.market.future_fee_gamma()).toString());
-      // console.log('await deployer.market.adjustment_step()');
-      // console.log((await deployer.market.adjustment_step()).toString());
-      // console.log('await deployer.market.future_adjustment_step()');
-      // console.log((await deployer.market.future_adjustment_step()).toString());
-      // console.log('await deployer.market.ma_half_time()');
-      // console.log((await deployer.market.ma_half_time()).toString());
-      // console.log('await deployer.market.future_ma_half_time()');
-      // console.log((await deployer.market.future_ma_half_time()).toString());
-      // console.log('await deployer.market.mid_fee()');
-      // console.log((await deployer.market.mid_fee()).toString());
-      // console.log('await deployer.market.out_fee()');
-      // console.log((await deployer.market.out_fee()).toString());
-      // console.log('await deployer.market.admin_fee()');
-      // console.log((await deployer.market.admin_fee()).toString());
-      // console.log('await deployer.market.future_mid_fee()');
-      // console.log((await deployer.market.future_mid_fee()).toString());
-      // console.log('await deployer.market.future_out_fee()');
-      // console.log((await deployer.market.future_out_fee()).toString());
-      // console.log('await deployer.market.future_admin_fee()');
-      // console.log((await deployer.market.future_admin_fee()).toString());
-      // console.log('await deployer.market.D()');
-      // console.log((await deployer.market.D()).toString());
-      // console.log('await deployer.market.owner()');
-      // console.log((await deployer.market.owner()).toString());
-      // console.log('await deployer.market.future_owner()');
-      // console.log((await deployer.market.future_owner()).toString());
-      // console.log('await deployer.market.xcp_profit()');
-      // console.log((await deployer.market.xcp_profit()).toString());
-      // console.log('await deployer.market.xcp_profit_a()');
-      // console.log((await deployer.market.xcp_profit_a()).toString());
-      // console.log('await deployer.market.virtual_price()');
-      // console.log((await deployer.market.virtual_price()).toString());
-      // console.log('await deployer.market.is_killed()');
-      // console.log((await deployer.market.is_killed()).toString());
-      // console.log('await deployer.market.kill_deadline()');
-      // console.log((await deployer.market.kill_deadline()).toString());
-      // console.log('await deployer.market.transfer_ownership_deadline()');
-      // console.log(
-      //   (await deployer.market.transfer_ownership_deadline()).toString()
-      // );
-      // console.log('await deployer.market.admin_actions_deadline()');
-      // console.log((await deployer.market.admin_actions_deadline()).toString());
-      // console.log('await deployer.market.admin_fee_receiver()');
-      // console.log((await deployer.market.admin_fee_receiver()).toString());
-      // /* fails */
-      // console.log('await deployer.market.fee()');
-      // console.log((await deployer.market.fee()).toString);
-      // console.log('await deployer.market.get_virtual_price()');
-      // console.log((await deployer.market.get_virtual_price()).toString());
-      // sound state changing to me :(
-      // await deployer.market.stop_ramp_A_gamma();
-      // await deployer.market.claim_admin_fees();
-      // await deployer.market.apply_new_parameters();
-      // await deployer.market.revert_new_parameters();
-      // await deployer.market.apply_transfer_ownership();
-      // await deployer.market.revert_transfer_ownership();
-      // await deployer.market.kill_me();
-      // await deployer.market.unkill_me();
-      // functions with input
-      // await deployer.market.coins(uint256) ;
-      // await deployer.market.exchange(uint256,uint256,uint256,uint256) ;
-      // await deployer.market.get_dy(uint256,uint256,uint256) ;
-      // await deployer.market.add_liquidity(uint256[2],uint256) ;
-      // await deployer.market.remove_liquidity(uint256,uint256[2]) ;
-      // await deployer.market.calc_token_amount(uint256[2]) ;
-      // await deployer.market.calc_withdraw_one_coin(uint256,uint256) ;
-      // await deployer.market.remove_liquidity_one_coin(uint256,uint256,uint256) ;
-      // await deployer.market.ramp_A_gamma(uint256,uint256,uint256) ;
-      // await deployer.market.commit_new_parameters(uint256,uint256,uint256,uint256,uint256,uint256,uint256) ;
-      // await deployer.market.commit_transfer_ownership(address) ;
-      // await deployer.market.set_admin_fee_receiver(address) ;
-      // await deployer.market.balances(uint256) ;
+      const {deployer} = await setup();
+
+      // change depending on pair you want to deploy
+      const initialPrice = await getChainlinkPrice(env, 'EUR_USD');
+      const args = getCryptoSwapConstructorArgs(
+        'EUR_USD',
+        deployer.vQuote.address,
+        deployer.vBase.address,
+        initialPrice
+      );
+
+      // coins
+      expect(await deployer.market.coins(0)).to.be.equal(args._coins[0]);
+      expect(await deployer.market.coins(1)).to.be.equal(args._coins[1]);
+      expect(await deployer.curveToken.minter()).to.be.equal(
+        deployer.market.address
+      );
+      expect(await deployer.market.token()).to.be.equal(
+        deployer.curveToken.address
+      );
+
+      // constructor parameters
+      expect(await deployer.market.A()).to.be.equal(args.A);
+      expect(await deployer.market.gamma()).to.be.equal(args.gamma);
+
+      expect(await deployer.market.mid_fee()).to.be.equal(args.mid_fee);
+      expect(await deployer.market.out_fee()).to.be.equal(args.out_fee);
+      expect(await deployer.market.allowed_extra_profit()).to.be.equal(
+        args.allowed_extra_profit
+      );
+      expect(await deployer.market.fee_gamma()).to.be.equal(args.fee_gamma);
+      expect(await deployer.market.adjustment_step()).to.be.equal(
+        args.adjustment_step
+      );
+      expect(await deployer.market.admin_fee()).to.be.equal(args.admin_fee);
+      expect(await deployer.market.ma_half_time()).to.be.equal(
+        args.ma_half_time
+      );
+
+      expect(await deployer.market.price_scale()).to.be.equal(
+        args.initial_price
+      );
+      expect(await deployer.market.price_oracle()).to.be.equal(
+        args.initial_price
+      );
+      expect(await deployer.market.last_prices()).to.be.equal(
+        args.initial_price
+      );
+    });
+    it('Should deploy Insurance with correct parameters', async function () {
+      const {deployer} = await setup();
+
+      expect(await deployer.insurance.token()).to.be.equal(
+        deployer.usdc.address
+      );
+      expect(await deployer.insurance.vault()).to.be.equal(
+        deployer.vault.address
+      );
+      expect(await deployer.insurance.owner()).to.be.equal(deployer.address);
     });
   });
 });

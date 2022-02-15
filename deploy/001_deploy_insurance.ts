@@ -1,22 +1,16 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
-import {ethers} from 'hardhat';
 
-import {getVaultConstructorArgs} from '../helpers/contracts-deployments';
+import {getReserveAddress} from '../helpers/contracts-getters';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const chainlinkOracle = await ethers.getContract('ChainlinkOracle', deployer);
+  const insuranceConstructorArgs = [getReserveAddress('USDC', hre)];
 
-  const vaultConstructorArgs = getVaultConstructorArgs(
-    hre,
-    chainlinkOracle.address
-  );
-
-  await hre.deployments.deploy('Vault', {
+  await hre.deployments.deploy('Insurance', {
     from: deployer,
-    args: vaultConstructorArgs,
+    args: insuranceConstructorArgs,
     log: true,
   });
 

@@ -13,7 +13,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
-  console.log('We have deployed the Chainklink TWAP oracle');
+  console.log('We have deployed the Chainlink TWAP oracle');
 };
 
 func.tags = ['ChainlinkTWAPOracle'];

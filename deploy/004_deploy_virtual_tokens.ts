@@ -10,14 +10,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await hre.deployments.deploy('VBase', {
     from: deployer,
-    args: ['Long EUR/USD', 'vEUR'],
+    args: ['vEUR base token', 'vEUR'],
     log: true,
   });
   console.log('We have deployed vEUR');
 
   await hre.deployments.deploy('VQuote', {
     from: deployer,
-    args: ['Short EUR/USD', 'vUSD'],
+    args: ['vUSD quote token', 'vUSD'],
     log: true,
   });
   console.log('We have deployed vUSD');

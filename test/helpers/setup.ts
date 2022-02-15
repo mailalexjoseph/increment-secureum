@@ -13,12 +13,7 @@ import {
   getCryptoSwapFactory,
   getCurveToken,
 } from '../../helpers/contracts-getters';
-import {
-  setupUser,
-  setupUsers,
-  logDeployments,
-  getEthereumNetworkFromHRE,
-} from '../../helpers/misc-utils';
+import {setupUser, setupUsers, logDeployments} from '../../helpers/misc-utils';
 import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
 import {fundAccountWithUSDC} from './utils/manipulateStorage';
 
@@ -31,6 +26,7 @@ import {
   TestPerpetual,
   Vault,
   VirtualToken,
+  Insurance,
 } from '../../typechain';
 import {BigNumber} from '../../helpers/types';
 import {
@@ -46,11 +42,12 @@ export type User = {address: string} & {
   vBase: VirtualToken;
   vQuote: VirtualToken;
   market: CurveCryptoSwap2ETH;
+  insurance: Insurance;
   factory: Factory;
   chainlinkOracle: ChainlinkOracle;
   chainlinkTWAPOracle: ChainlinkTWAPOracle;
   poolTWAPOracle: PoolTWAPOracle;
-  curve: CurveTokenV5;
+  curveToken: CurveTokenV5;
 };
 
 export interface TestEnv {
@@ -73,12 +70,13 @@ const getContracts = async (deply: string) => {
   return {
     factory: <Factory>factory,
     market: <CurveCryptoSwap2ETH>cryptoswap,
-    curve: <CurveTokenV5>await getCurveToken(cryptoswap),
+    curveToken: <CurveTokenV5>await getCurveToken(cryptoswap),
 
     vBase: <VirtualToken>await ethers.getContract('VBase', deply),
     vQuote: <VirtualToken>await ethers.getContract('VQuote', deply),
     vault: <Vault>await ethers.getContract('Vault', deply),
     perpetual: <TestPerpetual>await ethers.getContract('TestPerpetual', deply),
+    insurance: <Insurance>await ethers.getContract('Insurance', deply),
     usdc: <ERC20>await ethers.getContractAt('ERC20', usdcAddress, deply),
     chainlinkOracle: <ChainlinkOracle>(
       await ethers.getContract('ChainlinkOracle', deply)

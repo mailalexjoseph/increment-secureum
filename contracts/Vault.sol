@@ -34,6 +34,7 @@ contract Vault is IVault, Context, IncreOwnable {
 
     // state
     IChainlinkOracle public immutable override chainlinkOracle;
+    IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
     uint256 public override totalReserveToken;
 
@@ -43,17 +44,26 @@ contract Vault is IVault, Context, IncreOwnable {
     // allow listed markets
     mapping(IPerpetual => bool) private allowListedMarkets;
 
-    constructor(IChainlinkOracle _chainlinkOracle, IERC20 _reserveToken) {
+    // bad debt
+    uint256 private badDebt;
+
+    constructor(
+        IChainlinkOracle _chainlinkOracle,
+        IERC20 _reserveToken,
+        IInsurance _insurance
+    ) public {
         require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
             IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS,
             "Has to have not more than 18 decimals"
         );
+        require(address(_insurance) != address(0), "Insurance can not be zero address");
 
         // set contract addresses
         chainlinkOracle = _chainlinkOracle;
         reserveToken = _reserveToken;
+        insurance = _insurance;
 
         // set other parameters
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
@@ -141,6 +151,11 @@ contract Vault is IVault, Context, IncreOwnable {
 
         //    console.log("Withdrawing for user (raw)", rawTokenAmount);
         // perform transfer
+        if (withdrawToken.balanceOf(address(this)) < rawTokenAmount) {
+            uint256 borrowedAmount = rawTokenAmount - withdrawToken.balanceOf(address(this));
+            insurance.settleDebt(borrowedAmount);
+            badDebt += borrowedAmount;
+        }
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
 
         return rawTokenAmount;

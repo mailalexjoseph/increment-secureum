@@ -513,10 +513,10 @@ describe('Increment App: Scenario', function () {
 //   console.log(
 //     'perpetual owns',
 //     ethers.utils.formatUnits(
-//       await user.curve.balanceOf(user.perpetual.address),
-//       await user.curve.decimals()
+//       await user.curveToken.balanceOf(user.perpetual.address),
+//       await user.curveToken.decimals()
 //     ),
-//     'curve'
+//     'curveToken'
 //   );
 // }
 
