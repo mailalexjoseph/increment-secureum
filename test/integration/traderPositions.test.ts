@@ -195,11 +195,30 @@ describe('Increment: open/close long/short trading positions', () => {
       alice.address
     );
 
+    const perpetualVQuoteAmountBeforeOpenPosition =
+      await alice.vQuote.balanceOf(alice.perpetual.address);
+
     await alice.perpetual.openPosition(depositAmount.div(10), Side.Short);
+
+    const perpetualVQuoteAmountAfterOpenPosition = await alice.vQuote.balanceOf(
+      alice.perpetual.address
+    );
+
+    expect(perpetualVQuoteAmountBeforeOpenPosition).to.eq(
+      perpetualVQuoteAmountAfterOpenPosition
+    );
+
     await alice.perpetual.closePosition(
       (
         await alice.perpetual.getTraderPosition(alice.address)
       ).positionSize.mul(-1) // because it's a short position
+    );
+
+    const perpetualVQuoteAmountAfterClosePosition =
+      await alice.vQuote.balanceOf(alice.perpetual.address);
+
+    expect(perpetualVQuoteAmountBeforeOpenPosition).to.eq(
+      perpetualVQuoteAmountAfterClosePosition
     );
 
     const aliceUserPosition = await alice.perpetual.getTraderPosition(

@@ -220,9 +220,21 @@ describe('Increment App: Liquidity', function () {
           await user.perpetual.getLpPosition(user.address)
         ).liquidityBalance;
 
+        const perpetualVQuoteAmountBeforeWithdraw = await user.vQuote.balanceOf(
+          user.perpetual.address
+        );
+
         await expect(user.perpetual.removeLiquidity(providedLiquidity))
           .to.emit(user.perpetual, 'LiquidityRemoved')
           .withArgs(user.address, providedLiquidity);
+
+        const perpetualVQuoteAmountAfterWithdraw = await user.vQuote.balanceOf(
+          user.perpetual.address
+        );
+
+        expect(perpetualVQuoteAmountBeforeWithdraw).to.eq(
+          perpetualVQuoteAmountAfterWithdraw
+        );
       });
 
       it('Should remove correct amount of liquidity from pool', async function () {

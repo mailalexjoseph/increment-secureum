@@ -352,6 +352,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
             quoteAmount = vQuoteBalanceAfter - vQuoteBalanceBefore;
             baseAmount = vBaseBalanceAfter - vBaseBalanceBefore;
+
+            vQuote.burn(quoteAmount);
+            vBase.burn(baseAmount);
         }
 
         // add the amounts received from the pool
@@ -495,11 +498,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         bool isLong = positionSize > 0 ? true : false;
         uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
         if (isLong) {
-            vBase.mint(position);
             uint256 amount = _baseForQuote(position, 0);
             vQuoteProceeds = amount.toInt256();
         } else {
-            vQuote.mint(tentativeVQuoteAmount);
             uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, 0);
 
             require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
@@ -518,7 +519,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // slither-disable-next-line unused-return
         try market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount) {
             vQuote.mint(quoteAmount);
-            return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
+            uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
+            vBase.burn(vBaseReceived);
+            return vBaseReceived;
         } catch {
             emit Log(
                 "Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange"
@@ -530,7 +533,9 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // slither-disable-next-line unused-return
         try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseAmount) {
             vBase.mint(baseAmount);
-            return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
+            uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
+            vQuote.burn(vQuoteReceived);
+            return vQuoteReceived;
         } catch {
             emit Log(
                 "Incorrect amount, submit a bigger value or one matching more closely the amount of vBase needed to perform the exchange"
