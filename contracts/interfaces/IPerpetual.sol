@@ -37,7 +37,8 @@ interface IPerpetual {
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, uint256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
     event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
-    event LiquidityWithdrawn(address indexed liquidityProvider, address indexed asset, uint256 amount);
+    event LiquidityRemoved(address indexed liquidityProvider, uint256 amount);
+    event LiquidityWithdrawn(address indexed liquidityProvider);
     event Log(string errorMessage);
 
     function market() external view returns (ICryptoSwap);
@@ -81,9 +82,7 @@ interface IPerpetual {
     // liquidator provider functions
     function provideLiquidity(uint256 amount, IERC20 token) external returns (uint256, uint256);
 
-    function withdrawLiquidity(
-        uint256 amount,
-        IERC20 token,
-        uint256 tentativeVQuoteAmount
-    ) external;
+    function removeLiquidity(uint256 amount) external;
+
+    function settleAndWithdrawLiquidity(uint256 tentativeVQuoteAmount) external;
 }

@@ -48,10 +48,10 @@ async function closePosition(user: User) {
 }
 
 async function withdrawLiquidity(user: User) {
-  const providedLiquidity = (await user.perpetual.getLpPosition(user.address))
-    .liquidityBalance;
+  const userLpPosition = await user.perpetual.getLpPosition(user.address);
+  const providedLiquidity = userLpPosition.liquidityBalance;
 
-  await user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address);
+  await user.perpetual.removeLiquidity(providedLiquidity);
 
   // console.log('**********After withdrawing liquidity**********');
   // await logMarketBalance(user);

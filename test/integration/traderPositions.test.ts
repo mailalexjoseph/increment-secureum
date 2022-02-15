@@ -55,25 +55,30 @@ describe('Increment: open/close long/short trading positions', () => {
   it('Should fail if the pool has no liquidity in it', async () => {
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
     // no error message as the code fails with the pool
-    await expect(alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)).to.be
-      .reverted;
+    await expect(
+      alice.perpetual.openPositionWithUSDC(aliceUSDCAmount, Side.Long)
+    )
+      .to.emit(alice.perpetual, 'Log')
+      .withArgs(
+        'Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange'
+      );
   });
 
   it('Should fail if the amount is null', async () => {
-    await expect(alice.perpetual.openPosition(0, Side.Long)).to.be.revertedWith(
-      "The amount can't be null"
-    );
+    await expect(
+      alice.perpetual.openPositionWithUSDC(0, Side.Long)
+    ).to.be.revertedWith("The amount can't be null");
   });
 
   it('Should fail if user already has an open position on this market', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
-    await alice.perpetual.openPosition(aliceUSDCAmount, Side.Long);
+    await alice.perpetual.openPositionWithUSDC(aliceUSDCAmount, Side.Long);
 
     // try to create a new trader position for Alice
     await expect(
-      alice.perpetual.openPosition(aliceUSDCAmount, Side.Long)
+      alice.perpetual.openPositionWithUSDC(aliceUSDCAmount, Side.Long)
     ).to.be.revertedWith('Cannot open a position with one already opened');
   });
 

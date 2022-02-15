@@ -222,82 +222,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         delete traderPosition[_msgSender()];
     }
 
-    /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
-    /// @notice profit is the sum of funding payments and the position PnL
-    function _closePosition(
-        LibPerpetual.UserPosition storage trader,
-        LibPerpetual.GlobalPosition storage global,
-        uint256 tentativeVQuoteAmount
-    ) internal returns (int256 profit) {
-        bool isShort = trader.positionSize < 0 ? true : false;
-        if (isShort) {
-            // check that `tentativeVQuoteAmount` isn't too far from the value in the market
-            // to avoid creating large swings in the market (eventhough these swings would be cancelled out
-            // by the fact that we sell any extra vBase bought)
-            int256 marketEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-            // USD_amount = EUR_USD * EUR_amount
-            int256 positivePositionSize = -trader.positionSize;
-            int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
-
-            int256 deviation = LibMath.wadDiv(
-                LibMath.abs(tentativeVQuoteAmount.toInt256() - reasonableVQuoteAmount),
-                reasonableVQuoteAmount
-            );
-
-            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
-            require(deviation < 5e17, "Amount submitted too far from the market price of the position");
-        }
-
-        // update profit using funding payment info in the `global` struct
-        profit += _settleFundingRate(trader, global);
-
-        // pnL of the position
-        profit += _closePositionOnMarket(trader.positionSize, tentativeVQuoteAmount) + trader.openNotional;
-    }
-
-    /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
-    function _closePositionOnMarket(int256 positionSize, uint256 tentativeVQuoteAmount)
-        internal
-        returns (int256 vQuoteProceeds)
-    {
-        bool isLong = positionSize > 0 ? true : false;
-        uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
-        if (isLong) {
-            vBase.mint(position);
-            uint256 amount = _baseForQuote(position, 0);
-            vQuoteProceeds = amount.toInt256();
-        } else {
-            vQuote.mint(tentativeVQuoteAmount);
-            uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, 0);
-            require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
-
-            uint256 baseRemaining = vBaseProceeds - position;
-            uint256 additionalProceeds = 0;
-            if (baseRemaining > 0) {
-                // slither-disable-next-line unused-return
-                try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseRemaining) {
-                    additionalProceeds = _baseForQuote(baseRemaining, 0);
-                } catch {
-                    emit Log(
-                        "Incorrect tentativeVQuoteAmount, submit a bigger value or one matching more closely the amount of vQuote needed to buy back the short position"
-                    );
-                }
-            }
-            // sell all remaining tokens
-            vQuoteProceeds = -tentativeVQuoteAmount.toInt256() + additionalProceeds.toInt256();
-        }
-    }
-
-    function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
-        vQuote.mint(quoteAmount);
-        return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
-    }
-
-    function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        vBase.mint(baseAmount);
-        return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
-    }
-
     function marginIsValid(address account, int256 ratio) public view override returns (bool) {
         // slither-disable-next-line timestamp
         return marginRatio(account) >= ratio;
@@ -399,19 +323,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return (wadAmount, baseAmount);
     }
 
-    /// @notice Withdraw liquidity from the pool
+    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
     /// @param amount of liquidity to be removed from the pool (with 18 decimals)
-    /// @param  token to be removed from the pool
-    function withdrawLiquidity(
-        uint256 amount,
-        IERC20 token,
-        uint256 tentativeVQuoteAmount
-    ) external override {
+    function removeLiquidity(uint256 amount) external override {
         // TODO: should we just hardcode amount here?
         address sender = _msgSender();
-
         LibPerpetual.UserPosition storage lp = lpPosition[sender];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
 
         // slither-disable-next-line incorrect-equality
         require(amount <= lp.liquidityBalance, "Not enough liquidity provided"); //TODO: can we loosen this?
@@ -441,19 +358,27 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         lp.openNotional += quoteAmount.toInt256();
         lp.positionSize += baseAmount.toInt256();
 
-        // profit     =                 pnL                                + fundingPayments
-        int256 profit = _closePosition(lp, global, tentativeVQuoteAmount) + _settleFundingRate(lp, global);
+        emit LiquidityRemoved(sender, amount);
+    }
+
+    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
+    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
+    function settleAndWithdrawLiquidity(uint256 tentativeVQuoteAmount) external override {
+        address sender = _msgSender();
+
+        LibPerpetual.UserPosition storage lp = lpPosition[sender];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+
+        // profit = pnl + fundingPayments
+        int256 profit = _closePosition(lp, global, tentativeVQuoteAmount);
         vault.settleProfit(sender, profit);
 
         // remove the liquidity provider from the list
-        // slither-disable-next-line incorrect-equality
-        if (lp.liquidityBalance == 0) {
-            // slither-disable-next-line unused-return // can be zero amount
-            vault.withdrawAll(sender, token);
-            delete lpPosition[sender];
-        }
+        // slither-disable-next-line unused-return // can be zero amount
+        vault.withdrawAll(sender, vault.reserveToken());
+        delete lpPosition[sender];
 
-        emit LiquidityWithdrawn(sender, address(token), amount);
+        emit LiquidityWithdrawn(sender);
     }
 
     ///// COMMON OPERATIONS \\\\\
@@ -527,6 +452,90 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         chainlinkTWAPOracle.updateEURUSDTWAP();
         poolTWAPOracle.updateEURUSDTWAP();
         updateFundingRate();
+    }
+
+    /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
+    /// @notice profit is the sum of funding payments and the position PnL
+    function _closePosition(
+        LibPerpetual.UserPosition storage user,
+        LibPerpetual.GlobalPosition storage global,
+        uint256 tentativeVQuoteAmount
+    ) internal returns (int256 profit) {
+        bool isShort = user.positionSize < 0 ? true : false;
+        if (isShort) {
+            // check that `tentativeVQuoteAmount` isn't too far from the value in the market
+            // to avoid creating large swings in the market (eventhough these swings would be cancelled out
+            // by the fact that we sell any extra vBase bought)
+            int256 marketEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+            // USD_amount = EUR_USD * EUR_amount
+            int256 positivePositionSize = -user.positionSize;
+            int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
+
+            int256 deviation = LibMath.wadDiv(
+                LibMath.abs(tentativeVQuoteAmount.toInt256() - reasonableVQuoteAmount),
+                reasonableVQuoteAmount
+            );
+
+            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
+            require(deviation < 5e17, "Amount submitted too far from the market price of the position");
+        }
+
+        // update profit using funding payment info in the `global` struct
+        profit += _settleFundingRate(user, global);
+
+        // pnL of the position
+        profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
+    }
+
+    /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
+    function _closePositionOnMarket(int256 positionSize, uint256 tentativeVQuoteAmount)
+        internal
+        returns (int256 vQuoteProceeds)
+    {
+        bool isLong = positionSize > 0 ? true : false;
+        uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
+        if (isLong) {
+            vBase.mint(position);
+            uint256 amount = _baseForQuote(position, 0);
+            vQuoteProceeds = amount.toInt256();
+        } else {
+            vQuote.mint(tentativeVQuoteAmount);
+            uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, 0);
+
+            require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
+
+            uint256 baseRemaining = vBaseProceeds - position;
+            uint256 additionalProceeds = 0;
+            if (baseRemaining > 0) {
+                additionalProceeds = _baseForQuote(baseRemaining, 0);
+            }
+            // sell all remaining tokens
+            vQuoteProceeds = -tentativeVQuoteAmount.toInt256() + additionalProceeds.toInt256();
+        }
+    }
+
+    function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
+        // slither-disable-next-line unused-return
+        try market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount) {
+            vQuote.mint(quoteAmount);
+            return market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
+        } catch {
+            emit Log(
+                "Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange"
+            );
+        }
+    }
+
+    function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
+        // slither-disable-next-line unused-return
+        try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseAmount) {
+            vBase.mint(baseAmount);
+            return market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
+        } catch {
+            emit Log(
+                "Incorrect amount, submit a bigger value or one matching more closely the amount of vBase needed to perform the exchange"
+            );
+        }
     }
 
     /// @notice Return the current market price

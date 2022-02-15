@@ -17,7 +17,7 @@ library LibPerpetual {
         int256 openNotional; // vQuote
         int256 positionSize; // vBase
         int256 cumFundingRate;
-        uint256 liquidityBalance; // traders don't use this
+        uint256 liquidityBalance; // LP token amount (traders don't use it)
     }
 
     struct GlobalPosition {

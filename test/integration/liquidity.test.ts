@@ -149,7 +149,7 @@ describe('Increment App: Liquidity', function () {
     describe('Can withdraw liquidity from the curve pool', async function () {
       it('Should not allow to withdraw liquidity when non provided', async function () {
         await expect(
-          user.perpetual.withdrawLiquidity(asBigNumber('1'), user.usdc.address)
+          user.perpetual.removeLiquidity(asBigNumber('1'))
         ).to.be.revertedWith('Not enough liquidity provided');
       });
 
@@ -166,9 +166,8 @@ describe('Increment App: Liquidity', function () {
         ).liquidityBalance;
 
         await expect(
-          user.perpetual.withdrawLiquidity(
-            providedLiquidity.add(BigNumber.from('1')),
-            user.usdc.address
+          user.perpetual.removeLiquidity(
+            providedLiquidity.add(BigNumber.from('1'))
           )
         ).to.be.revertedWith('Not enough liquidity provided');
       });
@@ -198,13 +197,20 @@ describe('Increment App: Liquidity', function () {
 
         // try withdrawal from pool:
         await expect(
-          user.perpetual.withdrawLiquidity(liquidityAmount, user.usdc.address)
+          user.perpetual.removeLiquidity(liquidityAmount)
         ).to.be.revertedWith('');
       });
 
-      it('Should allow to withdraw liquidity, emit event', async function () {
+      it('Should allow to remove liquidity from pool, emit event', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+
+        // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
+        // and -1) for market.exchange to work when closing the PnL of the position
+        await bob.perpetual.provideLiquidity(
           liquidityAmount,
           user.usdc.address
         );
@@ -214,14 +220,12 @@ describe('Increment App: Liquidity', function () {
           await user.perpetual.getLpPosition(user.address)
         ).liquidityBalance;
 
-        await expect(
-          user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address)
-        )
-          .to.emit(user.perpetual, 'LiquidityWithdrawn')
-          .withArgs(user.address, user.usdc.address, providedLiquidity);
+        await expect(user.perpetual.removeLiquidity(providedLiquidity))
+          .to.emit(user.perpetual, 'LiquidityRemoved')
+          .withArgs(user.address, providedLiquidity);
       });
 
-      it('Should withdraw correct amount of liquidity', async function () {
+      it('Should remove correct amount of liquidity from pool', async function () {
         // deposit
         await user.perpetual.provideLiquidity(
           liquidityAmount,
@@ -230,7 +234,7 @@ describe('Increment App: Liquidity', function () {
         const userBalanceAfter = await user.usdc.balanceOf(user.address);
         expect(userBalanceAfter).to.be.equal(0);
 
-        //withdraw;
+        // withdraw
         const positionBefore = await user.perpetual.getLpPosition(user.address);
 
         const dust = await TEST_dust_remove_liquidity(
@@ -241,17 +245,10 @@ describe('Increment App: Liquidity', function () {
         );
 
         await expect(
-          user.perpetual.withdrawLiquidity(
-            positionBefore.liquidityBalance,
-            user.usdc.address
-          )
+          user.perpetual.removeLiquidity(positionBefore.liquidityBalance)
         )
-          .to.emit(user.perpetual, 'LiquidityWithdrawn')
-          .withArgs(
-            user.address,
-            user.usdc.address,
-            positionBefore.liquidityBalance
-          );
+          .to.emit(user.perpetual, 'LiquidityRemoved')
+          .withArgs(user.address, positionBefore.liquidityBalance);
 
         const positionAfter = await user.perpetual.getLpPosition(user.address);
 
@@ -260,7 +257,42 @@ describe('Increment App: Liquidity', function () {
         expect(positionAfter.positionSize).to.be.equal(-dust.base);
         expect(positionAfter.openNotional).to.be.equal(-dust.quote);
       });
+
+      it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
+        // deposit
+        await user.perpetual.provideLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+
+        // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
+        // and -1) for market.exchange to work when closing the PnL of the position
+        await bob.perpetual.provideLiquidity(
+          liquidityAmount,
+          user.usdc.address
+        );
+
+        // withdraw
+        const providedLiquidity = (
+          await user.perpetual.getLpPosition(user.address)
+        ).liquidityBalance;
+
+        await expect(user.perpetual.removeLiquidity(providedLiquidity))
+          .to.emit(user.perpetual, 'LiquidityRemoved')
+          .withArgs(user.address, providedLiquidity);
+
+        await user.perpetual.settleAndWithdrawLiquidity(0);
+
+        const positionAfter = await user.perpetual.getLpPosition(user.address);
+
+        // everything should be set to 0
+        expect(positionAfter.liquidityBalance).to.be.equal(0);
+        expect(positionAfter.cumFundingRate).to.be.equal(0);
+        expect(positionAfter.positionSize).to.be.equal(0);
+        expect(positionAfter.openNotional).to.be.equal(0);
+      });
     });
+
     describe('Misc', async function () {
       it('Should emit provide liquidity event in the curve pool', async function () {
         const price = await user.perpetual.indexPrice(); // valid for first deposit
