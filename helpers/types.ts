@@ -72,7 +72,7 @@ export interface ITokenAddress {
 /********************** CONTRACT TYPES **************************/
 
 export interface IChainlinkOracleConfig {
-  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
+  priceOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
 
 export interface IVaultConfiguration {

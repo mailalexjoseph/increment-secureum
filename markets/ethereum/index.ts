@@ -2,10 +2,14 @@ import {eEthereumNetwork} from '../../helpers/types';
 import {BigNumber} from 'ethers';
 import {utils} from 'ethers';
 
-import {IVaultConfiguration, ICryptoSwapConfig} from '../../helpers/types';
+import {
+  IVaultConfiguration,
+  ICryptoSwapConfig,
+  IChainlinkOracleConfig,
+} from '../../helpers/types';
 
 // ----------------
-// COMMON PROTOCOL PARAMS ACROSS NETWORKS
+// CURVE CONFIGURATION
 // ----------------
 
 export const cryptoSwapConfig: ICryptoSwapConfig = {
@@ -34,24 +38,26 @@ export const cryptoSwapConfig: ICryptoSwapConfig = {
 // Chainlink Oracles
 // ----------------
 
-export const chainlinkOracles = {
-  [eEthereumNetwork.hardhat]: {
-    USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
-    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
-    EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-    FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
-  },
-  [eEthereumNetwork.kovan]: {
-    USDC: '0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60',
-    JPY_USD: '0xD627B1eF3AC23F1d3e576FA6206126F3c1Bd0942',
-    EUR_USD: '0x0c15Ab9A0DB086e062194c273CC79f41597Bbf13',
-    FEED_REGISTRY: '0xAa7F6f7f507457a1EE157fE97F6c7DB2BEec5cD0',
-  },
-  [eEthereumNetwork.main]: {
-    USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
-    JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
-    EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
-    FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
+export const chainlinkOracles: IChainlinkOracleConfig = {
+  priceOracles: {
+    [eEthereumNetwork.hardhat]: {
+      USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
+      JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
+      EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
+      FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
+    },
+    [eEthereumNetwork.kovan]: {
+      USDC: '0x9211c6b3BF41A10F78539810Cf5c64e1BB78Ec60',
+      JPY_USD: '0xD627B1eF3AC23F1d3e576FA6206126F3c1Bd0942',
+      EUR_USD: '0x0c15Ab9A0DB086e062194c273CC79f41597Bbf13',
+      FEED_REGISTRY: '0xAa7F6f7f507457a1EE157fE97F6c7DB2BEec5cD0',
+    },
+    [eEthereumNetwork.main]: {
+      USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
+      JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
+      EUR_USD: '0xb49f677943BC038e9857d61E7d053CaA2C1734C1',
+      FEED_REGISTRY: '0x47Fb2585D2C56Fe188D0E6ec628a38b74fCeeeDf',
+    },
   },
 };
 
@@ -72,7 +78,7 @@ export const integrations = {
   },
   [eEthereumNetwork.kovan]: {
     AAVE_CONTRACTS_GATEWAY: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
-    CURVE_FACTORY_CONTRACT: undefined,
+    CURVE_FACTORY_CONTRACT: '',
   },
   [eEthereumNetwork.main]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',

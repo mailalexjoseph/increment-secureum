@@ -5,7 +5,7 @@ import {setup, funding, User} from '../helpers/setup';
 import {ethers} from 'hardhat';
 import {BigNumber} from 'ethers';
 import {Side} from '../helpers/utils/types';
-import {getChainlinkOracle} from '../../helpers/contracts-deployments';
+import {getChainlinkOracle} from '../../helpers/contracts-getters';
 
 import {setLatestChainlinkPrice} from '../helpers/utils/manipulateStorage';
 import {AggregatorV3Interface} from '../../typechain';

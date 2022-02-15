@@ -1,5 +1,5 @@
-import {VaultConfig, ChainlinkOracleConfig} from '../markets/ethereum';
-import {eEthereumNetwork, tEthereumAddress} from './types';
+import {VaultConfig, chainlinkOracles} from '../markets/ethereum';
+import {tEthereumAddress} from './types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {
   CurveTokenV5,
@@ -19,25 +19,14 @@ import {ethers} from 'hardhat';
 export function getCurveFactoryAddress(
   hre: HardhatRuntimeEnvironment
 ): tEthereumAddress {
-  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
-  return integrations[ethereumNetwork].CURVE_FACTORY_CONTRACT;
+  return integrations[getEthereumNetworkFromHRE(hre)].CURVE_FACTORY_CONTRACT;
 }
 
 export function getChainlinkOracle(
   hre: HardhatRuntimeEnvironment,
-  name: string
+  pair: string
 ): tEthereumAddress {
-  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
-  return ChainlinkOracleConfig.ChainlinkOracles[ethereumNetwork][name];
-}
-
-export function getPerpetualVersionToUse(
-  hre: HardhatRuntimeEnvironment
-): string {
-  if (getEthereumNetworkFromHRE(hre) === eEthereumNetwork.hardhat) {
-    return 'TestPerpetual';
-  }
-  return 'Perpetual';
+  return chainlinkOracles.priceOracles[getEthereumNetworkFromHRE(hre)][pair];
 }
 
 export async function getChainlinkPrice(
@@ -103,26 +92,22 @@ export async function getCurveToken(
 
 export function getReserveAddress(
   reserveAssetName: string,
-  network: eEthereumNetwork = eEthereumNetwork.main
+  hre: HardhatRuntimeEnvironment
 ): tEthereumAddress {
-  return VaultConfig.ReserveAssets[network][reserveAssetName];
-}
-
-export function getReserveChainlinkOracleAddress(
-  reserveAssetName: string,
-  network: eEthereumNetwork = eEthereumNetwork.main
-): tEthereumAddress {
-  return VaultConfig.ChainlinkOracles[network][reserveAssetName];
+  return VaultConfig.ReserveAssets[getEthereumNetworkFromHRE(hre)][
+    reserveAssetName
+  ];
 }
 
 export function getLendingPoolAddressProvider(
-  network: eEthereumNetwork = eEthereumNetwork.main
+  hre: HardhatRuntimeEnvironment
 ): tEthereumAddress {
-  return VaultConfig.Integrations[network].lendingPoolAddressProvider;
+  return integrations[getEthereumNetworkFromHRE(hre)].AAVE_CONTRACTS_GATEWAY;
 }
 
 export function getFeedRegistryAddress(
-  network: eEthereumNetwork = eEthereumNetwork.main
+  hre: HardhatRuntimeEnvironment
 ): tEthereumAddress {
-  return ChainlinkOracleConfig.ChainlinkOracles[network].FEED_REGISTRY;
+  return chainlinkOracles.priceOracles[getEthereumNetworkFromHRE(hre)]
+    .FEED_REGISTRY;
 }

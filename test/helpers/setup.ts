@@ -65,7 +65,7 @@ export interface TestEnv {
 
 /// @notice: get all deployed contracts
 const getContracts = async (deply: string) => {
-  const usdcAddress = getReserveAddress('USDC', getEthereumNetworkFromHRE(env));
+  const usdcAddress = getReserveAddress('USDC', env);
 
   const factory = await getCryptoSwapFactory(env);
   const cryptoswap = await getCryptoSwap(factory);

@@ -2,12 +2,23 @@ import {
   CurveCryptoSwapTestConstructorArguments,
   CurveCryptoSwap2ETHConstructorArguments,
   tEthereumAddress,
+  eEthereumNetwork,
 } from '../helpers/types';
-
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {cryptoSwapConfig} from '../markets/ethereum';
 
 import {utils, BigNumber} from 'ethers';
 import {ZERO_ADDRESS} from './constants';
+import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
+
+export function getPerpetualVersionToUse(
+  hre: HardhatRuntimeEnvironment
+): string {
+  if (getEthereumNetworkFromHRE(hre) === eEthereumNetwork.hardhat) {
+    return 'TestPerpetual';
+  }
+  return 'Perpetual';
+}
 
 // constructor variables for factory deployments of Curve Crypto Contracts
 // https://github.com/curvefi/curve-factory-crypto/blob/e2a59ab163b5b715b38500585a5d1d9c0671eb34/contracts/Factory.vy#L151-L164

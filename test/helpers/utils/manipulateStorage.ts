@@ -17,9 +17,7 @@ export async function fundAccountWithUSDC(
   account: tEthereumAddress,
   amount: BigNumber
 ): Promise<void> {
-  if (
-    usdc.address != getReserveAddress('USDC', getEthereumNetworkFromHRE(hre))
-  ) {
+  if (usdc.address != getReserveAddress('USDC', hre)) {
     throw new Error('USDC contract address does not match');
   } else {
     const USDC_ADDRESS = usdc.address;

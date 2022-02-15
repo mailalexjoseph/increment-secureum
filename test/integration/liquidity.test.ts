@@ -11,7 +11,7 @@ import {
   setupUser,
 } from '../../helpers/misc-utils';
 import {TEST_dust_remove_liquidity} from '../helpers/CurveUtils';
-import {getChainlinkPrice} from '../../helpers/contracts-deployments';
+import {getChainlinkPrice} from '../../helpers/contracts-getters';
 import {asBigNumber, rDiv} from '../helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from '../helpers/utils/types';
