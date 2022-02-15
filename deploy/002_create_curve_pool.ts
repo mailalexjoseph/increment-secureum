@@ -1,10 +1,10 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {getCryptoSwapConstructorArgs} from '../helpers/contracts-deployments';
 import {
-  getCryptoSwapConstructorArgs,
+  getCryptoSwapFactory,
   getChainlinkPrice,
-} from '../helpers/contracts-deployments';
-import {getCryptoSwapFactory} from '../helpers/contracts-getters';
+} from '../helpers/contracts-getters';
 import {ethers} from 'hardhat';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -21,8 +21,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
 
   const args = getCryptoSwapConstructorArgs(
-    'vEUR/vUSD',
-    'EURUSD',
+    'EUR_USD',
     vUSD.address,
     vEUR.address,
     initialPrice

@@ -10,8 +10,57 @@ import {
   Factory__factory,
 } from '../contracts-vyper/typechain';
 
-import {getCurveFactoryAddress} from './contracts-deployments';
+import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
+import {integrations} from '../markets/ethereum';
+import {BigNumber} from 'ethers';
+
 import {ethers} from 'hardhat';
+
+export function getCurveFactoryAddress(
+  hre: HardhatRuntimeEnvironment
+): tEthereumAddress {
+  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
+  return integrations[ethereumNetwork].CURVE_FACTORY_CONTRACT;
+}
+
+export function getChainlinkOracle(
+  hre: HardhatRuntimeEnvironment,
+  name: string
+): tEthereumAddress {
+  const ethereumNetwork = getEthereumNetworkFromHRE(hre);
+  return ChainlinkOracleConfig.ChainlinkOracles[ethereumNetwork][name];
+}
+
+export function getPerpetualVersionToUse(
+  hre: HardhatRuntimeEnvironment
+): string {
+  if (getEthereumNetworkFromHRE(hre) === eEthereumNetwork.hardhat) {
+    return 'TestPerpetual';
+  }
+  return 'Perpetual';
+}
+
+export async function getChainlinkPrice(
+  hre: HardhatRuntimeEnvironment,
+  pair: string
+): Promise<BigNumber> {
+  /* We have to use the chainlink price here since we use the oracle price to distribute the initial liquidity
+  in the perpetual contracts. In case the price changes during deployment, the deployment could (potentially) fail.
+  */
+  const chainlinkOracle = await hre.ethers.getContractAt(
+    'AggregatorV3Interface',
+    getChainlinkOracle(hre, pair)
+  );
+  if (!chainlinkOracle) {
+    throw new Error(
+      `Could not get chainlink oracle for ${pair}, on network ${hre.network}`
+    );
+  }
+  const answer = await chainlinkOracle.latestRoundData();
+  const decimals = await chainlinkOracle.decimals();
+  const priceAsString = hre.ethers.utils.formatUnits(answer.answer, decimals);
+  return hre.ethers.utils.parseEther(priceAsString);
+}
 
 export async function getCryptoSwapFactory(
   hre: HardhatRuntimeEnvironment

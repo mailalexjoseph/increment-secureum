@@ -1,28 +1,40 @@
 import {eEthereumNetwork} from '../../helpers/types';
-import {ZERO_ADDRESS} from '../../helpers/constants';
+import {BigNumber} from 'ethers';
+import {utils} from 'ethers';
 
-import {
-  IReserveParams,
-  IVaultConfiguration,
-  IChainlinkOracleConfig,
-} from '../../helpers/types';
+import {IVaultConfiguration, ICryptoSwapConfig} from '../../helpers/types';
 
 // ----------------
-// Reserve Assets
+// COMMON PROTOCOL PARAMS ACROSS NETWORKS
 // ----------------
 
-const strategyUSDC: IReserveParams = {
-  baseLTVAsCollateral: 'tbd',
-  liquidationThreshold: 'tbd',
-  reserveDecimals: '6',
-  reserveFactor: 'tbd',
+export const cryptoSwapConfig: ICryptoSwapConfig = {
+  markets: {
+    EUR_USD: {
+      _name: 'vEUR/vUSD',
+      _symbol: 'EURUSD',
+      _coins: ['', ''],
+      A: BigNumber.from(5000)
+        .mul(2 ** 2)
+        .mul(10000),
+      gamma: utils.parseEther('0.0001'),
+      mid_fee: utils.parseUnits('0.0005', 10),
+      out_fee: utils.parseUnits('0.0045', 10),
+      allowed_extra_profit: utils.parseUnits('10', 10),
+      fee_gamma: utils.parseEther('0.005'),
+      adjustment_step: utils.parseEther('0.0000055'),
+      admin_fee: utils.parseUnits('5', 9),
+      ma_half_time: BigNumber.from(600),
+      initial_price: utils.parseEther('0'),
+    },
+  },
 };
 
 // ----------------
 // Chainlink Oracles
 // ----------------
 
-const chainlinkOracles = {
+export const chainlinkOracles = {
   [eEthereumNetwork.hardhat]: {
     USDC: '0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6',
     JPY_USD: '0xBcE206caE7f0ec07b545EddE332A47C2F75bbeb3',
@@ -51,8 +63,7 @@ const chainlinkOracles = {
 // but it could change, if so, use the address provider contract at 0x0000000022d53366457f9d5e68ec105046fc4383
 // ref: https://discord.com/channels/729808684359876718/729812922649542758/920105496546013204
 // update for v2 factory: call get_address(6) to get the v2 factory
-export const CURVE_FACTORY_MAINNET =
-  '0xF18056Bbd320E96A48e3Fbf8bC061322531aac99';
+const CURVE_FACTORY_MAINNET = '0xF18056Bbd320E96A48e3Fbf8bC061322531aac99';
 
 export const integrations = {
   [eEthereumNetwork.hardhat]: {
@@ -61,7 +72,7 @@ export const integrations = {
   },
   [eEthereumNetwork.kovan]: {
     AAVE_CONTRACTS_GATEWAY: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
-    CURVE_FACTORY_CONTRACT: ZERO_ADDRESS,
+    CURVE_FACTORY_CONTRACT: undefined,
   },
   [eEthereumNetwork.main]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
@@ -87,17 +98,4 @@ export const VaultConfig: IVaultConfiguration = {
       USDC: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     },
   },
-  Parameterization: {
-    USDC: strategyUSDC,
-  },
-  ChainlinkOracles: chainlinkOracles,
-  Integrations: integrations,
-};
-
-// ----------------
-// Oracle--SPECIFIC PARAMS
-// ----------------
-
-export const ChainlinkOracleConfig: IChainlinkOracleConfig = {
-  ChainlinkOracles: chainlinkOracles,
 };

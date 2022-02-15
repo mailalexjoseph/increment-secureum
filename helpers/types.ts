@@ -32,12 +32,6 @@ export enum EthereumNetworkNames {
   xdai = 'xdai',
 }
 
-export enum AavePools {
-  proto = 'proto',
-  matic = 'matic',
-  amm = 'amm',
-}
-
 export enum eContractid {
   AggregatorV3Interface = 'AggregatorV3Interface',
   Perpetual = 'Perpetual',
@@ -45,17 +39,6 @@ export enum eContractid {
 }
 
 export type tEthereumAddress = string;
-export type tStringTokenBigUnits = string; // 1 ETH, or 10e6 USDC or 10e18 DAI
-export type tBigNumberTokenBigUnits = BigNumber;
-export type tStringTokenSmallUnits = string; // 1 wei, or 1 basic unit of USDC, or 1 basic unit of DAI
-export type tBigNumberTokenSmallUnits = BigNumber;
-
-export interface IReserveParams {
-  reserveDecimals: string;
-  reserveFactor: string;
-  baseLTVAsCollateral: string;
-  liquidationThreshold: string;
-}
 
 export type iParamsPerNetwork<T> =
   | iEthereumParamsPerNetwork<T>
@@ -86,13 +69,7 @@ export interface ITokenAddress {
   [token: string]: tEthereumAddress;
 }
 
-export interface iAssetCommon<T> {
-  [key: string]: T;
-}
-
-export type iMultiPoolsAssets<T> = iAssetCommon<T>;
-
-/********************** OWN TYPES **************************/
+/********************** CONTRACT TYPES **************************/
 
 export interface IChainlinkOracleConfig {
   ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
@@ -101,16 +78,8 @@ export interface IChainlinkOracleConfig {
 export interface IVaultConfiguration {
   MarketId: string;
   ReserveAssets: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-  Parameterization: iMultiPoolsAssets<IReserveParams>;
-  ChainlinkOracles: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
-  Integrations: iEthereumParamsPerNetwork<SymbolMap<tEthereumAddress>>;
 }
-
-export type VaultConstructorArguments = [tEthereumAddress, tEthereumAddress];
-
-export type ChainlinkOracleConstructorArguments = [tEthereumAddress];
-
-export type CurveCryptoContractsConstructorArgumentsSeparate = {
+export type CurveCryptoSwapTestConstructorArguments = {
   owner: tEthereumAddress;
   admin_fee_receiver: tEthereumAddress;
   A: BigNumber;
@@ -127,7 +96,10 @@ export type CurveCryptoContractsConstructorArgumentsSeparate = {
   reserve_tokens: [tEthereumAddress, tEthereumAddress];
 };
 
-export type CurveCryptoContractsConstructorArgumentsFactory = {
+export interface ICryptoSwapConfig {
+  markets: SymbolMap<CurveCryptoSwap2ETHConstructorArguments>;
+}
+export type CurveCryptoSwap2ETHConstructorArguments = {
   _name: string[32];
   _symbol: string[10];
   _coins: [tEthereumAddress, tEthereumAddress];
