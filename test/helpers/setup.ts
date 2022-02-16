@@ -15,7 +15,7 @@ import {
 } from '../../helpers/contracts-getters';
 import {setupUser, setupUsers, logDeployments} from '../../helpers/misc-utils';
 import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
-import {fundAccountWithUSDC} from './utils/manipulateStorage';
+import {setUSDCBalance} from './utils/manipulateStorage';
 
 // types
 import {
@@ -93,7 +93,7 @@ const getContracts = async (deply: string) => {
 async function _fundAccount(account: string): Promise<BigNumber> {
   const {usdc} = await getContracts(account);
   const fullAmount = await convertToCurrencyDecimals(usdc, '100');
-  await fundAccountWithUSDC(env, usdc, account, fullAmount);
+  await setUSDCBalance(env, usdc, account, fullAmount);
   return fullAmount;
 }
 /// @notice: fund user accounts

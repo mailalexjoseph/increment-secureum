@@ -1,17 +1,15 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {BigNumber, tEthereumAddress} from '../../../helpers/types';
 import {getReserveAddress} from '../../../helpers/contracts-getters';
-import {getEthereumNetworkFromHRE} from '../../../helpers/misc-utils';
 import {ethers} from 'hardhat';
 
 import {AggregatorV3Interface, IERC20} from '../../../typechain';
 import {expect} from 'chai';
 
 /**
-  *@notice get the Aggregator round (NOT OCR round) in which last report was transmitted
-  (see  https://etherscan.io/address/0x02f878a94a1ae1b15705acd65b5519a46fe3517e#code)
-*/
-export async function fundAccountWithUSDC(
+ *@notice set USDC balance (tested for mainnet, 16/02/2022)
+ */
+export async function setUSDCBalance(
   hre: HardhatRuntimeEnvironment,
   usdc: IERC20,
   account: tEthereumAddress,
@@ -36,6 +34,10 @@ export async function fundAccountWithUSDC(
   }
 }
 
+/**
+  *@notice get the Aggregator round (NOT OCR round) in which last report was transmitted
+  (see  https://etherscan.io/address/0x02f878a94a1ae1b15705acd65b5519a46fe3517e#code)
+*/
 export async function setLatestChainlinkPrice(
   hre: HardhatRuntimeEnvironment,
   chainlinkOracle: AggregatorV3Interface,
