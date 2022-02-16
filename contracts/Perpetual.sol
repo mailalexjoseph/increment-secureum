@@ -300,7 +300,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         lp.positionSize += baseAmount.toInt256();
     }
 
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
+    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount).
+    /// @notice Separated from `removeLiquidity` because `tentativeVQuoteAmount` can't guessed at the moment when user calls `removeLiquidity`
     /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
     function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount)
         external
@@ -311,6 +312,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
+        updateGenericProtocolState();
+
         // profit = pnl + fundingPayments
         profit = _closePosition(lp, global, tentativeVQuoteAmount);
 
@@ -319,25 +322,22 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     ///// COMMON OPERATIONS \\\\\
 
-    /// @notice Calculate the funding rate for the current block
     function updateFundingRate() public {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
-        uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
 
-        // if first trade of block
-        // slither-disable-next-line timestamp
-        if (currentTime > timeOfLastTrade) {
-            int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
-            int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
+        int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
+        int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
 
-            int256 latestTradePremium = LibMath.wadDiv(marketTWAP - indexTWAP, indexTWAP);
-            int256 cumTradePremium = (currentTime - global.timeOfLastTrade).toInt256() * latestTradePremium;
-            int256 timePassed = (currentTime - global.timeOfLastTrade).toInt256();
-            global.cumFundingRate += (LibMath.wadMul(SENSITIVITY, cumTradePremium) * timePassed) / 1 days;
+        int256 currentTraderPremium = LibMath.wadDiv(marketTWAP - indexTWAP, indexTWAP);
+        int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
+        int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
 
-            global.timeOfLastTrade = uint128(currentTime);
-        }
+        global.cumFundingRate +=
+            (LibMath.wadMul(SENSITIVITY, weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
+            1 days;
+
+        global.timeOfLastTrade = uint128(currentTime);
     }
 
     /// @notice Applies the funding payments on the profit
@@ -391,9 +391,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function updateGenericProtocolState() public {
-        chainlinkTWAPOracle.updateEURUSDTWAP();
-        poolTWAPOracle.updateEURUSDTWAP();
-        updateFundingRate();
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 currentTime = block.timestamp;
+        uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
+
+        // Don't update the state more than once per block
+        // slither-disable-next-line timestamp
+        if (currentTime > timeOfLastTrade) {
+            chainlinkTWAPOracle.updateEURUSDTWAP();
+            poolTWAPOracle.updateEURUSDTWAP();
+            updateFundingRate();
+        }
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions

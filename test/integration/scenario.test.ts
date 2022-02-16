@@ -488,7 +488,7 @@ describe('Increment App: Scenario', function () {
 
 // async function logLpPosition(user: User) {
 //   console.log(
-//     ' owns: openNotional, positionSize, cumFundingRate, liquidityBalance, profit',
+//     ' owns: openNotional, positionSize, weightedTradePremium, liquidityBalance, profit',
 //     (await user.perpetual.getLpPosition(user.address)).toString()
 //   );
 // }

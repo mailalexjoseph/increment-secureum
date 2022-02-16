@@ -94,9 +94,7 @@ describe('Increment: liquidation', () => {
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
     await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      0,
       timestampJustBefore,
-      0,
       utils.parseEther('10000') // set very large cumFundingRate so that the position ends up below MIN_MARGIN
     );
 
@@ -142,9 +140,7 @@ describe('Increment: liquidation', () => {
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
     await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      0,
       timestampJustBefore,
-      0,
       utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
     );
 
@@ -167,9 +163,7 @@ describe('Increment: liquidation', () => {
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
     await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      0,
       timestampJustBefore,
-      0,
       utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
     );
 
@@ -203,9 +197,7 @@ describe('Increment: liquidation', () => {
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
     await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      0,
       timestampJustBefore,
-      0,
       utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
     );
 

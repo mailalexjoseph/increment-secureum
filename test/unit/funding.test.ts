@@ -1,275 +1,272 @@
-// import {expect} from 'chai';
-// import {BigNumber} from 'ethers';
-// import {getNamedAccounts, deployments} from 'hardhat';
-// import {ethers} from 'hardhat';
-// import env = require('hardhat');
-// import {TestLibFunding} from '../../typechain';
-// import {asBigNumber, rMul, rDiv} from '../helpers/calculations';
-// import {setupUser} from '../../helpers/misc-utils';
+import {expect} from 'chai';
+import {BigNumber, Signer} from 'ethers';
+import env, {ethers} from 'hardhat';
+import {HardhatRuntimeEnvironment} from 'hardhat/types';
+import {deployMockContract, MockContract} from 'ethereum-waffle';
 
-// // time-utils
-// const minutes = (number: number) => number * 60;
-// const hours = (number: number) => minutes(number) * 60;
-// const days = (number: number) => hours(number) * 24;
+// dependency abis
+import ChainlinkOracle from '../../artifacts/contracts/oracles/ChainlinkOracle.sol/ChainlinkOracle.json';
+import PoolTWAPOracle from '../../artifacts/contracts/oracles/PoolTWAPOracle.sol/PoolTWAPOracle.json';
+import ChainlinkTWAPOracle from '../../artifacts/contracts/oracles/ChainlinkTWAPOracle.sol/ChainlinkTWAPOracle.json';
+import VirtualToken from '../../artifacts/contracts/tokens/VirtualToken.sol/VirtualToken.json';
+import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
+import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
 
-// // getters
-// const getLatestTimestamp = async () => {
-//   const blockNumber = await ethers.provider.getBlockNumber();
-//   const block = await ethers.provider.getBlock(blockNumber);
-//   return block.timestamp;
-// };
+import {TestPerpetual} from '../../typechain';
+import {asBigNumber, rMul, rDiv} from '../helpers/utils/calculations';
 
-// // math econ functions
-// const calcTradePremium = (marketPrice: BigNumber, indexPrice: BigNumber) =>
-//   rDiv(marketPrice.sub(indexPrice), indexPrice);
+// time-utils
+const minutes = (number: number) => number * 60;
+const hours = (number: number) => minutes(number) * 60;
+const days = (number: number) => hours(number) * 24;
 
-// const calcCumTradePremium = (
-//   premium: BigNumber,
-//   START_TIME: number,
-//   endTime: number
-// ) =>
-//   endTime > START_TIME
-//     ? BigNumber.from(endTime - START_TIME).mul(premium)
-//     : asBigNumber('0');
+// getters
+const getLatestTimestamp = async () => {
+  const blockNumber = await ethers.provider.getBlockNumber();
+  const block = await ethers.provider.getBlock(blockNumber);
+  return block.timestamp;
+};
 
-// const calcFundingRate = (
-//   sensitivity: BigNumber,
-//   cumTradePremium: BigNumber,
-//   timePassed: number
-// ) =>
-//   rMul(sensitivity, cumTradePremium)
-//     .mul(BigNumber.from(timePassed))
-//     .div(BigNumber.from(days(1)));
+let nextBlockTimestamp = 2000000000;
+async function addTimeToNextBlockTimestamp(
+  hre: HardhatRuntimeEnvironment,
+  additionalTimestamp: number
+): Promise<number> {
+  nextBlockTimestamp += additionalTimestamp;
 
-// type User = {address: string} & {
-//   funding: TestLibFunding;
-// };
+  await hre.network.provider.request({
+    method: 'evm_setNextBlockTimestamp',
+    params: [nextBlockTimestamp],
+  });
 
-// describe('Funding library: Unit tests', async function () {
-//   // contract and accounts
-//   let user: User;
+  return nextBlockTimestamp;
+}
 
-//   // position parameters
-//   let cumTradePremium: BigNumber,
-//     timeOfLastTrade: number,
-//     timeStamp: number,
-//     premium: BigNumber,
-//     cumFundingRate: BigNumber;
+// math econ functions
+const calcCurrentTraderPremium = (
+  marketPrice: BigNumber,
+  indexPrice: BigNumber
+) => rDiv(marketPrice.sub(indexPrice), indexPrice);
 
-//   // function arguments
-//   let marketPrice: BigNumber, indexPrice: BigNumber, currentTime: number;
+const calcWeightedTradePremiumOverLastPeriod = (
+  timePassedSinceLastTrade: BigNumber,
+  currentTraderPremium: BigNumber
+) => timePassedSinceLastTrade.mul(currentTraderPremium);
 
-//   // constants
-//   const SENSITIVITY = asBigNumber('1');
-//   const START_TIME = await getLatestTimestamp();
-//   const TWAP_FREQUENCY = minutes(15);
+const calcFundingRate = (
+  sensitivity: BigNumber,
+  weightedTradePremiumOverLastPeriod: BigNumber,
+  timePassed: number
+) =>
+  rMul(sensitivity, weightedTradePremiumOverLastPeriod)
+    .mul(BigNumber.from(timePassed))
+    .div(BigNumber.from(days(1)));
 
-//   const setup = deployments.createFixture(async (): Promise<User> => {
-//     const {deployer} = await getNamedAccounts();
+type User = {perpetual: TestPerpetual};
 
-//     await env.deployments.deploy('TestLibFunding', {
-//       from: deployer,
-//       log: true,
-//     });
+describe('Funding rate', async function () {
+  // mock dependencies
+  let chainlinkOracleMock: MockContract;
+  let chainlinkTWAPOracleMock: MockContract;
+  let marketMock: MockContract;
+  let poolTWAPOracleMock: MockContract;
+  let vaultMock: MockContract;
+  let vQuoteMock: MockContract;
+  let vBaseMock: MockContract;
 
-//     user = await setupUser(deployer, {
-//       funding: await ethers.getContract('TestLibFunding', deployer),
-//     });
+  // contract and accounts
+  let deployer: Signer;
+  let user: User;
+  let snapshotId: number;
 
-//     return user;
-//   });
+  // function arguments
+  let marketPrice: BigNumber, indexPrice: BigNumber;
 
-//   beforeEach(async () => {
-//     user = await setup();
-//   });
+  // constants
+  const SENSITIVITY = asBigNumber('1');
 
-//   describe('Can handle first transaction', async function () {
-//     it('Expected initialized state', async () => {
-//       const position = await user.funding.getGlobalPosition();
-//       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
-//       expect(position.timeOfLastTrade).to.be.equal(0);
-//       expect(position.timeStamp).to.be.equal(0);
-//       expect(position.premium).to.be.equal(asBigNumber('0'));
-//       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
-//     });
-//     it('Should handle first transaction', async () => {
-//       await user.funding.calculateFunding(
-//         asBigNumber('1'),
-//         asBigNumber('1'),
-//         START_TIME,
-//         minutes(15)
-//       );
-//       // check wether results are to be expected
-//       const position = await user.funding.getGlobalPosition();
-//       //console.log(position);
-//       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
-//       expect(position.timeOfLastTrade).to.be.equal(START_TIME);
-//       expect(position.timeStamp).to.be.equal(START_TIME);
-//       expect(position.premium).to.be.equal(asBigNumber('0'));
-//       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
-//     });
-//   });
-//   describe('Calculate correct new state', async function () {
-//     beforeEach(async () => {
-//       // initial parameters after first call
-//       cumTradePremium = asBigNumber('0');
-//       timeOfLastTrade = START_TIME;
-//       timeStamp = START_TIME;
-//       premium = asBigNumber('0');
-//       cumFundingRate = asBigNumber('0');
+  async function _deploy_perpetual() {
+    [deployer] = await ethers.getSigners();
 
-//       await user.funding.__TestPerpetual_setGlobalPosition(
-//         cumTradePremium,
-//         timeOfLastTrade,
-//         timeStamp,
-//         premium,
-//         cumFundingRate
-//       );
-//     });
-//     it('trade in funding rate window', async () => {
-//       marketPrice = asBigNumber('1');
-//       indexPrice = asBigNumber('1.1');
-//       currentTime = START_TIME + minutes(5);
-//       await user.funding.calculateFunding(
-//         marketPrice,
-//         indexPrice,
-//         currentTime,
-//         TWAP_FREQUENCY
-//       );
-//       const position = await user.funding.getGlobalPosition();
+    // build dependencies as mocks
+    chainlinkOracleMock = await deployMockContract(
+      deployer,
+      ChainlinkOracle.abi
+    );
+    chainlinkTWAPOracleMock = await deployMockContract(
+      deployer,
+      ChainlinkTWAPOracle.abi
+    );
+    marketMock = await deployMockContract(deployer, CurveCryptoSwap2ETH.abi);
+    poolTWAPOracleMock = await deployMockContract(deployer, PoolTWAPOracle.abi);
+    vaultMock = await deployMockContract(deployer, Vault.abi);
+    vQuoteMock = await deployMockContract(deployer, VirtualToken.abi);
+    vBaseMock = await deployMockContract(deployer, VirtualToken.abi);
 
-//       // calculate expected values of functions
-//       const eTradePremium: BigNumber = calcTradePremium(
-//         marketPrice,
-//         indexPrice
-//       );
-//       const eCumTradePremium: BigNumber = calcCumTradePremium(
-//         eTradePremium,
-//         START_TIME,
-//         currentTime
-//       );
-//       // console.log('Time difference', currentTime - START_TIME);
-//       // console.log('ePremium is: ' + eTradePremium);
-//       // console.log('eCumTradePremium is: ' + eCumTradePremium);
-//       expect(position.cumTradePremium).to.be.equal(eCumTradePremium);
-//       expect(position.timeOfLastTrade).to.be.equal(currentTime);
-//       expect(position.timeStamp).to.be.equal(START_TIME);
-//       expect(position.premium).to.be.equal(asBigNumber('0'));
-//       expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
-//     });
-//     it('trade after funding rate window', async () => {
-//       marketPrice = asBigNumber('1');
-//       indexPrice = asBigNumber('1.1');
-//       currentTime = START_TIME + TWAP_FREQUENCY + 1; // after funding rate window
-//       await user.funding.calculateFunding(
-//         marketPrice,
-//         indexPrice,
-//         currentTime,
-//         TWAP_FREQUENCY
-//       );
-//       const position = await user.funding.getGlobalPosition();
+    // needed in the constructor of Perpetual
+    await vQuoteMock.mock.approve.returns(true);
+    await vBaseMock.mock.approve.returns(true);
 
-//       // calculate expected values of functions
-//       const eTradePremium: BigNumber = calcTradePremium(
-//         marketPrice,
-//         indexPrice
-//       );
-//       const eCumTradePremium: BigNumber = calcCumTradePremium(
-//         eTradePremium,
-//         START_TIME,
-//         currentTime
-//       );
-//       // console.log('Time difference', currentTime - START_TIME);
-//       // console.log('ePremium is: ' + eTradePremium);
-//       // console.log('eCumTradePremium is: ' + eCumTradePremium);
-//       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
-//       expect(position.timeOfLastTrade).to.be.equal(currentTime);
-//       expect(position.timeStamp).to.be.equal(currentTime);
+    const TestPerpetualContract = await ethers.getContractFactory(
+      'TestPerpetual'
+    );
+    const perpetual = <TestPerpetual>(
+      await TestPerpetualContract.deploy(
+        chainlinkOracleMock.address,
+        poolTWAPOracleMock.address,
+        chainlinkTWAPOracleMock.address,
+        vBaseMock.address,
+        vQuoteMock.address,
+        marketMock.address,
+        vaultMock.address
+      )
+    );
 
-//       const eFundingRate = calcFundingRate(
-//         SENSITIVITY,
-//         eCumTradePremium,
-//         currentTime - START_TIME
-//       );
+    return {perpetual};
+  }
 
-//       // console.log(
-//       //   'SENSITIVITY x cumTradePremium' + rMul(SENSITIVITY, eCumTradePremium)
-//       // );
-//       // console.log('timePassed is' + BigNumber.from(currentTime - START_TIME));
-//       // console.log('1 days' + BigNumber.from(days(1)));
-//       // console.log('eCumFundingRate is: ' + eFundingRate);
-//       expect(position.cumFundingRate).to.be.equal(eFundingRate);
-//     });
-//     it('one trade in funding rate window and one trade after', async () => {
-//       marketPrice = asBigNumber('1');
-//       indexPrice = asBigNumber('1.1');
+  before(async () => {
+    snapshotId = await env.network.provider.send('evm_snapshot', []);
+  });
 
-//       /************* FIRST TRADE ***************/
-//       // initial parameters for first call
+  beforeEach(async () => {
+    user = await _deploy_perpetual();
+  });
 
-//       currentTime = START_TIME + minutes(5); // before end of funding rate window
-//       const timeOfTradeOne = currentTime; // before end of funding rate window
-//       await user.funding.calculateFunding(
-//         marketPrice,
-//         indexPrice,
-//         currentTime,
-//         TWAP_FREQUENCY
-//       );
+  after(async () => {
+    await env.network.provider.send('evm_revert', [snapshotId]);
+  });
 
-//       // expected values after first trade
-//       const eTradePremium1: BigNumber = calcTradePremium(
-//         marketPrice,
-//         indexPrice
-//       );
-//       const eCumTradePremiumTmp: BigNumber = calcCumTradePremium(
-//         eTradePremium1,
-//         START_TIME,
-//         currentTime
-//       );
+  it('Expected initialized state', async () => {
+    const position = await user.perpetual.getGlobalPosition();
 
-//       /************* SECOND TRADE ***************/
-//       currentTime = START_TIME + TWAP_FREQUENCY + 1; // after end of funding rate window
-//       await user.funding.calculateFunding(
-//         marketPrice,
-//         indexPrice,
-//         currentTime,
-//         TWAP_FREQUENCY
-//       );
+    expect(position.timeOfLastTrade).to.be.equal(0);
+    expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
+  });
 
-//       // expected values after first trade
-//       const eTradePremium2: BigNumber = calcTradePremium(
-//         marketPrice,
-//         indexPrice
-//       );
-//       const eCumTradePremiumFinal: BigNumber = calcCumTradePremium(
-//         eTradePremium2,
-//         timeOfTradeOne, // only [tradeOfTradeOne, currentTime] is relevant
-//         currentTime
-//       ).add(eCumTradePremiumTmp); // add premium from first trade
+  it('Update funding rate correctly in subsequent calls', async () => {
+    marketPrice = asBigNumber('1');
+    indexPrice = asBigNumber('1.1');
+    await poolTWAPOracleMock.mock.getEURUSDTWAP.returns(marketPrice);
+    await chainlinkTWAPOracleMock.mock.getEURUSDTWAP.returns(indexPrice);
 
-//       /************* CHECK RSLTs ***************/
+    // by default global.timeOfLastTrade = 0
+    const START_TIME = 0;
 
-//       const position = await user.funding.getGlobalPosition();
-//       // console.log('Time difference', currentTime - START_TIME);
-//       // console.log('ePremium is: ' + eTradePremium);
-//       // console.log('eCumTradePremium is: ' + eCumTradePremium);
-//       expect(position.cumTradePremium).to.be.equal(asBigNumber('0'));
-//       expect(position.timeOfLastTrade).to.be.equal(currentTime);
-//       expect(position.timeStamp).to.be.equal(currentTime);
+    /************* FIRST TRADE ***************/
+    // initial parameters for first call
+    const timeFirstTransaction = await addTimeToNextBlockTimestamp(
+      env,
+      minutes(1)
+    );
 
-//       const eFundingRate = calcFundingRate(
-//         SENSITIVITY,
-//         eCumTradePremiumFinal,
-//         currentTime - START_TIME
-//       );
+    await user.perpetual.updateFundingRate();
 
-//       // console.log(
-//       //   'SENSITIVITY x cumTradePremium' + rMul(SENSITIVITY, eCumTradePremium)
-//       // );
-//       // console.log('timePassed is' + BigNumber.from(currentTime - START_TIME));
-//       // console.log('1 days' + BigNumber.from(days(1)));
-//       // console.log('eCumFundingRate is: ' + eFundingRate);
-//       expect(position.cumFundingRate).to.be.equal(eFundingRate);
-//     });
-//   });
-// });
+    // expected values after first trade
+    const eCurrentTraderPremiumFirstTransac: BigNumber =
+      calcCurrentTraderPremium(marketPrice, indexPrice);
+
+    const eWeightedTradePremiumOverLastPeriodFirstTransac: BigNumber =
+      calcWeightedTradePremiumOverLastPeriod(
+        ethers.BigNumber.from(timeFirstTransaction.toString()),
+        eCurrentTraderPremiumFirstTransac
+      );
+
+    const eTimePassedInFirstTransaction = timeFirstTransaction - START_TIME;
+
+    const eFundingRateFirstTransac = calcFundingRate(
+      SENSITIVITY,
+      eWeightedTradePremiumOverLastPeriodFirstTransac,
+      eTimePassedInFirstTransaction
+    );
+
+    expect(eFundingRateFirstTransac).to.be.eq(
+      (await user.perpetual.getGlobalPosition()).cumFundingRate
+    );
+
+    /************* SECOND TRADE ***************/
+    const timeSecondTransaction = await addTimeToNextBlockTimestamp(
+      env,
+      minutes(5)
+    );
+    await user.perpetual.updateFundingRate();
+
+    // expected values after second trade
+    const eCurrentTraderPremiumSecondTransac: BigNumber =
+      calcCurrentTraderPremium(marketPrice, indexPrice);
+
+    const eTimePassedSinceLastTrade =
+      timeSecondTransaction - timeFirstTransaction;
+
+    const eWeightedTradePremiumOverLastPeriodSecondTransac: BigNumber =
+      calcWeightedTradePremiumOverLastPeriod(
+        ethers.BigNumber.from(eTimePassedSinceLastTrade.toString()),
+        eCurrentTraderPremiumSecondTransac
+      );
+
+    const position = await user.perpetual.getGlobalPosition();
+    expect(position.timeOfLastTrade).to.be.equal(timeSecondTransaction);
+
+    const eFundingRateSecondTrans = calcFundingRate(
+      SENSITIVITY,
+      eWeightedTradePremiumOverLastPeriodSecondTransac,
+      eTimePassedSinceLastTrade
+    ).add(eFundingRateFirstTransac);
+
+    expect(position.cumFundingRate).to.be.equal(eFundingRateSecondTrans);
+  });
+
+  it('Get funding payments from global for user', async () => {
+    const initialBlockTime = await addTimeToNextBlockTimestamp(env, 100);
+    const initialCumFundingRate = ethers.utils.parseEther('1');
+    // set starting values of the global state
+    await user.perpetual.__TestPerpetual_setGlobalPosition(
+      initialBlockTime,
+      initialCumFundingRate
+    );
+
+    // set starting values of the user state
+    const userAddress = await deployer.getAddress();
+    await user.perpetual.__TestPerpetual_setTraderPosition(
+      userAddress,
+      ethers.utils.parseEther('-1.3'),
+      ethers.utils.parseEther('1'),
+      initialCumFundingRate
+    );
+
+    const firstFundingPayment = await user.perpetual.getFundingPayments(
+      userAddress
+    );
+
+    // firstFundingPaymentOne is 0 because global.cumFundingRate and user.cumFundingRate are equal
+    expect(firstFundingPayment).to.eq(0);
+
+    // set new global position
+    const secondBlockTime = await addTimeToNextBlockTimestamp(env, 100);
+    const secondCumFundingRate = ethers.utils.parseEther('1.2');
+    await user.perpetual.__TestPerpetual_setGlobalPosition(
+      secondBlockTime,
+      secondCumFundingRate
+    );
+
+    const userPositionBeforeSecondUpdate =
+      await user.perpetual.getTraderPosition(userAddress);
+    const globalPositionBeforeSecondUpdate =
+      await user.perpetual.getGlobalPosition();
+
+    const expectedUpcomingFundingRate =
+      userPositionBeforeSecondUpdate.cumFundingRate.sub(
+        globalPositionBeforeSecondUpdate.cumFundingRate
+      );
+    const expectedUpcomingFundingPayment = rMul(
+      expectedUpcomingFundingRate,
+      userPositionBeforeSecondUpdate.openNotional.mul(-1) // absolute value
+    );
+
+    const secondFundingPayment = await user.perpetual.getFundingPayments(
+      userAddress
+    );
+
+    expect(expectedUpcomingFundingPayment).to.eq(secondFundingPayment);
+  });
+});

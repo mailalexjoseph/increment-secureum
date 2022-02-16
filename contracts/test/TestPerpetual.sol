@@ -41,17 +41,24 @@ contract TestPerpetual is Perpetual {
     ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _clearingHouse) {}
 
     // simplified setter
-    function __TestPerpetual_setGlobalPosition(
-        int256 cumTradePremium,
-        uint128 timeOfLastTrade,
-        int256 premium,
+    function __TestPerpetual_setGlobalPosition(uint128 timeOfLastTrade, int256 cumFundingRate) external {
+        globalPosition = LibPerpetual.GlobalPosition({
+            timeOfLastTrade: timeOfLastTrade,
+            cumFundingRate: cumFundingRate
+        });
+    }
+
+    function __TestPerpetual_setTraderPosition(
+        address trader,
+        int256 openNotional,
+        int256 positionSize,
         int256 cumFundingRate
     ) external {
-        globalPosition = LibPerpetual.GlobalPosition({
-            cumTradePremium: cumTradePremium,
-            timeOfLastTrade: timeOfLastTrade,
-            premium: premium,
-            cumFundingRate: cumFundingRate
+        traderPosition[trader] = LibPerpetual.UserPosition({
+            openNotional: openNotional,
+            positionSize: positionSize,
+            cumFundingRate: cumFundingRate,
+            liquidityBalance: 0
         });
     }
 
