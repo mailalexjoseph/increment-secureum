@@ -37,15 +37,13 @@ contract Vault is IVault, Context, IncreOwnable {
     IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
     uint256 public override totalReserveToken;
+    uint256 public badDebt;
+    mapping(address => mapping(IPerpetual => int256)) private balances;
 
     //      trader     =>      market  => balances
-    mapping(address => mapping(IPerpetual => int256)) private balances;
 
     // allow listed markets
     mapping(IPerpetual => bool) private allowListedMarkets;
-
-    // bad debt
-    uint256 private badDebt;
 
     constructor(
         IChainlinkOracle _chainlinkOracle,

@@ -112,20 +112,14 @@ describe('Increment App: Scenario', function () {
       it('1.1. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
         await provideLiquidity(liquidityAmount, lp);
 
-        console.log('after provideLiquidity');
-
         await openPosition(liquidityAmount, trader, Side.Long);
-        console.log('after openPosition');
 
         await closePosition(trader);
-        console.log('after closePosition');
 
         await withdrawLiquidity(lp);
-        console.log('after withdrawLiquidity');
 
         // check results
         await checks();
-        console.log('after checks');
         // await logUserBalance(lp, 'lp');
         // await logUserBalance(trader, 'trader');
         // await logVaultBalance(lp);

@@ -5,8 +5,8 @@ import {setup} from '../helpers/setup';
 import {getCryptoSwapConstructorArgs} from '../../helpers/contracts-deployments';
 import {getChainlinkPrice} from '../../helpers/contracts-getters';
 
-describe.only('Increment Protocol: Deployment', function () {
-  describe.only('Deployment', function () {
+describe('Increment Protocol: Deployment', function () {
+  describe('Deployment', function () {
     it('Should initialize Perpetual with its dependencies', async function () {
       const {deployer} = await setup();
 

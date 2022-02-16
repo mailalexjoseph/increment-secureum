@@ -154,7 +154,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong);
 
         // pay insurance fee: TODO: can never withdraw this amount!
-        int256 insuranceFee = LibMath.abs(openNotional) * INSURANCE_FEE;
+        int256 insuranceFee = LibMath.wadMul(LibMath.abs(openNotional), INSURANCE_FEE);
         vault.settleProfit(sender, -insuranceFee);
         vault.settleProfit(address(insurance), insuranceFee);
 
@@ -166,22 +166,6 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             liquidityBalance: 0
         });
 
-        /*
-        int256 notional = userPosition[sender].openNotional;
-
-        int256 fees = 0.01% x notional;
-
-        1) store fees paid inside userPosition & pay fees once you withdraw
-        2) call vault contract and transfer fees to vault
-
-
-
-
-        amount paid = positionSize + fees
-
-
-
-  */
         require(marginIsValid(sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
         emit OpenPosition(sender, uint128(block.timestamp), direction, openNotional, positionSize);
