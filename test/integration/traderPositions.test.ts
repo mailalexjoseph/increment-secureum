@@ -22,6 +22,7 @@ describe('Increment: open/close long/short trading positions', () => {
   let TWAP_FREQUENCY: BigNumber;
   let FEE: BigNumber;
   let MIN_MARGIN_AT_CREATION: BigNumber;
+  let INSURANCE_FEE: BigNumber;
   let VQUOTE_INDEX: BigNumber;
   let VBASE_INDEX: BigNumber;
 
@@ -33,6 +34,7 @@ describe('Increment: open/close long/short trading positions', () => {
     TWAP_FREQUENCY = await deployer.perpetual.TWAP_FREQUENCY();
     FEE = await deployer.perpetual.FEE();
     MIN_MARGIN_AT_CREATION = await deployer.perpetual.MIN_MARGIN_AT_CREATION();
+    INSURANCE_FEE = await deployer.perpetual.INSURANCE_FEE();
     VQUOTE_INDEX = await deployer.perpetual.VQUOTE_INDEX();
     VBASE_INDEX = await deployer.perpetual.VBASE_INDEX();
   });
@@ -243,6 +245,10 @@ describe('Increment: open/close long/short trading positions', () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.perpetual.deposit(depositAmountUSDC, alice.usdc.address);
+    const initialVaultBalance = await alice.vault.getBalance(
+      alice.address,
+      alice.perpetual.address
+    );
 
     const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
       VQUOTE_INDEX
@@ -261,10 +267,6 @@ describe('Increment: open/close long/short trading positions', () => {
       aliceOpenNotional.mul(-1)
     );
 
-    const initialVaultBalance = await alice.vault.getBalance(
-      alice.address,
-      alice.perpetual.address
-    );
     expect(vQuoteLiquidityAfterPositionCreated).to.equal(
       expectedAdditionalVQuote
     );
@@ -279,8 +281,11 @@ describe('Increment: open/close long/short trading positions', () => {
     );
 
     const expectedProfit = vQuoteReceived.add(aliceOpenNotional);
+    const insurancePayed = rMul(aliceOpenNotional.abs(), INSURANCE_FEE);
 
-    const expectedNewVaultBalance = initialVaultBalance.add(expectedProfit);
+    const expectedNewVaultBalance = initialVaultBalance
+      .add(expectedProfit)
+      .sub(insurancePayed);
 
     const newVaultBalance = await alice.vault.getBalance(
       alice.address,
@@ -335,8 +340,11 @@ describe('Increment: open/close long/short trading positions', () => {
     );
 
     const expectedProfit = vQuoteReceived.add(aliceOpenNotional);
+    const insurancePayed = rMul(aliceOpenNotional.abs(), INSURANCE_FEE);
 
-    const expectedNewVaultBalance = initialVaultBalance.add(expectedProfit);
+    const expectedNewVaultBalance = initialVaultBalance
+      .add(expectedProfit)
+      .sub(insurancePayed);
 
     const newVaultBalance = await alice.vault.getBalance(
       alice.address,
@@ -412,5 +420,5 @@ describe('Increment: open/close long/short trading positions', () => {
 //   // // vBaseLiquidityDiff: 8796304059175223295
 //   // // expectedVBaseReceived: 8796304059175223294
 //   // // probably a rounding error in `rDiv`
-//   // expect(vBaseLiquidityDiff).to.be.closeTo(expectedVBaseReceived, 1);
 // });
+//   // expect(vBaseLiquidityDiff).to.be.closeTo(expectedVBaseReceived, 1);

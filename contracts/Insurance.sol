@@ -39,7 +39,7 @@ contract Insurance is IInsurance, IncreOwnable {
         address caller = msg.sender;
         // only borrower
 
-        require(IERC20(token).balanceOf(address(this)) >= amount);
+        require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient insurance balance");
 
         IERC20(token).safeTransfer(caller, amount);
 
