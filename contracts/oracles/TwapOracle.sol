@@ -9,6 +9,8 @@ import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibMath} from "../lib//LibMath.sol";
 
+import "hardhat/console.sol";
+
 /*
  * TwapOracle is used to compute and return a time-weighted average of the currencies
  * associated with the vBase/vQuote pair (e.g. EUR/USD).
@@ -25,61 +27,104 @@ contract TwapOracle {
     uint256 public constant PERIOD = 15 minutes;
 
     struct Time {
-        uint256 timeOfCumulativeAmount;
-        uint256 timeOfCumulativeAmountAtBeginningOfPeriod;
+        uint256 blockTimestampLast;
+        uint256 blockTimestampAtBeginningOfPeriod;
     }
-
     struct Prices {
-        uint256 cumulativeAmount;
-        uint256 cumulativeAmountAtBeginningOfPeriod;
+        int256 cumulativeAmount;
+        int256 cumulativeAmountAtBeginningOfPeriod;
         int256 twap;
     }
 
+    // time
     Time public time;
+
+    // prices
     Prices public oraclePrice;
     Prices public marketPrice;
 
     IChainlinkOracle public immutable chainlinkOracle;
-    ICryptoSwap public immutable pool;
+    ICryptoSwap public immutable cryptoSwap;
 
-    constructor(IChainlinkOracle _chainlinkOracle, ICryptoSwap _curvePool) {
+    constructor(IChainlinkOracle _chainlinkOracle, ICryptoSwap _cryptoSwap) {
         chainlinkOracle = _chainlinkOracle;
-        pool = _curvePool;
+        cryptoSwap = _cryptoSwap;
+
+        // can't access immutable variables in the constructor
+        int256 lastChainlinkPrice = IChainlinkOracle(_chainlinkOracle).getIndexPrice();
+        int256 lastMarketPrice = ICryptoSwap(_cryptoSwap).last_prices().toInt256();
+
+        // set twap to market price
+        oraclePrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastChainlinkPrice});
+        marketPrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastMarketPrice});
+        time = Time({blockTimestampLast: block.timestamp, blockTimestampAtBeginningOfPeriod: block.timestamp});
+
+        //console.log("Current block timestamp: ", block.timestamp);
     }
 
     event TwapUpdated();
 
-    function updateCurveTwap() public {
-        _updateSingleTwap(pool.price_oracle(), marketPrice);
-        emit TwapUpdated();
-    }
-
-    function updateChainlinkTwap() public {
-        _updateSingleTwap(chainlinkOracle.getIndexPrice().toUint256(), oraclePrice);
-        emit TwapUpdated();
-    }
-
-    function _updateSingleTwap(uint256 latestPrice, Prices storage price) internal {
+    function updateTwap() public {
         uint256 currentTime = block.timestamp;
+        int256 timeElapsed = (currentTime - time.blockTimestampLast).toInt256();
 
-        uint256 timeElapsed = currentTime - time.timeOfCumulativeAmount;
-        price.cumulativeAmount = price.cumulativeAmount + LibMath.wadMul(latestPrice, timeElapsed);
-        time.timeOfCumulativeAmount = currentTime;
+        //console.log("Current block timestamp: ", block.timestamp);
+        time.blockTimestampLast = currentTime;
+        /*
+            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
+        */
 
-        uint256 timeElapsedSinceBeginningOfTwapPeriodTmp = currentTime - time.timeOfCumulativeAmountAtBeginningOfPeriod;
+        // update cumulative chainlink price feed
+        int256 latestChainlinkPrice = chainlinkOracle.getIndexPrice();
+        oraclePrice.cumulativeAmount = oraclePrice.cumulativeAmount + latestChainlinkPrice * timeElapsed;
+
+        // update cumulative market price feed
+        int256 latestMarketPrice = cryptoSwap.last_prices().toInt256();
+        marketPrice.cumulativeAmount = marketPrice.cumulativeAmount + latestMarketPrice * timeElapsed;
+
+        //console.log("latestChainlinkPrice: ");
+        //console.logInt(latestChainlinkPrice);
+
+        console.log("timeElapsed: ");
+        console.logInt(timeElapsed);
+
+        //console.log("oraclePrice.cumulativeAmount: ");
+        //console.logInt(oraclePrice.cumulativeAmount);
+
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - time.blockTimestampAtBeginningOfPeriod;
+
+        console.log("timeElapsedSinceBeginningOfPeriod ");
+        console.log(timeElapsedSinceBeginningOfPeriod);
 
         // slither-disable-next-line timestamp
-        if (timeElapsedSinceBeginningOfTwapPeriodTmp >= PERIOD) {
-            price.cumulativeAmountAtBeginningOfPeriod = price.cumulativeAmount;
-            time.timeOfCumulativeAmountAtBeginningOfPeriod = time.timeOfCumulativeAmount;
-        }
+        if (timeElapsedSinceBeginningOfPeriod >= PERIOD) {
+            console.log("update twap & reset");
+            /*
+                TWAP = priceCumulative1 - priceCumulative0 / timeElapsed
+            */
 
-        int256 priceDiff = price.cumulativeAmount.toInt256() - price.cumulativeAmountAtBeginningOfPeriod.toInt256();
-        int256 timeDiff = time.timeOfCumulativeAmount.toInt256() -
-            time.timeOfCumulativeAmountAtBeginningOfPeriod.toInt256();
+            //console.log("oraclePrice.cumulativeAmountAtBeginningOfPeriod: ");
+            //console.logInt(oraclePrice.cumulativeAmountAtBeginningOfPeriod);
 
-        if (timeDiff > 0) {
-            price.twap = LibMath.wadDiv(priceDiff, timeDiff);
+            // calculate chainlink twap
+            oraclePrice.twap =
+                (oraclePrice.cumulativeAmount - oraclePrice.cumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // calculate market twap
+            marketPrice.twap =
+                (marketPrice.cumulativeAmount - marketPrice.cumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            //console.log("oraclePrice.twap: ");
+            //console.logInt(oraclePrice.twap);
+
+            // reset cumulative amount and timestamp
+            oraclePrice.cumulativeAmountAtBeginningOfPeriod = oraclePrice.cumulativeAmount;
+            marketPrice.cumulativeAmountAtBeginningOfPeriod = marketPrice.cumulativeAmount;
+            time.blockTimestampAtBeginningOfPeriod = block.timestamp;
+
+            emit TwapUpdated();
         }
     }
 

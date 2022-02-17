@@ -153,20 +153,20 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  contractSizer: {
-    alphaSort: true,
-    disambiguatePaths: false,
-    runOnCompile: true,
-    strict: true,
-    only: [
-      'Perpetual',
-      'Vault',
-      'Insurance',
-      'TWAPOracle',
-      'ChainlinkOracle',
-      'ChainlinkTWAPOracle',
-      'PoolTWAPOracle',
-    ],
-  },
+  // contractSizer: {
+  //   alphaSort: true,
+  //   disambiguatePaths: false,
+  //   runOnCompile: true,
+  //   strict: true,
+  //   only: [
+  //     'Perpetual',
+  //     'Vault',
+  //     'Insurance',
+  //     'TWAPOracle',
+  //     'ChainlinkOracle',
+  //     'ChainlinkTWAPOracle',
+  //     'PoolTWAPOracle',
+  //   ],
+  // },
 };
 export default config;

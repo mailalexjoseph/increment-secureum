@@ -12,19 +12,32 @@ import {CurveCryptoSwap2ETH__factory} from '../../contracts-vyper/typechain';
 
 import {rMul, rDiv} from '../helpers/utils/calculations';
 
-let nextBlockTimestamp = 2000000000;
+async function getLatestTimestamp(
+  hre: HardhatRuntimeEnvironment
+): Promise<number> {
+  const blockNumber = await hre.ethers.provider.getBlockNumber();
+  const block = await hre.ethers.provider.getBlock(blockNumber);
+  return block.timestamp;
+}
+
+const nextBlockTimestamp = 2000000000;
+
 async function addTimeToNextBlockTimestamp(
   hre: HardhatRuntimeEnvironment,
   additionalTimestamp: number
 ): Promise<number> {
-  nextBlockTimestamp += additionalTimestamp;
+  // nextBlockTimestamp += additionalTimestamp;
 
+  // await hre.network.provider.request({
+  //   method: 'evm_setNextBlockTimestamp',
+  //   params: [nextBlockTimestamp],
+  // });
   await hre.network.provider.request({
-    method: 'evm_setNextBlockTimestamp',
-    params: [nextBlockTimestamp],
+    method: 'evm_increaseTime',
+    params: [additionalTimestamp - 1], // -1 to ensure we exclude the mining operation
   });
-
-  return nextBlockTimestamp;
+  const latestTimestamp = await getLatestTimestamp(hre);
+  return latestTimestamp;
 }
 
 const DEFAULT_EUR_USD_PRICE = 1.131523;
@@ -53,6 +66,9 @@ describe.only('TwapOracle', async function () {
       CurveCryptoSwap2ETH__factory.abi
     );
 
+    await _set_chainlinkOracle_indexPrice(1); // update even before the TWAP oracle is deployed
+    await _set_curvePool_price_oracle(1); // update even before the TWAP oracle is deployed
+
     const TWAPOracleContract = await ethers.getContractFactory('TwapOracle');
     const twapOracle = <TwapOracle>(
       await TWAPOracleContract.deploy(
@@ -73,6 +89,14 @@ describe.only('TwapOracle', async function () {
     );
     await chainlinkMock.mock.getIndexPrice.returns(formattedNewIndexPrice);
   }
+  async function _set_curvePool_price_oracle(newPriceOracle: number) {
+    // console.log(`vBaseAmount: ${vBaseAmount} - vQuoteAmount: ${vQuoteAmount}`);
+
+    const formattedNewPriceOracle = ethers.utils.parseEther(
+      newPriceOracle.toString()
+    );
+    await curvePoolMock.mock.last_prices.returns(formattedNewPriceOracle);
+  }
 
   before(async () => {
     snapshotId = await env.network.provider.send('evm_snapshot', []);
@@ -88,14 +112,17 @@ describe.only('TwapOracle', async function () {
     await env.network.provider.send('evm_revert', [snapshotId]);
   });
 
-  it('Should not crash if TWAP read while no value set', async () => {
-    expect(await user.twapOracle.getOracleTwap()).to.eq(0);
+  it('Should initialize TWAP with initial price points values', async () => {
+    const initPrice = ethers.utils.parseEther('1');
+    expect(await user.twapOracle.getOracleTwap()).to.be.equal(initPrice);
+    expect(await user.twapOracle.getMarketTwap()).to.be.equal(initPrice);
+    // TODO add other checks here
   });
 
   it('TWAP value should properly account for variations of the underlying chainlink oracle index price', async () => {
     await _set_chainlinkOracle_indexPrice(1);
     const firstTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
+    await user.twapOracle.updateTwap();
     expect(await user.twapOracle.getOracleTwap()).to.eq(
       ethers.utils.parseEther('1')
     );
@@ -106,10 +133,10 @@ describe.only('TwapOracle', async function () {
 
     await _set_chainlinkOracle_indexPrice(3);
     const secondTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
+    await user.twapOracle.updateTwap();
 
     // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
-    const newPrice = ethers.BigNumber.from('3');
+    const newPrice = ethers.utils.parseEther('3');
     const timeElapsed = ethers.BigNumber.from(
       (secondTimestamp - firstTimestamp).toString()
     );
@@ -125,55 +152,92 @@ describe.only('TwapOracle', async function () {
     const timeOfCumulativeAmount = ethers.BigNumber.from(
       secondTimestamp.toString()
     );
-    // this far `cumulativeAmountAtBeginningOfPeriod` and `timeOfCumulativeAmountAtBeginningOfPeriod` are worth 0
-    const expectedTWAP = rDiv(cumulativeAmount, timeOfCumulativeAmount);
+
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
+
+    // this far `cumulativeAmountAtBeginningOfPeriod` and `timeOfCumulativeAmountAtBeginningOfPeriod` are worth blockTimestamp
+    const expectedTWAP = ethers.utils.parseEther('1'); // initial price
     expect(await user.twapOracle.getOracleTwap()).to.eq(expectedTWAP);
 
+    console.log('++++++++++++++++++++++++++++++++++++++++++++++++++++++++');
+    console.log('start simulation');
     await _set_chainlinkOracle_indexPrice(5);
     await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
 
     await _set_chainlinkOracle_indexPrice(10);
     await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
-
-    await _set_chainlinkOracle_indexPrice(10);
-    await addTimeToNextBlockTimestamp(env, PERIOD);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
-
-    await _set_chainlinkOracle_indexPrice(20);
-    await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
 
     await _set_chainlinkOracle_indexPrice(10);
     await addTimeToNextBlockTimestamp(env, PERIOD);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
 
     await _set_chainlinkOracle_indexPrice(20);
     await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
+
+    await _set_chainlinkOracle_indexPrice(10);
+    await addTimeToNextBlockTimestamp(env, PERIOD);
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
+
+    await _set_chainlinkOracle_indexPrice(20);
+    await addTimeToNextBlockTimestamp(env, 100);
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
 
     await _set_chainlinkOracle_indexPrice(DEFAULT_EUR_USD_PRICE);
     await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
-    // console.log((await user.twapOracle.getOracleTwap()).toString(), '\n');
+    await user.twapOracle.updateTwap();
+    console.log(
+      'TWAP is',
+      (await user.twapOracle.getOracleTwap()).toString(),
+      '\n'
+    );
 
     const cumulativeAmountBeforeLastUpdate = (
       await user.twapOracle.oraclePrice()
     ).cumulativeAmount;
     const timeOfCumulativeAmountBeforeLastUpdate = (
       await user.twapOracle.time()
-    ).timeOfCumulativeAmount;
+    ).blockTimestampLast;
 
     await _set_chainlinkOracle_indexPrice(DEFAULT_EUR_USD_PRICE);
     await addTimeToNextBlockTimestamp(env, 100);
-    await user.twapOracle.updateChainlinkTwap();
+    await user.twapOracle.updateTwap();
 
     // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
     const newPriceLastUpdate = ethers.utils.parseEther(
@@ -181,15 +245,13 @@ describe.only('TwapOracle', async function () {
     );
 
     const timeOfCumulativeAmountLastUpdate = (await user.twapOracle.time())
-      .timeOfCumulativeAmount;
+      .blockTimestampLast;
     const expectedTimeElapsed = timeOfCumulativeAmountLastUpdate.sub(
       timeOfCumulativeAmountBeforeLastUpdate
     );
 
-    const productPriceTimeLastUpdate = rMul(
-      newPriceLastUpdate,
-      expectedTimeElapsed
-    );
+    const productPriceTimeLastUpdate =
+      newPriceLastUpdate.mul(expectedTimeElapsed);
     const expectedCumulativeAmountLastUpdate =
       cumulativeAmountBeforeLastUpdate.add(productPriceTimeLastUpdate);
 
@@ -208,18 +270,17 @@ describe.only('TwapOracle', async function () {
 
     const timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate = (
       await user.twapOracle.time()
-    ).timeOfCumulativeAmountAtBeginningOfPeriod;
+    ).blockTimestampAtBeginningOfPeriod;
     const expectedTimeDiffLastUpdate = timeOfCumulativeAmountLastUpdate.sub(
       timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate
     );
 
-    const expectedTWAPLastUpdate = rDiv(
-      expectedPriceDiffLastUpdate,
+    const expectedTWAPLastUpdate = expectedPriceDiffLastUpdate.div(
       expectedTimeDiffLastUpdate
     );
 
     const TWAPLastUpdate = await user.twapOracle.getOracleTwap();
-    // console.log(TWAPLastUpdate.toString(), '\n');
+    console.log(TWAPLastUpdate.toString(), '\n');
     expect(TWAPLastUpdate).to.eq(expectedTWAPLastUpdate);
   });
 });
