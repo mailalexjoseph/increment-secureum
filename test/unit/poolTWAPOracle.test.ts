@@ -30,13 +30,13 @@ describe('PoolTWAPOracle', async function () {
   let PERIOD: number;
   let snapshotId: number;
 
-  async function _set_price_oracle(newPriceOracle: number) {
+  async function _set_last_price(newPriceOracle: number) {
     // console.log(`vBaseAmount: ${vBaseAmount} - vQuoteAmount: ${vQuoteAmount}`);
 
     const formattedNewPriceOracle = ethers.utils.parseEther(
       newPriceOracle.toString()
     );
-    await curvePoolMock.mock.price_oracle.returns(formattedNewPriceOracle);
+    await curvePoolMock.mock.last_prices.returns(formattedNewPriceOracle);
   }
 
   async function _deploy_poolTWAPOracle() {
@@ -68,7 +68,7 @@ describe('PoolTWAPOracle', async function () {
     PERIOD = (await user.poolTWAPOracle.PERIOD()).toNumber();
 
     // by default, `price_oracle` returns 1e18
-    await curvePoolMock.mock.price_oracle.returns(ethers.utils.parseEther('1'));
+    await curvePoolMock.mock.last_prices.returns(ethers.utils.parseEther('1'));
   });
 
   after(async () => {
@@ -114,8 +114,8 @@ describe('PoolTWAPOracle', async function () {
     );
   });
 
-  it('TWAP value should properly account for variations of the underlying pool price_oracle', async () => {
-    await _set_price_oracle(1);
+  it('TWAP value should properly account for variations of the underlying pool last_prices', async () => {
+    await _set_last_price(1);
     const firstTimestamp = await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     expect(await user.poolTWAPOracle.getEURUSDTWAP()).to.eq(
@@ -125,7 +125,7 @@ describe('PoolTWAPOracle', async function () {
     const cumulativeAmountBeforeSecondUpdate =
       await user.poolTWAPOracle.cumulativeAmount();
 
-    await _set_price_oracle(3);
+    await _set_last_price(3);
     const secondTimestamp = await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
 
@@ -150,37 +150,37 @@ describe('PoolTWAPOracle', async function () {
     const expectedTWAP = rDiv(cumulativeAmount, timeOfCumulativeAmount);
     expect(await user.poolTWAPOracle.getEURUSDTWAP()).to.eq(expectedTWAP);
 
-    await _set_price_oracle(5);
+    await _set_last_price(5);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(10);
+    await _set_last_price(10);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(10);
+    await _set_last_price(10);
     await addTimeToNextBlockTimestamp(env, PERIOD);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(20);
+    await _set_last_price(20);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(10);
+    await _set_last_price(10);
     await addTimeToNextBlockTimestamp(env, PERIOD);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(20);
+    await _set_last_price(20);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
 
-    await _set_price_oracle(20);
+    await _set_last_price(20);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
     // console.log((await user.poolTWAPOracle.getEURUSDTWAP()).toString(), '\n');
@@ -190,7 +190,7 @@ describe('PoolTWAPOracle', async function () {
     const timeOfCumulativeAmountBeforeLastUpdate =
       await user.poolTWAPOracle.timeOfCumulativeAmount();
 
-    await _set_price_oracle(20);
+    await _set_last_price(20);
     await addTimeToNextBlockTimestamp(env, 100);
     await user.poolTWAPOracle.updateEURUSDTWAP();
 

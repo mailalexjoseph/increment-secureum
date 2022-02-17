@@ -46,7 +46,7 @@ contract PoolTWAPOracle {
 
         uint256 timeElapsed = currentTime - timeOfCumulativeAmount;
         // uint256 newPrice = LibMath.wadDiv(pool.balances(VBASE_INDEX), pool.balances(VQUOTE_INDEX));
-        uint256 newPrice = pool.price_oracle();
+        uint256 newPrice = pool.last_prices();
 
         cumulativeAmount = cumulativeAmount + LibMath.wadMul(newPrice, timeElapsed);
         timeOfCumulativeAmount = currentTime;
