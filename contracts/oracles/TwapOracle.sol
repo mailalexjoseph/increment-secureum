@@ -56,8 +56,6 @@ contract TwapOracle {
         oraclePrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastChainlinkPrice});
         marketPrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastMarketPrice});
         time = Time({blockTimestampLast: block.timestamp, blockTimestampAtBeginningOfPeriod: block.timestamp});
-
-        //console.log("Current block timestamp: ", block.timestamp);
     }
 
     event TwapUpdated();
@@ -66,13 +64,11 @@ contract TwapOracle {
         uint256 currentTime = block.timestamp;
         int256 timeElapsed = (currentTime - time.blockTimestampLast).toInt256();
 
-        //console.log("Current block timestamp: ", block.timestamp);
         time.blockTimestampLast = currentTime;
         /*
             priceCumulative1 = priceCumulative0 + price1 * timeElapsed
         */
 
-        console.log("timestamp is", block.timestamp);
         // update cumulative chainlink price feed
         int256 latestChainlinkPrice = chainlinkOracle.getIndexPrice();
         oraclePrice.cumulativeAmount = oraclePrice.cumulativeAmount + latestChainlinkPrice * timeElapsed;
@@ -81,29 +77,13 @@ contract TwapOracle {
         int256 latestMarketPrice = cryptoSwap.last_prices().toInt256();
         marketPrice.cumulativeAmount = marketPrice.cumulativeAmount + latestMarketPrice * timeElapsed;
 
-        //console.log("latestChainlinkPrice: ");
-        //console.logInt(latestChainlinkPrice);
-
-        console.log("timeElapsed: ");
-        console.logInt(timeElapsed);
-
-        //console.log("oraclePrice.cumulativeAmount: ");
-        //console.logInt(oraclePrice.cumulativeAmount);
-
         uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - time.blockTimestampAtBeginningOfPeriod;
-
-        console.log("timeElapsedSinceBeginningOfPeriod ");
-        console.log(timeElapsedSinceBeginningOfPeriod);
 
         // slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfPeriod >= PERIOD) {
-            console.log("update twap & reset");
             /*
                 TWAP = priceCumulative1 - priceCumulative0 / timeElapsed
             */
-
-            console.log("oraclePrice.cumulativeAmountAtBeginningOfPeriod: ");
-            console.logInt(oraclePrice.cumulativeAmountAtBeginningOfPeriod);
 
             // calculate chainlink twap
             oraclePrice.twap =
@@ -114,9 +94,6 @@ contract TwapOracle {
             marketPrice.twap =
                 (marketPrice.cumulativeAmount - marketPrice.cumulativeAmountAtBeginningOfPeriod) /
                 timeElapsedSinceBeginningOfPeriod.toInt256();
-
-            console.log("oraclePrice.twap: ");
-            console.logInt(oraclePrice.twap);
 
             // reset cumulative amount and timestamp
             oraclePrice.cumulativeAmountAtBeginningOfPeriod = oraclePrice.cumulativeAmount;
