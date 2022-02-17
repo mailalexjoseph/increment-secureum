@@ -32,6 +32,7 @@
     "ethers": "^5.5.2",
     "fs-extra": "^10.0.0",
     "hardhat": "^2.3.3",
+    "hardhat-contract-sizer": "^2.4.0",
     "hardhat-deploy": "^0.9.14",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",

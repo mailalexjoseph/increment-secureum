@@ -5,6 +5,7 @@ import 'dotenv/config';
 import 'hardhat-gas-reporter';
 // import '@nomiclabs/hardhat-vyper';
 
+import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
 import '@typechain/hardhat';
 import '@nomiclabs/hardhat-ethers';
@@ -150,6 +151,21 @@ const config: HardhatUserConfig = {
       {
         artifacts: 'contracts-vyper',
       },
+    ],
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    only: [
+      'Perpetual',
+      'Vault',
+      'Insurance',
+      'TWAPOracle',
+      'ChainlinkOracle',
+      'ChainlinkTWAPOracle',
+      'PoolTWAPOracle',
     ],
   },
 };
