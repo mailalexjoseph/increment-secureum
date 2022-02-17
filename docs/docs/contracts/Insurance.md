@@ -10,6 +10,17 @@
 
 ## Methods
 
+### add
+
+```solidity
+function add() external nonpayable
+```
+
+
+
+
+
+
 ### settleDebt
 
 ```solidity

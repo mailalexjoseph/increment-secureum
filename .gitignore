@@ -45,3 +45,5 @@ crytic-export/
 slither.sarif
 
 typechain copy/
+docs/docs/
+docs/.docusaurus

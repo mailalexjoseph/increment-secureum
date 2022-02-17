@@ -51,13 +51,14 @@
     "typescript": "^4.3.2"
   },
   "scripts": {
-    "prepare": "node ./.setup.js && hardhat typechain && husky install & pip3 install slither-analyzer",
+    "prepare": "node ./.setup.js && hardhat typechain && husky install & pip3 install slither-analyzer && cd docs && yarn install",
     "lint": "eslint \"**/*.{js,ts}\" && solhint src/**/*.sol",
     "lint:fix": "eslint --fix \"**/*.{js,ts}\" && solhint --fix src/**/*.sol",
     "format": "prettier --check \"**/*.{ts,js,sol}\"",
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
+    "docs": "cd docs/ && yarn start",
     "void:deploy": "hardhat deploy",
     "test": "yarn test:unit && yarn test:integration && yarn slither",
     "test:integration": "yarn compile && cross-env HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha 'test/integration/*.test.ts'",

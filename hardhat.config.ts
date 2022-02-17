@@ -173,6 +173,14 @@ const config: HardhatUserConfig = {
     ],
   dodoc: {
     outputDir: 'docs/docs/contracts',
+    include: [
+      'Insurance',
+      'Vault',
+      'Perpetual',
+      'LibPerpetual',
+      'LibFunding',
+      'LibReserve',
+    ],
   },
 };
 export default config;

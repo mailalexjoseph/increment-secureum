@@ -199,7 +199,7 @@ function getGlobalPosition() external view returns (struct LibPerpetual.GlobalPo
 
 
 
-
+*returns the Global Position*
 
 
 #### Returns
