@@ -555,9 +555,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         }
     }
 
-    /// @notice Return the current market price
+    /// @notice Return the curve price oracle
+    function marketPriceOracle() public view returns (uint256) {
+        return market.price_oracle();
+    }
+
+    /// @notice Return the last traded price (used for TWAP)
     function marketPrice() public view returns (uint256) {
-        return market.price_oracle(); // approximately vBase / vQuote
+        return market.last_prices();
     }
 
     /// @notice Return the current off-chain exchange rate for vBase/vQuote
