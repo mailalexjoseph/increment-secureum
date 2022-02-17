@@ -556,7 +556,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Return the curve price oracle
-    function marketPriceOracle() public view returns (uint256) {
+    function marketPriceOracle() external view returns (uint256) {
         return market.price_oracle();
     }
 
