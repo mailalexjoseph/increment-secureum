@@ -16,9 +16,7 @@ import "hardhat/console.sol";
  * associated with the vBase/vQuote pair (e.g. EUR/USD).
  *
  * This twap oracle is inspired by this twap article of Uniswap: https://docs.uniswap.org/protocol/V2/concepts/core-concepts/oracles
- * Except that the weighting is done over the length of one PERIOD minimum, and that every 2 PERIODs the value of the
- * the cumulative amount used as a reference point against the current cumulative amount is reset with the value it
- * had 1 PERIOD ago - same thing for the reference timestamp value.
+ * Implementation follows the logic of the Uniswap twap oracle: https://github.com/Uniswap/v2-periphery/blob/master/contracts/examples/ExampleOracleSimple.sol
  */
 contract TwapOracle {
     using SafeCast for uint256;
@@ -74,6 +72,7 @@ contract TwapOracle {
             priceCumulative1 = priceCumulative0 + price1 * timeElapsed
         */
 
+        console.log("timestamp is", block.timestamp);
         // update cumulative chainlink price feed
         int256 latestChainlinkPrice = chainlinkOracle.getIndexPrice();
         oraclePrice.cumulativeAmount = oraclePrice.cumulativeAmount + latestChainlinkPrice * timeElapsed;
@@ -103,8 +102,8 @@ contract TwapOracle {
                 TWAP = priceCumulative1 - priceCumulative0 / timeElapsed
             */
 
-            //console.log("oraclePrice.cumulativeAmountAtBeginningOfPeriod: ");
-            //console.logInt(oraclePrice.cumulativeAmountAtBeginningOfPeriod);
+            console.log("oraclePrice.cumulativeAmountAtBeginningOfPeriod: ");
+            console.logInt(oraclePrice.cumulativeAmountAtBeginningOfPeriod);
 
             // calculate chainlink twap
             oraclePrice.twap =
@@ -116,8 +115,8 @@ contract TwapOracle {
                 (marketPrice.cumulativeAmount - marketPrice.cumulativeAmountAtBeginningOfPeriod) /
                 timeElapsedSinceBeginningOfPeriod.toInt256();
 
-            //console.log("oraclePrice.twap: ");
-            //console.logInt(oraclePrice.twap);
+            console.log("oraclePrice.twap: ");
+            console.logInt(oraclePrice.twap);
 
             // reset cumulative amount and timestamp
             oraclePrice.cumulativeAmountAtBeginningOfPeriod = oraclePrice.cumulativeAmount;
