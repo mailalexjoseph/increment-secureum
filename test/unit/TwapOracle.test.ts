@@ -3,6 +3,9 @@ import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
+import {asBigNumber} from '..//helpers/utils/calculations';
+
+import {BigNumber, BigNumberish} from 'ethers';
 import {
   TwapOracle,
   TwapOracle__factory,
@@ -20,16 +23,16 @@ async function getLatestTimestamp(
   return block.timestamp;
 }
 
-let nextBlockTimestamp = 2000000000;
+let nextBlockTimestamp: BigNumber = ethers.BigNumber.from(2000000000);
+
 async function addTimeToNextBlockTimestamp(
   hre: HardhatRuntimeEnvironment,
-  additionalTimestamp: number
-): Promise<number> {
-  nextBlockTimestamp += additionalTimestamp;
-
+  additionalTimestamp: BigNumber | BigNumberish
+): Promise<BigNumber> {
+  nextBlockTimestamp = nextBlockTimestamp.add(additionalTimestamp);
   await hre.network.provider.request({
     method: 'evm_setNextBlockTimestamp',
-    params: [nextBlockTimestamp],
+    params: [nextBlockTimestamp.toNumber()],
   });
   // await hre.network.provider.request({
   //   method: 'evm_increaseTime',
@@ -40,17 +43,17 @@ async function addTimeToNextBlockTimestamp(
   return nextBlockTimestamp;
 }
 
-const DEFAULT_EUR_USD_PRICE = 1.131523;
+const DEFAULT_EUR_USD_PRICE = '1.131523';
 
-const INIT_PRICE = ethers.utils.parseEther('1');
+const INIT_PRICE = asBigNumber('1');
 
 type User = {twapOracle: TwapOracle};
 
-describe.only('TwapOracle', async function () {
+describe('TwapOracle', async function () {
   let chainlinkMock: MockContract;
   let curvePoolMock: MockContract;
   let user: User;
-  let PERIOD: number;
+  let PERIOD: BigNumber;
   let snapshotId: number;
 
   async function _deploy_TWAPOracle() {
@@ -68,13 +71,10 @@ describe.only('TwapOracle', async function () {
       CurveCryptoSwap2ETH__factory.abi
     );
 
-    await _set_chainlinkOracle_indexPrice(1); // update even before the TWAP oracle is deployed
-    await _set_curvePool_price_oracle(1); // update even before the TWAP oracle is deployed
+    await _set_chainlinkOracle_indexPrice(INIT_PRICE); // update even before the TWAP oracle is deployed
+    await _set_curvePool_price_oracle(INIT_PRICE); // update even before the TWAP oracle is deployed
 
     const TWAPOracleContract = await ethers.getContractFactory('TwapOracle');
-
-    // init timeStamp
-    await addTimeToNextBlockTimestamp(env, 0);
 
     const twapOracle = <TwapOracle>(
       await TWAPOracleContract.deploy(
@@ -86,362 +86,280 @@ describe.only('TwapOracle', async function () {
   }
 
   // @param newIndexPrice New price index (e.g. EUR/USD) with 1e18 decimal
-  async function _set_chainlinkOracle_indexPrice(newIndexPrice: number) {
+  async function _set_chainlinkOracle_indexPrice(newIndexPrice: BigNumber) {
     // console.log(`newIndexPrice: ${newIndexPrice}`);
 
-    const formattedNewIndexPrice = ethers.utils.parseEther(
-      newIndexPrice.toString()
-    );
-    await chainlinkMock.mock.getIndexPrice.returns(formattedNewIndexPrice);
+    await chainlinkMock.mock.getIndexPrice.returns(newIndexPrice);
   }
-  async function _set_curvePool_price_oracle(newPriceOracle: number) {
+  async function _set_curvePool_price_oracle(newPoolPrice: BigNumber) {
     // console.log(`vBaseAmount: ${vBaseAmount} - vQuoteAmount: ${vQuoteAmount}`);
 
-    const formattedNewPriceOracle = ethers.utils.parseEther(
-      newPriceOracle.toString()
-    );
-    await curvePoolMock.mock.last_prices.returns(formattedNewPriceOracle);
+    await curvePoolMock.mock.last_prices.returns(newPoolPrice);
   }
 
-  beforeEach(async () => {
-    snapshotId = await env.network.provider.send('evm_snapshot', []);
-  });
+  /// @dev records a state for the next
+  /// @param price Price for period
+  /// @param timeElapsed Time for which price exists
+  /// @returns The new time
+  async function record_chainlink_price(
+    hre: HardhatRuntimeEnvironment,
+    user: User,
+    price: BigNumber,
+    timeElapsed: BigNumber
+  ): Promise<BigNumber> {
+    await _set_chainlinkOracle_indexPrice(price);
+
+    return await _record_time(hre, user, timeElapsed);
+  }
+
+  /// @dev records a state for the next
+  /// @param price Price for period
+  /// @param timeElapsed Time for which price exists
+  /// @returns The new time
+  async function record_market_price(
+    hre: HardhatRuntimeEnvironment,
+    user: User,
+    price: BigNumber,
+    timeElapsed: BigNumber
+  ): Promise<BigNumber> {
+    await _set_curvePool_price_oracle(price);
+
+    return await _record_time(hre, user, timeElapsed);
+  }
+
+  async function _record_time(
+    hre: HardhatRuntimeEnvironment,
+    user: User,
+    timeElapsed: BigNumber
+  ): Promise<BigNumber> {
+    const timeStamp = await addTimeToNextBlockTimestamp(hre, timeElapsed);
+
+    await user.twapOracle.updateTwap();
+
+    return timeStamp;
+  }
 
   before(async () => {
+    // init timeStamp
+    await addTimeToNextBlockTimestamp(env, 0);
+
     // user = await setup();
     user = await _deploy_TWAPOracle();
-    PERIOD = (await user.twapOracle.PERIOD()).toNumber();
+    PERIOD = await user.twapOracle.PERIOD();
+
+    // take snapshot
+    snapshotId = await env.network.provider.send('evm_snapshot', []);
   });
 
   afterEach(async () => {
     await env.network.provider.send('evm_revert', [snapshotId]);
+    snapshotId = await env.network.provider.send('evm_snapshot', []);
   });
 
   describe('Should test the Chainlink twap', async () => {
     it('Should initialize TWAP with initial price points values', async () => {
-      expect(await user.twapOracle.getOracleTwap()).to.be.equal(INIT_PRICE);
+      expect(await user.twapOracle.getOracleTwap()).to.eq(INIT_PRICE);
     });
     it('TWAP value should properly account for variations of the underlying chainlink oracle index price', async () => {
-      await _set_chainlinkOracle_indexPrice(1);
-      const firstTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      expect(await user.twapOracle.getOracleTwap()).to.eq(
-        ethers.utils.parseEther('1')
+      // start a fresh new period and start calculation example
+      const timeStamp0 = await addTimeToNextBlockTimestamp(
+        env,
+        PERIOD.mul(2) // go far in future to force a new period
       );
-
-      const cumulativeAmountBeforeSecondUpdate = (
-        await user.twapOracle.oraclePrice()
-      ).cumulativeAmount;
-
-      await _set_chainlinkOracle_indexPrice(3);
-      const secondTimestamp = await addTimeToNextBlockTimestamp(env, 100);
       await user.twapOracle.updateTwap();
 
-      // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
-      const newPrice = ethers.utils.parseEther('3');
-      const timeElapsed = ethers.BigNumber.from(
-        (secondTimestamp - firstTimestamp).toString()
-      );
-      const productPriceTime = newPrice.mul(timeElapsed);
-      const expectedCumulativeAmount =
-        cumulativeAmountBeforeSecondUpdate.add(productPriceTime);
-
-      expect((await user.twapOracle.oraclePrice()).cumulativeAmount).to.eq(
-        expectedCumulativeAmount
+      // verify start values
+      expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp0);
+      expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+        timeStamp0
       );
 
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      // this far `cumulativeAmountAtBeginningOfPeriod` and `timeOfCumulativeAmountAtBeginningOfPeriod` are worth blockTimestamp
       expect(await user.twapOracle.getOracleTwap()).to.eq(INIT_PRICE);
 
-      await _set_chainlinkOracle_indexPrice(5);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      await _set_chainlinkOracle_indexPrice(10);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      await _set_chainlinkOracle_indexPrice(10);
-      await addTimeToNextBlockTimestamp(env, PERIOD);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      await _set_chainlinkOracle_indexPrice(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-      console.log('last update');
-      await _set_chainlinkOracle_indexPrice(10);
-      const lastPeriod = await addTimeToNextBlockTimestamp(env, PERIOD);
-      console.log('lastPeriod is', lastPeriod.toString());
-
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-      await _set_chainlinkOracle_indexPrice(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      await _set_chainlinkOracle_indexPrice(DEFAULT_EUR_USD_PRICE);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      console.log(
-        'TWAP is',
-        (await user.twapOracle.getOracleTwap()).toString(),
-        '\n'
-      );
-
-      const cumulativeAmountBeforeLastUpdate = (
-        await user.twapOracle.oraclePrice()
-      ).cumulativeAmount;
-      const timeOfCumulativeAmountBeforeLastUpdate = (
-        await user.twapOracle.time()
-      ).blockTimestampLast;
-
-      await _set_chainlinkOracle_indexPrice(DEFAULT_EUR_USD_PRICE);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-
-      // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
-      // const newPriceLastUpdate = ethers.utils.parseEther(
-      //   DEFAULT_EUR_USD_PRICE.toString()
-      // );
-
-      // const timeOfCumulativeAmountLastUpdate = (await user.twapOracle.time())
-      //   .blockTimestampLast;
-      // const expectedTimeElapsed = timeOfCumulativeAmountLastUpdate.sub(
-      //   timeOfCumulativeAmountBeforeLastUpdate
-      // );
-
-      // const productPriceTimeLastUpdate =
-      //   newPriceLastUpdate.mul(expectedTimeElapsed);
-      // const expectedCumulativeAmountLastUpdate =
-      //   cumulativeAmountBeforeLastUpdate.add(productPriceTimeLastUpdate);
-
-      // expect((await user.twapOracle.oraclePrice()).cumulativeAmount).to.eq(
-      //   expectedCumulativeAmountLastUpdate
-      // );
-
-      // const cumulativeAmountLastUpdate = expectedCumulativeAmountLastUpdate;
-      // const cumulativeAmountAtBeginningOfPeriodAtLastUpdate = (
-      //   await user.twapOracle.oraclePrice()
-      // ).cumulativeAmountAtBeginningOfPeriod;
-
-      // const expectedPriceDiffLastUpdate = cumulativeAmountLastUpdate.sub(
-      //   cumulativeAmountAtBeginningOfPeriodAtLastUpdate
-      // );
-
-      // const timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate = (
-      //   await user.twapOracle.time()
-      // ).blockTimestampAtBeginningOfPeriod;
-      // const expectedTimeDiffLastUpdate = timeOfCumulativeAmountLastUpdate.sub(
-      //   timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate
-      // );
-
-      // const expectedTWAPLastUpdate = expectedPriceDiffLastUpdate.div(
-      //   expectedTimeDiffLastUpdate
-      // );
-
-      // const TWAPLastUpdate = await user.twapOracle.getOracleTwap();
-      // console.log(TWAPLastUpdate.toString(), '\n');
-      // expect(TWAPLastUpdate).to.eq(expectedTWAPLastUpdate);
-    });
-  });
-  describe('Should test the Curvepool twap', async () => {
-    it('Should initialize TWAP with initial price points values', async () => {
-      expect(await user.twapOracle.getMarketTwap()).to.eq(INIT_PRICE);
-    });
-
-    it('Should set TWAP value when contract is called for the first time, this value should be readable', async () => {
-      expect((await user.twapOracle.marketPrice()).cumulativeAmount).to.eq(0);
+      const cumulativeAmountAtStart =
+        await user.twapOracle.oracleCumulativeAmount();
       expect(
-        (await user.twapOracle.marketPrice())
-          .cumulativeAmountAtBeginningOfPeriod
-      ).to.eq(0);
+        await user.twapOracle.oracleCumulativeAmountAtBeginningOfPeriod()
+      ).to.eq(cumulativeAmountAtStart);
 
-      const nextBlockTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
+      // price of 2 for 1/4 th of the period
+      const price0 = asBigNumber('2');
+      const timeElapsed0 = PERIOD.div(4);
+      const timeStamp1 = await record_chainlink_price(
+        env,
+        user,
+        price0,
+        timeElapsed0
+      );
+
+      /* check that function updates variables correctly */
+
+      /* cumulativeAmount += timeElapsed * newPrice */
+      const timeElapsed = timeStamp1.sub(timeStamp0);
+      const productPriceTime = price0.mul(timeElapsed);
+      const expectedCumulativeAmountFirstUpdate =
+        cumulativeAmountAtStart.add(productPriceTime);
+
+      expect(await user.twapOracle.oracleCumulativeAmount()).to.eq(
+        expectedCumulativeAmountFirstUpdate
+      );
+      expect(
+        await user.twapOracle.oracleCumulativeAmountAtBeginningOfPeriod()
+      ).to.eq(cumulativeAmountAtStart);
+
+      expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp1);
+      expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+        timeStamp0
+      );
+
+      expect(await user.twapOracle.getOracleTwap()).to.eq(INIT_PRICE);
+
+      // price of 3 for 1/4 th of the period
+      const price1 = asBigNumber('3');
+      const timeElapsed1 = PERIOD.div(4);
+      await record_chainlink_price(env, user, price1, timeElapsed1);
+
+      // price of 4 for 1/4 th of the period
+      const price2 = asBigNumber('4');
+      const timeElapsed2 = PERIOD.div(4);
+      await record_chainlink_price(env, user, price2, timeElapsed2);
+
+      // price of 5 for 1/4 th of the period
+      const price3 = asBigNumber('5');
+      const timeElapsed3 = PERIOD.div(4);
+
+      await _set_chainlinkOracle_indexPrice(price3);
+      const timeStamp5 = await addTimeToNextBlockTimestamp(env, timeElapsed3);
+
+      // calculate TWAP = sum(timeElapsed * price)/sum(timeElapsed))
+      const weightedPrice = price0
+        .mul(timeElapsed0)
+        .add(price1.mul(timeElapsed1))
+        .add(price2.mul(timeElapsed2))
+        .add(price3.mul(timeElapsed3));
+      const eTwapOracle = weightedPrice.div(PERIOD);
+
+      await expect(user.twapOracle.updateTwap())
+        .to.emit(user.twapOracle, 'TwapUpdated')
+        .withArgs(timeStamp5, eTwapOracle, INIT_PRICE);
+
+      // verify end values
+      expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp5);
+      expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+        timeStamp5
+      );
+
+      expect(await user.twapOracle.getOracleTwap()).to.eq(eTwapOracle);
 
       expect(
-        (await user.twapOracle.marketPrice())
-          .cumulativeAmountAtBeginningOfPeriod
-      ).to.eq(0);
-
-      // after 100s, the cumulativeAmount should be 10e18 * 100,
-      expect((await user.twapOracle.marketPrice()).cumulativeAmount).to.eq(
-        INIT_PRICE.mul(100)
+        await user.twapOracle.oracleCumulativeAmountAtBeginningOfPeriod()
+      ).to.eq(cumulativeAmountAtStart.add(weightedPrice));
+      expect(await user.twapOracle.oracleCumulativeAmount()).to.eq(
+        cumulativeAmountAtStart.add(weightedPrice)
       );
-      console.log('nextBlockTimestamp is', nextBlockTimestamp.toString());
-      console.log(
-        '(await user.twapOracle.time()).blockTimestampLast is',
-        (await user.twapOracle.time()).blockTimestampLast.toString()
-      );
-
-      // 1 for the same reason that cumulativeAmount equals the same timestamp as the block
-      expect((await user.twapOracle.time()).blockTimestampLast).to.eq(
-        nextBlockTimestamp
-      );
-
-      expect(await user.twapOracle.getMarketTwap()).to.eq(INIT_PRICE);
     });
+    describe('Should test the Market twap', async () => {
+      it('Should initialize TWAP with initial price points values', async () => {
+        expect(await user.twapOracle.getMarketTwap()).to.eq(INIT_PRICE);
+      });
+      it('TWAP value should properly account for variations of the underlying curve oracle price', async () => {
+        // start a fresh new period and start calculation example
+        const timeStamp0 = await addTimeToNextBlockTimestamp(
+          env,
+          PERIOD.mul(2) // go far in future to force a new period
+        );
+        await user.twapOracle.updateTwap();
 
-    /*
-    it('TWAP value should properly account for variations of the underlying pool price_oracle', async () => {
-      await _set_curvePool_price_oracle(1);
-      const firstTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      expect(await user.twapOracle.getMarketTwap()).to.eq(
-        ethers.utils.parseEther('1')
-      );
+        // verify start values
+        expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp0);
+        expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+          timeStamp0
+        );
 
-      const cumulativeAmountBeforeSecondUpdate = (
-        await user.twapOracle.marketPrice()
-      ).cumulativeAmount;
+        expect(await user.twapOracle.getMarketTwap()).to.eq(INIT_PRICE);
 
-      await _set_curvePool_price_oracle(3);
-      const secondTimestamp = await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
+        const cumulativeAmountAtStart =
+          await user.twapOracle.marketCumulativeAmount();
+        expect(
+          await user.twapOracle.marketCumulativeAmountAtBeginningOfPeriod()
+        ).to.eq(cumulativeAmountAtStart);
 
-      // cumulativeAmount = cumulativeAmount + newPrice * timeElapsed;
-      const newPrice = ethers.BigNumber.from('3'); // vBase / vQuote
-      const timeElapsed = ethers.BigNumber.from(
-        (secondTimestamp - firstTimestamp).toString()
-      );
-      const productPriceTime = newPrice.mul(timeElapsed);
-      const expectedCumulativeAmount =
-        cumulativeAmountBeforeSecondUpdate.add(productPriceTime);
+        // price of 2 for 1/4 th of the period
+        const price0 = asBigNumber('2');
+        const timeElapsed0 = PERIOD.div(4);
+        const timeStamp1 = await record_market_price(
+          env,
+          user,
+          price0,
+          timeElapsed0
+        );
 
-      expect((await user.twapOracle.marketPrice()).cumulativeAmount).to.eq(
-        expectedCumulativeAmount
-      );
+        /* check that function updates variables correctly */
 
-      const cumulativeAmount = expectedCumulativeAmount;
-      const timeOfCumulativeAmount = ethers.BigNumber.from(
-        secondTimestamp.toString()
-      );
-      // this far `cumulativeAmountAtBeginningOfPeriod` and `timeOfCumulativeAmountAtBeginningOfPeriod` are worth 0
-      const expectedTWAP = rDiv(cumulativeAmount, timeOfCumulativeAmount);
-      expect(await user.twapOracle.getMarketTwap()).to.eq(expectedTWAP);
+        /* cumulativeAmount += timeElapsed * newPrice */
+        const timeElapsed = timeStamp1.sub(timeStamp0);
+        const productPriceTime = price0.mul(timeElapsed);
+        const expectedCumulativeAmountFirstUpdate =
+          cumulativeAmountAtStart.add(productPriceTime);
 
-      await _set_curvePool_price_oracle(5);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        expect(await user.twapOracle.marketCumulativeAmount()).to.eq(
+          expectedCumulativeAmountFirstUpdate
+        );
+        expect(
+          await user.twapOracle.marketCumulativeAmountAtBeginningOfPeriod()
+        ).to.eq(cumulativeAmountAtStart);
 
-      await _set_curvePool_price_oracle(10);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp1);
+        expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+          timeStamp0
+        );
 
-      await _set_curvePool_price_oracle(10);
-      await addTimeToNextBlockTimestamp(env, PERIOD);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        expect(await user.twapOracle.getMarketTwap()).to.eq(INIT_PRICE);
 
-      await _set_curvePool_price_oracle(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        // price of 3 for 1/4 th of the period
+        const price1 = asBigNumber('3');
+        const timeElapsed1 = PERIOD.div(4);
+        await record_market_price(env, user, price1, timeElapsed1);
 
-      await _set_curvePool_price_oracle(10);
-      await addTimeToNextBlockTimestamp(env, PERIOD);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        // price of 4 for 1/4 th of the period
+        const price2 = asBigNumber('4');
+        const timeElapsed2 = PERIOD.div(4);
+        await record_market_price(env, user, price2, timeElapsed2);
 
-      await _set_curvePool_price_oracle(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        // price of 5 for 1/4 th of the period
+        const price3 = asBigNumber('5');
+        const timeElapsed3 = PERIOD.div(4);
 
-      await _set_curvePool_price_oracle(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
-      // console.log((await user.twapOracle.getMarketTwap()).toString(), '\n');
+        await _set_curvePool_price_oracle(price3);
+        const timeStamp5 = await addTimeToNextBlockTimestamp(env, timeElapsed3);
 
-      const cumulativeAmountBeforeLastUpdate = (
-        await user.twapOracle.marketPrice()
-      ).cumulativeAmount;
-      const timeOfCumulativeAmountBeforeLastUpdate =
-        await user.twapOracle.timeOfCumulativeAmount();
+        // calculate TWAP = sum(timeElapsed * price)/sum(timeElapsed))
+        const weightedPrice = price0
+          .mul(timeElapsed0)
+          .add(price1.mul(timeElapsed1))
+          .add(price2.mul(timeElapsed2))
+          .add(price3.mul(timeElapsed3));
+        const eTwapOracle = weightedPrice.div(PERIOD);
 
-      await _set_curvePool_price_oracle(20);
-      await addTimeToNextBlockTimestamp(env, 100);
-      await user.twapOracle.updateTwap();
+        await expect(user.twapOracle.updateTwap())
+          .to.emit(user.twapOracle, 'TwapUpdated')
+          .withArgs(timeStamp5, INIT_PRICE, eTwapOracle);
 
-      const expectedNewPriceLastUpdate = ethers.utils.parseEther('20');
+        // verify end values
+        expect(await user.twapOracle.blockTimestampLast()).to.eq(timeStamp5);
+        expect(await user.twapOracle.blockTimestampAtBeginningOfPeriod()).to.eq(
+          timeStamp5
+        );
 
-      const timeOfCumulativeAmountLastUpdate =
-        await user.twapOracle.timeOfCumulativeAmount();
-      const expectedTimeElapsed = timeOfCumulativeAmountLastUpdate.sub(
-        timeOfCumulativeAmountBeforeLastUpdate
-      );
+        expect(await user.twapOracle.getMarketTwap()).to.eq(eTwapOracle);
 
-      const productPriceTimeLastUpdate = rMul(
-        expectedNewPriceLastUpdate,
-        expectedTimeElapsed
-      );
-      const expectedCumulativeAmountLastUpdate =
-        cumulativeAmountBeforeLastUpdate.add(productPriceTimeLastUpdate);
-
-      expect((await user.twapOracle.marketPrice()).cumulativeAmount).to.eq(
-        expectedCumulativeAmountLastUpdate
-      );
-
-      const cumulativeAmountLastUpdate = expectedCumulativeAmountLastUpdate;
-      const cumulativeAmountAtBeginningOfPeriodAtLastUpdate = (
-        await user.twapOracle.marketPrice()
-      ).cumulativeAmountAtBeginningOfPeriod;
-
-      const expectedPriceDiffLastUpdate = cumulativeAmountLastUpdate.sub(
-        cumulativeAmountAtBeginningOfPeriodAtLastUpdate
-      );
-
-      const timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate =
-        await user.twapOracle.timeOfCumulativeAmountAtBeginningOfPeriod();
-      const expectedTimeDiffLastUpdate = timeOfCumulativeAmountLastUpdate.sub(
-        timeOfCumulativeAmountAtBeginningOfPeriodAtLastUpdate
-      );
-
-      const expectedTWAPLastUpdate = rDiv(
-        expectedPriceDiffLastUpdate,
-        expectedTimeDiffLastUpdate
-      );
-
-      const TWAPLastUpdate = await user.twapOracle.getMarketTwap();
-      // console.log(TWAPLastUpdate.toString(), '\n');
-      expect(TWAPLastUpdate).to.eq(expectedTWAPLastUpdate);
-    });*/
+        expect(
+          await user.twapOracle.marketCumulativeAmountAtBeginningOfPeriod()
+        ).to.eq(cumulativeAmountAtStart.add(weightedPrice));
+        expect(await user.twapOracle.marketCumulativeAmount()).to.eq(
+          cumulativeAmountAtStart.add(weightedPrice)
+        );
+      });
+    });
   });
 });

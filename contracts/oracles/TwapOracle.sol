@@ -24,22 +24,17 @@ contract TwapOracle {
 
     uint256 public constant PERIOD = 15 minutes;
 
-    struct Time {
-        uint256 blockTimestampLast;
-        uint256 blockTimestampAtBeginningOfPeriod;
-    }
-    struct Prices {
-        int256 cumulativeAmount;
-        int256 cumulativeAmountAtBeginningOfPeriod;
-        int256 twap;
-    }
+    uint256 public blockTimestampLast;
+    uint256 public blockTimestampAtBeginningOfPeriod;
 
-    // time
-    Time public time;
+    int256 public oracleCumulativeAmount;
+    int256 public oracleCumulativeAmountAtBeginningOfPeriod;
+    int256 public oracleTwap;
 
-    // prices
-    Prices public oraclePrice;
-    Prices public marketPrice;
+    int256 public marketCumulativeAmount;
+    // slither-disable-next-line similar-names
+    int256 public marketCumulativeAmountAtBeginningOfPeriod;
+    int256 public marketTwap;
 
     IChainlinkOracle public immutable chainlinkOracle;
     ICryptoSwap public immutable cryptoSwap;
@@ -52,32 +47,34 @@ contract TwapOracle {
         int256 lastChainlinkPrice = IChainlinkOracle(_chainlinkOracle).getIndexPrice();
         int256 lastMarketPrice = ICryptoSwap(_cryptoSwap).last_prices().toInt256();
 
-        // set twap to market price
-        oraclePrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastChainlinkPrice});
-        marketPrice = Prices({cumulativeAmount: 0, cumulativeAmountAtBeginningOfPeriod: 0, twap: lastMarketPrice});
-        time = Time({blockTimestampLast: block.timestamp, blockTimestampAtBeginningOfPeriod: block.timestamp});
+        // initialize the oracle
+        oracleTwap = lastChainlinkPrice;
+        marketTwap = lastMarketPrice;
+
+        blockTimestampLast = block.timestamp;
+        blockTimestampAtBeginningOfPeriod = block.timestamp;
     }
 
-    event TwapUpdated();
+    event TwapUpdated(uint256 timeStamp, int256 newOracleTwap, int256 newMarketTwap);
 
-    function updateTwap() public {
+    function updateTwap() external {
         uint256 currentTime = block.timestamp;
-        int256 timeElapsed = (currentTime - time.blockTimestampLast).toInt256();
+        int256 timeElapsed = (currentTime - blockTimestampLast).toInt256();
 
-        time.blockTimestampLast = currentTime;
+        blockTimestampLast = currentTime;
         /*
             priceCumulative1 = priceCumulative0 + price1 * timeElapsed
         */
 
         // update cumulative chainlink price feed
         int256 latestChainlinkPrice = chainlinkOracle.getIndexPrice();
-        oraclePrice.cumulativeAmount = oraclePrice.cumulativeAmount + latestChainlinkPrice * timeElapsed;
+        oracleCumulativeAmount = oracleCumulativeAmount + latestChainlinkPrice * timeElapsed;
 
         // update cumulative market price feed
         int256 latestMarketPrice = cryptoSwap.last_prices().toInt256();
-        marketPrice.cumulativeAmount = marketPrice.cumulativeAmount + latestMarketPrice * timeElapsed;
+        marketCumulativeAmount = marketCumulativeAmount + latestMarketPrice * timeElapsed;
 
-        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - time.blockTimestampAtBeginningOfPeriod;
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - blockTimestampAtBeginningOfPeriod;
 
         // slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfPeriod >= PERIOD) {
@@ -85,30 +82,31 @@ contract TwapOracle {
                 TWAP = priceCumulative1 - priceCumulative0 / timeElapsed
             */
 
+            console.log("update twap");
             // calculate chainlink twap
-            oraclePrice.twap =
-                (oraclePrice.cumulativeAmount - oraclePrice.cumulativeAmountAtBeginningOfPeriod) /
+            oracleTwap =
+                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
                 timeElapsedSinceBeginningOfPeriod.toInt256();
 
             // calculate market twap
-            marketPrice.twap =
-                (marketPrice.cumulativeAmount - marketPrice.cumulativeAmountAtBeginningOfPeriod) /
+            marketTwap =
+                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
                 timeElapsedSinceBeginningOfPeriod.toInt256();
 
             // reset cumulative amount and timestamp
-            oraclePrice.cumulativeAmountAtBeginningOfPeriod = oraclePrice.cumulativeAmount;
-            marketPrice.cumulativeAmountAtBeginningOfPeriod = marketPrice.cumulativeAmount;
-            time.blockTimestampAtBeginningOfPeriod = block.timestamp;
+            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
+            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
+            blockTimestampAtBeginningOfPeriod = block.timestamp;
 
-            emit TwapUpdated();
+            emit TwapUpdated(block.timestamp, oracleTwap, marketTwap);
         }
     }
 
     function getOracleTwap() external view returns (int256) {
-        return oraclePrice.twap;
+        return oracleTwap;
     }
 
     function getMarketTwap() external view returns (int256) {
-        return oraclePrice.twap;
+        return marketTwap;
     }
 }
