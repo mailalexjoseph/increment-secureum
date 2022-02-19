@@ -229,12 +229,26 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // apply changes to collateral
         vault.settleProfit(_msgSender(), profit);
+
+        //
+        LibPerpetual.Side direction = trader.positionSize > 0 ? LibPerpetual.Side.Long : LibPerpetual.Side.Short;
+
+        emit ClosePosition(_msgSender(), uint128(block.timestamp), direction, trader.openNotional, trader.positionSize);
         delete traderPosition[_msgSender()];
     }
 
     function marginIsValid(address account, int256 ratio) public view override returns (bool) {
         // slither-disable-next-line timestamp
         return marginRatio(account) >= ratio;
+    }
+
+    function getUnrealizedPnL(LibPerpetual.UserPosition memory trader) public view override returns (int256) {
+        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+        int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
+
+        // in the case of a LONG, trader.openNotional is negative but vQuoteVitualProceeds is positive
+        // in the case of a SHORT, trader.openNotional is positive while vQuoteVitualProceeds is negative
+        return trader.openNotional + vQuoteVirtualProceeds;
     }
 
     function marginRatio(address account) public view override returns (int256) {
@@ -245,13 +259,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
         int256 collateral = vault.getReserveValue(account, IPerpetual(address(this)));
         int256 fundingPayments = getFundingPayments(trader, global);
-
-        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
-        int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
-
-        // in the case of a LONG, trader.openNotional is negative but vQuoteVitualProceeds is positive
-        // in the case of a SHORT, trader.openNotional is positive while vQuoteVitualProceeds is negative
-        int256 unrealizedPositionPnl = trader.openNotional + vQuoteVirtualProceeds;
+        int256 unrealizedPositionPnl = getUnrealizedPnL(trader);
 
         int256 positiveOpenNotional = LibMath.abs(trader.openNotional);
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
