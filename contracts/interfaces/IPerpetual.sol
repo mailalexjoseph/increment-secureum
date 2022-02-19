@@ -2,7 +2,6 @@
 pragma solidity 0.8.4;
 
 // contract
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
 import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
@@ -13,13 +12,11 @@ import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IChainlinkOracle} from "./IChainlinkOracle.sol";
 import {IVirtualToken} from "./IVirtualToken.sol";
 import {IInsurance} from "./IInsurance.sol";
-
+import {IClearingHouse} from "./IClearingHouse.sol";
 // libraries
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
-    event Deposit(address indexed user, address indexed asset, uint256 amount);
-    event Withdraw(address indexed user, address indexed asset, uint256 amount);
     event Settlement(address indexed user, int256 amount);
     event OpenPosition(
         address indexed user,
@@ -52,6 +49,8 @@ interface IPerpetual {
 
     function vBase() external view returns (IVirtualToken);
 
+    function clearingHouse() external view returns (IClearingHouse);
+
     function insurance() external view returns (IInsurance);
 
     function vQuote() external view returns (IVirtualToken);
@@ -60,16 +59,19 @@ interface IPerpetual {
 
     // buy/ sell functions
 
-    function openPositionWithUSDC(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
+    function openPositionWithUSDC(
+        address account,
+        uint256 amount,
+        LibPerpetual.Side direction
+    ) external returns (int256, int256);
 
-    function openPosition(uint256 amount, LibPerpetual.Side direction) external returns (int256, int256);
+    function openPosition(
+        address account,
+        uint256 amount,
+        LibPerpetual.Side direction
+    ) external returns (int256, int256);
 
-    function closePosition(uint256 amount) external;
-
-    // integration functions
-    function deposit(uint256 amount, IERC20 token) external;
-
-    function withdraw(uint256 amount, IERC20 token) external;
+    function closePosition(address account, uint256 amount) external returns (int256);
 
     // user position function
     function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
@@ -82,10 +84,21 @@ interface IPerpetual {
 
     function marginIsValid(address account, int256 ratio) external view returns (bool);
 
+    function getUnrealizedPnL(address account) external view returns (int256);
+
+    function getFundingPayments(address account) external pure returns (int256);
+
     // liquidator provider functions
-    function provideLiquidity(uint256 amount, IERC20 token) external returns (uint256, uint256);
+    function provideLiquidity(address account, uint256 wadAmount) external returns (uint256);
 
-    function removeLiquidity(uint256 amount) external;
+    function removeLiquidity(address account, uint256 amount) external;
 
-    function settleAndWithdrawLiquidity(uint256 tentativeVQuoteAmount) external;
+    function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount) external returns (int256);
+
+    // price getter
+    function marketPriceOracle() external view returns (uint256);
+
+    function marketPrice() external view returns (uint256);
+
+    function indexPrice() external view returns (int256);
 }

@@ -14,7 +14,7 @@ import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
-import {IPerpetual} from "./interfaces/IPerpetual.sol";
+import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
 
 // libraries
 import {LibReserve} from "./lib/LibReserve.sol";
@@ -36,19 +36,19 @@ contract Vault is IVault, Context, IncreOwnable {
     IChainlinkOracle public immutable override chainlinkOracle;
     IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
+    IClearingHouse public immutable override clearingHouse;
+
     uint256 public override totalReserveToken;
-    uint256 public badDebt;
-    mapping(address => mapping(IPerpetual => int256)) private balances;
+    uint256 public override badDebt;
+    mapping(uint256 => mapping(address => int256)) private balances;
 
     //      trader     =>      market  => balances
-
-    // allow listed markets
-    mapping(IPerpetual => bool) private allowListedMarkets;
 
     constructor(
         IChainlinkOracle _chainlinkOracle,
         IERC20 _reserveToken,
-        IInsurance _insurance
+        IInsurance _insurance,
+        IClearingHouse _clearingHouse
     ) public {
         require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
@@ -57,11 +57,13 @@ contract Vault is IVault, Context, IncreOwnable {
             "Has to have not more than 18 decimals"
         );
         require(address(_insurance) != address(0), "Insurance can not be zero address");
+        require(address(_clearingHouse) != address(0), "ClearingHouse can not be zero address");
 
         // set contract addresses
         chainlinkOracle = _chainlinkOracle;
         reserveToken = _reserveToken;
         insurance = _insurance;
+        clearingHouse = _clearingHouse;
 
         // set other parameters
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
@@ -69,26 +71,15 @@ contract Vault is IVault, Context, IncreOwnable {
 
     /************************* getter *************************/
 
-    function getBalance(address user, IPerpetual market) external view override returns (int256) {
-        return balances[user][market];
+    function getBalance(uint256 idx, address user) external view override returns (int256) {
+        return balances[idx][user];
     }
 
     /************************* functions *************************/
 
-    modifier onlyPerpetual() {
-        require(allowListedMarkets[IPerpetual(msg.sender)], "NOT_PERPETUAL");
+    modifier onlyClearingHouse() {
+        require(msg.sender == address(clearingHouse), "Only clearing house can call this function");
         _;
-    }
-
-    function isAllowListed(IPerpetual market) external view override returns (bool) {
-        return allowListedMarkets[market];
-    }
-
-    function addMarket(IPerpetual market) external override onlyOwner {
-        require(!allowListedMarkets[market]);
-        allowListedMarkets[market] = true;
-
-        emit MarketAdded(market);
     }
 
     /**
@@ -98,10 +89,11 @@ contract Vault is IVault, Context, IncreOwnable {
      */
     // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
     function deposit(
+        uint256 idx,
         address user,
         uint256 amount,
         IERC20 depositToken
-    ) external override onlyPerpetual returns (uint256) {
+    ) external override onlyClearingHouse returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
         // this prevents dust from being added to the user account
@@ -109,7 +101,7 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
         // increment balance
-        balances[user][IPerpetual(msg.sender)] += convertedWadAmount.toInt256();
+        balances[idx][user] += convertedWadAmount.toInt256();
         totalReserveToken += convertedWadAmount;
 
         // deposit reserveTokens to contract
@@ -122,8 +114,12 @@ contract Vault is IVault, Context, IncreOwnable {
      * @notice Withdraw all ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
      */
-    function withdrawAll(address user, IERC20 withdrawToken) external override onlyPerpetual returns (uint256) {
-        return withdraw(user, balances[user][IPerpetual(msg.sender)].toUint256(), withdrawToken);
+    function withdrawAll(
+        uint256 idx,
+        address user,
+        IERC20 withdrawToken
+    ) external override onlyClearingHouse returns (uint256) {
+        return withdraw(idx, user, balances[idx][user].toUint256(), withdrawToken);
     }
 
     /**
@@ -132,18 +128,19 @@ contract Vault is IVault, Context, IncreOwnable {
      * @param  amount  Amount of USDC deposited
      */
     function withdraw(
+        uint256 idx,
         address user,
         uint256 amount,
         IERC20 withdrawToken
-    ) public override onlyPerpetual returns (uint256) {
-        require(amount.toInt256() <= balances[user][IPerpetual(msg.sender)], "Not enough balance");
+    ) public override onlyClearingHouse returns (uint256) {
+        require(amount.toInt256() <= balances[idx][user], "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
         //    console.log("hardhat: Withdrawing for user", amount);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
 
-        balances[user][IPerpetual(msg.sender)] -= amount.toInt256();
+        balances[idx][user] -= amount.toInt256();
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
 
@@ -163,8 +160,8 @@ contract Vault is IVault, Context, IncreOwnable {
      * @notice get the Portfolio value of an account
      * @param account Account address
      */
-    function getReserveValue(address account, IPerpetual market) external view override returns (int256) {
-        return PRBMathSD59x18.mul(balances[account][market], getAssetPrice());
+    function getReserveValue(uint256 idx, address account) external view override returns (int256) {
+        return PRBMathSD59x18.mul(balances[idx][account], getAssetPrice());
     }
 
     /**
@@ -181,9 +178,13 @@ contract Vault is IVault, Context, IncreOwnable {
         return 1e18;
     }
 
-    function settleProfit(address user, int256 amount) external override onlyPerpetual {
+    function settleProfit(
+        uint256 idx,
+        address user,
+        int256 amount
+    ) external override onlyClearingHouse {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
-        balances[user][IPerpetual(msg.sender)] += settlement;
+        balances[idx][user] += settlement;
     }
 }
