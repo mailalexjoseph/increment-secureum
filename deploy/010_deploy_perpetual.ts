@@ -18,10 +18,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   );
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
-  const vault = await ethers.getContract('Vault', deployer);
-  const insurance = await ethers.getContract('Insurance', deployer);
   const factory = await getCryptoSwapFactory(hre);
   const market = await getCryptoSwap(factory);
+  const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
 
   const perpetualArgs = [
     chainlinkOracle.address,
@@ -30,8 +29,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     vEUR.address,
     vUSD.address,
     market.address,
-    vault.address,
-    insurance.address,
+    clearingHouse.address,
   ];
 
   const perpetualVersionToUse = getPerpetualVersionToUse(hre);
@@ -52,8 +50,7 @@ func.dependencies = [
   'ChainlinkOracle',
   'PoolTWAPOracle',
   'ChainlinkTWAPOracle',
-  'Vault',
-  'Insurance',
+  'ClearingHouse',
 ];
 
 export default func;

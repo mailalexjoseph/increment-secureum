@@ -49,21 +49,11 @@ interface IPerpetual {
 
     function vBase() external view returns (IVirtualToken);
 
-    function clearingHouse() external view returns (IClearingHouse);
-
-    function insurance() external view returns (IInsurance);
-
     function vQuote() external view returns (IVirtualToken);
 
-    function vault() external view returns (IVault);
+    function clearingHouse() external view returns (IClearingHouse);
 
     // buy/ sell functions
-
-    function openPositionWithUSDC(
-        address account,
-        uint256 amount,
-        LibPerpetual.Side direction
-    ) external returns (int256, int256);
 
     function openPosition(
         address account,
@@ -80,13 +70,9 @@ interface IPerpetual {
 
     function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
 
-    function marginRatio(address account) external view returns (int256);
-
-    function marginIsValid(address account, int256 ratio) external view returns (bool);
-
     function getUnrealizedPnL(address account) external view returns (int256);
 
-    function getFundingPayments(address account) external pure returns (int256);
+    function getFundingPayments(address account) external view returns (int256);
 
     // liquidator provider functions
     function provideLiquidity(address account, uint256 wadAmount) external returns (uint256);

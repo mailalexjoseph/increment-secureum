@@ -10,12 +10,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const perpetualVersionToUse = getPerpetualVersionToUse(hre);
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
-  const vault = await ethers.getContract('Vault', deployer);
+  const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
   const perpetual = await ethers.getContract(perpetualVersionToUse, deployer);
 
   await vEUR.transferOwner(perpetual.address, true);
   await vUSD.transferOwner(perpetual.address, true);
-  await vault.addMarket(perpetual.address);
+  await clearingHouse.allowListPerpetual(perpetual.address);
 };
 func.tags = ['UpdateReferencesToPerpetual'];
 func.id = 'update_vBase_vQuote_vault_to_reference_Perpetual';

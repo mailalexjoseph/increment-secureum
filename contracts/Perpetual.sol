@@ -354,7 +354,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.cumFundingRate = global.cumFundingRate;
     }
 
-    function getFundingPayments(address account) public pure override returns (int256) {
+    function getFundingPayments(address account) public view override returns (int256) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
         return _getFundingPayments(user, global);

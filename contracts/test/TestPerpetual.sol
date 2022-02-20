@@ -14,12 +14,10 @@ import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
 import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
 
 // interfaces
-import {IPerpetual} from "../interfaces/IPerpetual.sol";
-import {IVault} from "../interfaces/IVault.sol";
 import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
-import {IInsurance} from "../interfaces/IInsurance.sol";
+import {IClearingHouse} from "../interfaces/IClearingHouse.sol";
 
 // libraries
 import {LibMath} from "../lib/LibMath.sol";
@@ -39,20 +37,8 @@ contract TestPerpetual is Perpetual {
         IVirtualToken _vBase,
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
-        IVault _vault,
-        IInsurance _insurance
-    )
-        Perpetual(
-            _chainlinkOracle,
-            _poolTWAPOracle,
-            _chainlinkTWAPOracle,
-            _vBase,
-            _vQuote,
-            _curvePool,
-            _vault,
-            _insurance
-        )
-    {}
+        IClearingHouse _clearingHouse
+    ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _clearingHouse) {}
 
     // simplified setter
     function __TestPerpetual_setGlobalPosition(

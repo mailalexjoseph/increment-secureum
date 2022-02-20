@@ -36,7 +36,7 @@ contract Vault is IVault, Context, IncreOwnable {
     IChainlinkOracle public immutable override chainlinkOracle;
     IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
-    IClearingHouse public immutable override clearingHouse;
+    IClearingHouse public override clearingHouse;
 
     uint256 public override totalReserveToken;
     uint256 public override badDebt;
@@ -47,8 +47,7 @@ contract Vault is IVault, Context, IncreOwnable {
     constructor(
         IChainlinkOracle _chainlinkOracle,
         IERC20 _reserveToken,
-        IInsurance _insurance,
-        IClearingHouse _clearingHouse
+        IInsurance _insurance
     ) public {
         require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
@@ -57,13 +56,11 @@ contract Vault is IVault, Context, IncreOwnable {
             "Has to have not more than 18 decimals"
         );
         require(address(_insurance) != address(0), "Insurance can not be zero address");
-        require(address(_clearingHouse) != address(0), "ClearingHouse can not be zero address");
 
         // set contract addresses
         chainlinkOracle = _chainlinkOracle;
         reserveToken = _reserveToken;
         insurance = _insurance;
-        clearingHouse = _clearingHouse;
 
         // set other parameters
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
@@ -80,6 +77,11 @@ contract Vault is IVault, Context, IncreOwnable {
     modifier onlyClearingHouse() {
         require(msg.sender == address(clearingHouse), "Only clearing house can call this function");
         _;
+    }
+
+    // TODO: Only set once
+    function setClearingHouse(IClearingHouse _clearingHouse) public onlyOwner {
+        clearingHouse = _clearingHouse;
     }
 
     /**
