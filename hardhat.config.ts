@@ -41,6 +41,7 @@ const getHardhatConf = () => {
         url: node_url('MAINNET'),
         blockNumber: 14191019,
       },
+      allowUnlimitedContractSize: true,
     };
   }
   return {};
