@@ -66,7 +66,6 @@ const config: HardhatUserConfig = {
     mainnet: {
       url: node_url('mainnet'),
       accounts: accounts('mainnet'),
-      allowUnlimitedContractSize: true,
     },
     rinkeby: {
       url: node_url('rinkeby'),
@@ -159,7 +158,7 @@ const config: HardhatUserConfig = {
   contractSizer: {
     alphaSort: true,
     disambiguatePaths: false,
-    runOnCompile: true,
+    runOnCompile: false,
     strict: true,
     only: [
       'Perpetual',
