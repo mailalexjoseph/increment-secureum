@@ -171,16 +171,19 @@ const config: HardhatUserConfig = {
       'PoolTWAPOracle',
       'ClearingHouse',
     ],
+  },
   dodoc: {
     outputDir: 'docs/docs/contracts',
     include: [
       'Insurance',
       'Vault',
       'Perpetual',
+      'ClearingHouse',
       'LibPerpetual',
       'LibFunding',
       'LibReserve',
     ],
+    exclude: ['node_modules'],
   },
 };
 export default config;

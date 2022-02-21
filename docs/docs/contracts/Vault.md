@@ -10,6 +10,23 @@
 
 ## Methods
 
+### chainlinkOracle
+
+```solidity
+function chainlinkOracle() external view returns (contract IChainlinkOracle)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IChainlinkOracle | undefined
+
 ### claimOwner
 
 ```solidity
@@ -21,10 +38,27 @@ function claimOwner() external nonpayable
 
 
 
+### clearingHouse
+
+```solidity
+function clearingHouse() external view returns (contract IClearingHouse)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IClearingHouse | undefined
+
 ### deposit
 
 ```solidity
-function deposit(address user, uint256 amount, contract IERC20 depositToken) external nonpayable returns (uint256)
+function deposit(uint256 idx, address user, uint256 amount, contract IERC20 depositToken) external nonpayable returns (uint256)
 ```
 
 Deposit reserveTokens to account
@@ -35,9 +69,10 @@ Deposit reserveTokens to account
 
 | Name | Type | Description |
 |---|---|---|
+| idx | uint256 | undefined
 | user | address | undefined
 | amount | uint256 | Amount of reserveTokens with token decimals
-| depositToken | contract IERC20 | Token address deposited (used for backwards compatability)
+| depositToken | contract IERC20 | Token address deposited (used for backwards compatibility)
 
 #### Returns
 
@@ -62,10 +97,27 @@ get the price of an asset
 |---|---|---|
 | _0 | int256 | undefined
 
+### getBadDebt
+
+```solidity
+function getBadDebt() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined
+
 ### getBalance
 
 ```solidity
-function getBalance(address user) external view returns (int256)
+function getBalance(uint256 idx, address user) external view returns (int256)
 ```
 
 
@@ -76,6 +128,7 @@ function getBalance(address user) external view returns (int256)
 
 | Name | Type | Description |
 |---|---|---|
+| idx | uint256 | undefined
 | user | address | undefined
 
 #### Returns
@@ -104,7 +157,7 @@ get the number of decimals of the ERC20 token used in the vault
 ### getReserveValue
 
 ```solidity
-function getReserveValue(address _account) external view returns (int256)
+function getReserveValue(uint256 idx, address account) external view returns (int256)
 ```
 
 get the Portfolio value of an account
@@ -115,7 +168,8 @@ get the Portfolio value of an account
 
 | Name | Type | Description |
 |---|---|---|
-| _account | address | Account address
+| idx | uint256 | undefined
+| account | address | Account address
 
 #### Returns
 
@@ -123,10 +177,10 @@ get the Portfolio value of an account
 |---|---|---|
 | _0 | int256 | undefined
 
-### oracle
+### getTotalReserveToken
 
 ```solidity
-function oracle() external view returns (contract IOracle)
+function getTotalReserveToken() external view returns (uint256)
 ```
 
 
@@ -138,7 +192,24 @@ function oracle() external view returns (contract IOracle)
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | contract IOracle | undefined
+| _0 | uint256 | undefined
+
+### insurance
+
+```solidity
+function insurance() external view returns (contract IInsurance)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IInsurance | undefined
 
 ### owner
 
@@ -191,10 +262,10 @@ function reserveToken() external view returns (contract IERC20)
 |---|---|---|
 | _0 | contract IERC20 | undefined
 
-### settleProfit
+### setClearingHouse
 
 ```solidity
-function settleProfit(address user, int256 amount) external nonpayable returns (int256)
+function setClearingHouse(contract IClearingHouse newClearingHouse) external nonpayable
 ```
 
 
@@ -205,31 +276,25 @@ function settleProfit(address user, int256 amount) external nonpayable returns (
 
 | Name | Type | Description |
 |---|---|---|
-| user | address | undefined
-| amount | int256 | undefined
+| newClearingHouse | contract IClearingHouse | undefined
 
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | int256 | undefined
-
-### totalReserveToken
+### settleProfit
 
 ```solidity
-function totalReserveToken() external view returns (uint256)
+function settleProfit(uint256 idx, address user, int256 amount) external nonpayable
 ```
 
 
 
 
 
-
-#### Returns
+#### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | uint256 | undefined
+| idx | uint256 | undefined
+| user | address | undefined
+| amount | int256 | undefined
 
 ### transferOwner
 
@@ -251,7 +316,7 @@ Transfer `owner` account.
 ### withdraw
 
 ```solidity
-function withdraw(address user, uint256 amount, contract IERC20 withdrawToken) external nonpayable returns (uint256)
+function withdraw(uint256 idx, address user, uint256 amount, contract IERC20 withdrawToken) external nonpayable returns (uint256)
 ```
 
 Withdraw ERC20 reserveToken from margin of the contract account.
@@ -262,6 +327,7 @@ Withdraw ERC20 reserveToken from margin of the contract account.
 
 | Name | Type | Description |
 |---|---|---|
+| idx | uint256 | undefined
 | user | address | undefined
 | amount | uint256 | Amount of USDC deposited
 | withdrawToken | contract IERC20 | ERC20 reserveToken address
@@ -275,7 +341,7 @@ Withdraw ERC20 reserveToken from margin of the contract account.
 ### withdrawAll
 
 ```solidity
-function withdrawAll(address user, contract IERC20 withdrawToken) external nonpayable returns (uint256)
+function withdrawAll(uint256 idx, address user, contract IERC20 withdrawToken) external nonpayable returns (uint256)
 ```
 
 Withdraw all ERC20 reserveToken from margin of the contract account.
@@ -286,6 +352,7 @@ Withdraw all ERC20 reserveToken from margin of the contract account.
 
 | Name | Type | Description |
 |---|---|---|
+| idx | uint256 | undefined
 | user | address | undefined
 | withdrawToken | contract IERC20 | ERC20 reserveToken address
 
@@ -298,6 +365,24 @@ Withdraw all ERC20 reserveToken from margin of the contract account.
 
 
 ## Events
+
+### BadDebtGenerated
+
+```solidity
+event BadDebtGenerated(uint256 idx, address beneficiary, uint256 amount)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| idx  | uint256 | undefined |
+| beneficiary  | address | undefined |
+| amount  | uint256 | undefined |
 
 ### TransferOwner
 

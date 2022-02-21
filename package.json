@@ -58,7 +58,7 @@
     "format:fix": "prettier --write \"**/*.{ts,js,sol}\"",
     "clean": "hardhat clean",
     "compile": "hardhat compile",
-    "docs": "cd docs/ && yarn start",
+    "docs": "yarn compile && cd docs/ && yarn start",
     "void:deploy": "hardhat deploy",
     "test": "yarn test:unit && yarn test:integration && yarn slither",
     "test:integration": "yarn compile && cross-env HARDHAT_FORK=mainnet HARDHAT_COMPILE=true mocha 'test/integration/*.test.ts'",

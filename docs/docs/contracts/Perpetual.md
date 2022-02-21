@@ -10,61 +10,10 @@
 
 ## Methods
 
-### FEE
+### SENSITIVITY
 
 ```solidity
-function FEE() external view returns (int256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | int256 | undefined
-
-### LIQUIDATION_FEE
-
-```solidity
-function LIQUIDATION_FEE() external view returns (uint256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined
-
-### MIN_MARGIN
-
-```solidity
-function MIN_MARGIN() external view returns (int256)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | int256 | undefined
-
-### MIN_MARGIN_AT_CREATION
-
-```solidity
-function MIN_MARGIN_AT_CREATION() external view returns (int256)
+function SENSITIVITY() external view returns (int256)
 ```
 
 
@@ -129,6 +78,40 @@ function VQUOTE_INDEX() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined
 
+### chainlinkOracle
+
+```solidity
+function chainlinkOracle() external view returns (contract IChainlinkOracle)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IChainlinkOracle | undefined
+
+### chainlinkTWAPOracle
+
+```solidity
+function chainlinkTWAPOracle() external view returns (contract ChainlinkTWAPOracle)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract ChainlinkTWAPOracle | undefined
+
 ### claimOwner
 
 ```solidity
@@ -140,41 +123,53 @@ function claimOwner() external nonpayable
 
 
 
+### clearingHouse
+
+```solidity
+function clearingHouse() external view returns (contract IClearingHouse)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract IClearingHouse | undefined
+
 ### closePosition
 
 ```solidity
-function closePosition() external nonpayable
+function closePosition(address account, uint256 tentativeVQuoteAmount) external nonpayable returns (int256)
 ```
 
 Closes position from account holder
 
 
 
-
-### deposit
-
-```solidity
-function deposit(uint256 amount, contract IERC20 token) external nonpayable
-```
-
-Deposits tokens into the vault
-
-
-
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| amount | uint256 | undefined
-| token | contract IERC20 | undefined
+| account | address | undefined
+| tentativeVQuoteAmount | uint256 | Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | int256 | undefined
 
 ### getFundingPayments
 
 ```solidity
-function getFundingPayments(LibPerpetual.TraderPosition user, LibPerpetual.GlobalPosition global) external pure returns (int256)
+function getFundingPayments(address account) external view returns (int256)
 ```
 
-Calculate missed funding payments
+
 
 
 
@@ -182,8 +177,7 @@ Calculate missed funding payments
 
 | Name | Type | Description |
 |---|---|---|
-| user | LibPerpetual.TraderPosition | undefined
-| global | LibPerpetual.GlobalPosition | undefined
+| account | address | undefined
 
 #### Returns
 
@@ -199,7 +193,7 @@ function getGlobalPosition() external view returns (struct LibPerpetual.GlobalPo
 
 
 
-*returns the Global Position*
+
 
 
 #### Returns
@@ -208,49 +202,10 @@ function getGlobalPosition() external view returns (struct LibPerpetual.GlobalPo
 |---|---|---|
 | _0 | LibPerpetual.GlobalPosition | undefined
 
-### getLatestPrice
+### getLpPosition
 
 ```solidity
-function getLatestPrice() external view returns (struct LibPerpetual.Price)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | LibPerpetual.Price | undefined
-
-### getPrice
-
-```solidity
-function getPrice(uint256 period) external view returns (struct LibPerpetual.Price)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| period | uint256 | undefined
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | LibPerpetual.Price | undefined
-
-### getUserPosition
-
-```solidity
-function getUserPosition(address account) external view returns (struct LibPerpetual.TraderPosition)
+function getLpPosition(address account) external view returns (struct LibPerpetual.UserPosition)
 ```
 
 
@@ -267,7 +222,51 @@ function getUserPosition(address account) external view returns (struct LibPerpe
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | LibPerpetual.TraderPosition | undefined
+| _0 | LibPerpetual.UserPosition | undefined
+
+### getTraderPosition
+
+```solidity
+function getTraderPosition(address account) external view returns (struct LibPerpetual.UserPosition)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| account | address | undefined
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | LibPerpetual.UserPosition | undefined
+
+### getUnrealizedPnL
+
+```solidity
+function getUnrealizedPnL(address account) external view returns (int256)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| account | address | undefined
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | int256 | undefined
 
 ### indexPrice
 
@@ -275,7 +274,7 @@ function getUserPosition(address account) external view returns (struct LibPerpe
 function indexPrice() external view returns (int256)
 ```
 
-
+Return the current off-chain exchange rate for vBase/vQuote
 
 
 
@@ -289,7 +288,7 @@ function indexPrice() external view returns (int256)
 ### liquidate
 
 ```solidity
-function liquidate(address account) external nonpayable
+function liquidate(address liquidatee, uint256 tentativeVQuoteAmount) external nonpayable returns (int256)
 ```
 
 
@@ -300,68 +299,8 @@ function liquidate(address account) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| account | address | undefined
-
-### liquidityPosition
-
-```solidity
-function liquidityPosition(address) external view returns (uint256 liquidityBalance, uint256 reserveBalance)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | address | undefined
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| liquidityBalance | uint256 | undefined
-| reserveBalance | uint256 | undefined
-
-### marginIsValid
-
-```solidity
-function marginIsValid(address account) external view returns (bool)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| account | address | undefined
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | bool | undefined
-
-### marginRatio
-
-```solidity
-function marginRatio(address account) external view returns (int256)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| account | address | undefined
+| liquidatee | address | undefined
+| tentativeVQuoteAmount | uint256 | Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
 
 #### Returns
 
@@ -392,7 +331,24 @@ function market() external view returns (contract ICryptoSwap)
 function marketPrice() external view returns (uint256)
 ```
 
+Return the last traded price (used for TWAP)
 
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined
+
+### marketPriceOracle
+
+```solidity
+function marketPriceOracle() external view returns (uint256)
+```
+
+Return the curve price oracle
 
 
 
@@ -406,42 +362,27 @@ function marketPrice() external view returns (uint256)
 ### openPosition
 
 ```solidity
-function openPosition(uint256 amount, enum LibPerpetual.Side direction) external nonpayable returns (uint256)
+function openPosition(address account, uint256 amount, enum LibPerpetual.Side direction) external nonpayable returns (int256, int256)
 ```
 
-Open position, long or shortPrices are quoted in vQuote: https://www.delta.exchange/blog/support/what-is-an-inverse-futures-contract
+Open position, long or short
 
-*No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGINNo checks are done if bought amount exceeds allowance*
+*No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATIONNo checks are done if bought amount exceeds allowance*
 
 #### Parameters
 
 | Name | Type | Description |
 |---|---|---|
-| amount | uint256 | Amount of virtual tokens to be bought
-| direction | enum LibPerpetual.Side | Side of the position to open, long or short
+| account | address | undefined
+| amount | uint256 | to be sold, in vQuote (if long) or vBase (if short)
+| direction | enum LibPerpetual.Side | undefined
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | uint256 | undefined
-
-### oracle
-
-```solidity
-function oracle() external view returns (contract IOracle)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | contract IOracle | undefined
+| _0 | int256 | undefined
+| _1 | int256 | undefined
 
 ### owner
 
@@ -494,10 +435,27 @@ function pendingOwner() external view returns (address)
 |---|---|---|
 | _0 | address | undefined
 
+### poolTWAPOracle
+
+```solidity
+function poolTWAPOracle() external view returns (contract PoolTWAPOracle)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | contract PoolTWAPOracle | undefined
+
 ### provideLiquidity
 
 ```solidity
-function provideLiquidity(uint256 amount, contract IERC20 token) external nonpayable returns (uint256, uint256)
+function provideLiquidity(address account, uint256 wadAmount) external nonpayable returns (uint256)
 ```
 
 Provide liquidity to the pool
@@ -508,26 +466,8 @@ Provide liquidity to the pool
 
 | Name | Type | Description |
 |---|---|---|
-| amount | uint256 | of token to be added to the pool (with token decimals)
-| token | contract IERC20 | to be added to the pool
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | uint256 | undefined
-| _1 | uint256 | undefined
-
-### realizedMarketPrice
-
-```solidity
-function realizedMarketPrice() external view returns (uint256)
-```
-
-
-
-
-
+| account | address | liquidity provider
+| wadAmount | uint256 | amount of vQuote provided with 1e18 precision
 
 #### Returns
 
@@ -535,13 +475,13 @@ function realizedMarketPrice() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined
 
-### setPrice
+### removeLiquidity
 
 ```solidity
-function setPrice(LibPerpetual.Price newPrice) external nonpayable
+function removeLiquidity(address account, uint256 amount) external nonpayable
 ```
 
-
+Remove liquidity from the pool (but don&#39;t close LP position and withdraw amount)
 
 
 
@@ -549,24 +489,31 @@ function setPrice(LibPerpetual.Price newPrice) external nonpayable
 
 | Name | Type | Description |
 |---|---|---|
-| newPrice | LibPerpetual.Price | undefined
+| account | address | undefined
+| amount | uint256 | of liquidity to be removed from the pool (with 18 decimals)
 
-### totalLiquidityProvided
+### settleAndWithdrawLiquidity
 
 ```solidity
-function totalLiquidityProvided() external view returns (uint256)
+function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount) external nonpayable returns (int256 profit)
 ```
 
+Remove liquidity from the pool (but don&#39;t close LP position and withdraw amount)
 
 
 
+#### Parameters
 
+| Name | Type | Description |
+|---|---|---|
+| account | address | undefined
+| tentativeVQuoteAmount | uint256 | at which to buy the LP position (if it looks like a short, more vQuote than vBase)
 
 #### Returns
 
 | Name | Type | Description |
 |---|---|---|
-| _0 | uint256 | undefined
+| profit | int256 | undefined
 
 ### transferOwner
 
@@ -591,7 +538,18 @@ Transfer `owner` account.
 function updateFundingRate() external nonpayable
 ```
 
-Calculate the funding rate for the next block
+Calculate the funding rate for the current block
+
+
+
+
+### updateGenericProtocolState
+
+```solidity
+function updateGenericProtocolState() external nonpayable
+```
+
+
 
 
 
@@ -630,57 +588,6 @@ function vQuote() external view returns (contract IVirtualToken)
 |---|---|---|
 | _0 | contract IVirtualToken | undefined
 
-### vault
-
-```solidity
-function vault() external view returns (contract IVault)
-```
-
-
-
-
-
-
-#### Returns
-
-| Name | Type | Description |
-|---|---|---|
-| _0 | contract IVault | undefined
-
-### withdraw
-
-```solidity
-function withdraw(uint256 amount, contract IERC20 token) external nonpayable
-```
-
-Withdraw tokens from the vault
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| amount | uint256 | undefined
-| token | contract IERC20 | undefined
-
-### withdrawLiquidity
-
-```solidity
-function withdrawLiquidity(uint256 amount, contract IERC20 token) external nonpayable
-```
-
-Withdraw liquidity from the pool
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| amount | uint256 | of liquidity to be removed from the pool (with 18 decimals)
-| token | contract IERC20 | to be removed from the pool
-
 
 
 ## Events
@@ -688,7 +595,7 @@ Withdraw liquidity from the pool
 ### ClosePosition
 
 ```solidity
-event ClosePosition(address indexed user, uint128 indexed timeStamp, enum LibPerpetual.Side direction, int256 notional, uint256 amount)
+event ClosePosition(address indexed user, uint128 indexed timeStamp, enum LibPerpetual.Side direction, int256 notional, int256 amount)
 ```
 
 
@@ -703,25 +610,7 @@ event ClosePosition(address indexed user, uint128 indexed timeStamp, enum LibPer
 | timeStamp `indexed` | uint128 | undefined |
 | direction  | enum LibPerpetual.Side | undefined |
 | notional  | int256 | undefined |
-| amount  | uint256 | undefined |
-
-### Deposit
-
-```solidity
-event Deposit(address indexed user, address indexed asset, uint256 amount)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| user `indexed` | address | undefined |
-| asset `indexed` | address | undefined |
-| amount  | uint256 | undefined |
+| amount  | int256 | undefined |
 
 ### FundingPayment
 
@@ -778,10 +667,10 @@ event LiquidityProvided(address indexed liquidityProvider, address indexed asset
 | asset `indexed` | address | undefined |
 | amount  | uint256 | undefined |
 
-### LiquidityWithdrawn
+### LiquidityRemoved
 
 ```solidity
-event LiquidityWithdrawn(address indexed liquidityProvider, address indexed asset, uint256 amount)
+event LiquidityRemoved(address indexed liquidityProvider, uint256 amount)
 ```
 
 
@@ -793,13 +682,44 @@ event LiquidityWithdrawn(address indexed liquidityProvider, address indexed asse
 | Name | Type | Description |
 |---|---|---|
 | liquidityProvider `indexed` | address | undefined |
-| asset `indexed` | address | undefined |
 | amount  | uint256 | undefined |
+
+### LiquidityWithdrawn
+
+```solidity
+event LiquidityWithdrawn(address indexed liquidityProvider)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| liquidityProvider `indexed` | address | undefined |
+
+### Log
+
+```solidity
+event Log(string errorMessage)
+```
+
+
+
+
+
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| errorMessage  | string | undefined |
 
 ### OpenPosition
 
 ```solidity
-event OpenPosition(address indexed user, uint128 indexed timeStamp, enum LibPerpetual.Side direction, uint256 notional, uint256 amount)
+event OpenPosition(address indexed user, uint128 indexed timeStamp, enum LibPerpetual.Side direction, int256 notional, int256 amount)
 ```
 
 
@@ -813,8 +733,8 @@ event OpenPosition(address indexed user, uint128 indexed timeStamp, enum LibPerp
 | user `indexed` | address | undefined |
 | timeStamp `indexed` | uint128 | undefined |
 | direction  | enum LibPerpetual.Side | undefined |
-| notional  | uint256 | undefined |
-| amount  | uint256 | undefined |
+| notional  | int256 | undefined |
+| amount  | int256 | undefined |
 
 ### Paused
 
@@ -835,7 +755,7 @@ event Paused(address account)
 ### Settlement
 
 ```solidity
-event Settlement(address indexed user, uint128 indexed timeStamp, int256 amount)
+event Settlement(address indexed user, int256 amount)
 ```
 
 
@@ -847,7 +767,6 @@ event Settlement(address indexed user, uint128 indexed timeStamp, int256 amount)
 | Name | Type | Description |
 |---|---|---|
 | user `indexed` | address | undefined |
-| timeStamp `indexed` | uint128 | undefined |
 | amount  | int256 | undefined |
 
 ### TransferOwner
@@ -900,27 +819,20 @@ event Unpaused(address account)
 |---|---|---|
 | account  | address | undefined |
 
-### Withdraw
-
-```solidity
-event Withdraw(address indexed user, address indexed asset, uint256 amount)
-```
-
-
-
-
-
-#### Parameters
-
-| Name | Type | Description |
-|---|---|---|
-| user `indexed` | address | undefined |
-| asset `indexed` | address | undefined |
-| amount  | uint256 | undefined |
-
 
 
 ## Errors
+
+### PRBMathSD59x18__AbsInputTooSmall
+
+```solidity
+error PRBMathSD59x18__AbsInputTooSmall()
+```
+
+Emitted when the input is MIN_SD59x18.
+
+
+
 
 ### PRBMathSD59x18__DivInputTooSmall
 
