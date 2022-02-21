@@ -29,9 +29,11 @@ describe('Increment App: Reserve', function () {
 
     it('Can deposit USDC into the vault', async function () {
       // depositing should fire up deposit event
-      await expect(user.perpetual.deposit(depositAmount, user.usdc.address))
-        .to.emit(user.perpetual, 'Deposit')
-        .withArgs(user.address, user.usdc.address, depositAmount);
+      await expect(
+        user.clearingHouse.deposit(0, depositAmount, user.usdc.address)
+      )
+        .to.emit(user.clearingHouse, 'Deposit')
+        .withArgs(0, user.address, user.usdc.address, depositAmount);
 
       // should have correct balance in vault
       expect(await user.usdc.balanceOf(user.address)).to.be.equal(0);
@@ -41,25 +43,22 @@ describe('Increment App: Reserve', function () {
 
       // should notice deposited amount in asset value / portfolio value
       expect(
-        utils.formatEther(
-          await user.vault.getReserveValue(user.address, user.perpetual.address)
-        )
+        utils.formatEther(await user.vault.getReserveValue(0, user.address))
       ).to.be.equal(await convertToCurrencyUnits(user.usdc, depositAmount));
     });
   });
 
   it('Should withdraw USDC', async function () {
     // deposit
-    await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(
-      user.address,
-      user.perpetual.address
-    );
+    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+    const userDeposits = await user.vault.getReserveValue(0, user.address);
 
     // withdrawal should fire up withdrawal event
-    await expect(user.perpetual.withdraw(userDeposits, user.usdc.address))
-      .to.emit(user.perpetual, 'Withdraw')
-      .withArgs(user.address, user.usdc.address, userDeposits);
+    await expect(
+      user.clearingHouse.withdraw(0, userDeposits, user.usdc.address)
+    )
+      .to.emit(user.clearingHouse, 'Withdraw')
+      .withArgs(0, user.address, user.usdc.address, userDeposits);
 
     // balance should be same as before withdrawal
     expect(await user.usdc.balanceOf(user.address)).to.be.equal(depositAmount);
@@ -67,45 +66,39 @@ describe('Increment App: Reserve', function () {
 
   it('Should not withdraw more USDC then deposited', async function () {
     // deposit
-    await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(
-      user.address,
-      user.perpetual.address
-    );
+    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+    const userDeposits = await user.vault.getReserveValue(0, user.address);
     const tooLargeWithdrawal = userDeposits.add(1);
 
     // should not be able to withdraw more than deposited
     await expect(
-      user.perpetual.withdraw(tooLargeWithdrawal, user.usdc.address)
+      user.clearingHouse.withdraw(0, tooLargeWithdrawal, user.usdc.address)
     ).to.be.revertedWith('Not enough balance');
   });
 
   it('Should not withdraw other token then deposited', async function () {
     // deposit
-    await user.perpetual.deposit(depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(
-      user.address,
-      user.perpetual.address
-    );
+    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+    const userDeposits = await user.vault.getReserveValue(0, user.address);
 
     // should not be able to withdraw other token then deposited
     const wrongToken = '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3';
     await expect(
-      user.perpetual.withdraw(userDeposits, wrongToken)
+      user.clearingHouse.withdraw(0, userDeposits, wrongToken)
     ).to.be.revertedWith('Wrong token address');
   });
 
   it('User should not be able to access vault directly', async function () {
     await expect(
-      user.vault.deposit(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NOT_PERPETUAL');
+      user.vault.deposit(0, user.address, depositAmount, user.usdc.address)
+    ).to.be.revertedWith('NO CLEARINGHOUSE');
 
     await expect(
-      user.vault.withdraw(user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NOT_PERPETUAL');
+      user.vault.withdraw(0, user.address, depositAmount, user.usdc.address)
+    ).to.be.revertedWith('NO CLEARINGHOUSE');
 
-    await expect(user.vault.settleProfit(user.address, 0)).to.be.revertedWith(
-      'NOT_PERPETUAL'
-    );
+    await expect(
+      user.vault.settleProfit(0, user.address, 0)
+    ).to.be.revertedWith('NO CLEARINGHOUSE');
   });
 });

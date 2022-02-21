@@ -36,11 +36,11 @@ describe('Increment: liquidation', () => {
   before('Get protocol constants', async () => {
     ({alice, bob} = await setup());
 
-    MIN_MARGIN = await alice.perpetual.MIN_MARGIN();
-    LIQUIDATION_REWARD = await alice.perpetual.LIQUIDATION_REWARD();
+    MIN_MARGIN = await alice.clearingHouse.MIN_MARGIN();
+    LIQUIDATION_REWARD = await alice.clearingHouse.LIQUIDATION_REWARD();
     TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
-    FEE = await alice.perpetual.FEE();
-    MIN_MARGIN_AT_CREATION = await alice.perpetual.MIN_MARGIN_AT_CREATION();
+    FEE = await alice.clearingHouse.FEE();
+    MIN_MARGIN_AT_CREATION = await alice.clearingHouse.MIN_MARGIN_AT_CREATION();
     VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
     VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
   });
@@ -60,34 +60,34 @@ describe('Increment: liquidation', () => {
       // bob deposits liquidity, alice opens a position of half this liquidity
       await setUpPoolLiquidity(bob, depositAmountUSDC);
       await alice.usdc.approve(alice.vault.address, aliceUSDCAmount);
-      await alice.perpetual.deposit(aliceUSDCAmount, alice.usdc.address);
+      await alice.clearingHouse.deposit(0, aliceUSDCAmount, alice.usdc.address);
     }
   );
 
   it('Should fail if liquidator tries to liquidate a position of a user having no position', async () => {
     await expect(
-      bob.perpetual.liquidate(alice.address, depositAmount)
+      bob.clearingHouse.liquidate(0, alice.address, depositAmount)
     ).to.be.revertedWith('No position currently opened');
   });
 
   it('Should fail if user has enough margin', async () => {
-    await alice.perpetual.openPosition(aliceAmount, Side.Long);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long);
 
     await expect(
-      bob.perpetual.liquidate(alice.address, depositAmount)
+      bob.clearingHouse.liquidate(0, alice.address, depositAmount)
     ).to.be.revertedWith('Margin is valid');
   });
 
   it('Should liquidate LONG position out-of-the-money', async () => {
-    await alice.perpetual.openPosition(aliceAmount, Side.Long);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long);
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
-      alice.address,
-      alice.perpetual.address
+      0,
+      alice.address
     );
     const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
-      bob.address,
-      bob.perpetual.address
+      0,
+      bob.address
     );
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
@@ -103,8 +103,8 @@ describe('Increment: liquidation', () => {
     // Check `LiquidationCall` event sent with proper values
     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
     // so we don't check the values of the arguments of the event
-    await expect(bob.perpetual.liquidate(alice.address, 0)).to.emit(
-      alice.perpetual,
+    await expect(bob.clearingHouse.liquidate(0, alice.address, 0)).to.emit(
+      alice.clearingHouse,
       'LiquidationCall'
     );
 
@@ -117,8 +117,8 @@ describe('Increment: liquidation', () => {
 
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      alice.address,
-      alice.perpetual.address
+      0,
+      alice.address
     );
     expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
       aliceVaultBalanceBeforeClosingPosition
@@ -127,8 +127,8 @@ describe('Increment: liquidation', () => {
     // Check liquidator's vault.balance is increased by the liquidation reward
     const liquidationReward = rMul(aliceAmount, LIQUIDATION_REWARD);
     const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
-      bob.address,
-      bob.perpetual.address
+      0,
+      bob.address
     );
     expect(bobVaultBalanceAfterLiquidation).to.eq(
       bobVaultBalanceBeforeLiquidation.add(liquidationReward)
@@ -136,7 +136,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should fail to liquidate SHORT position out-of-the-money if excessive tentativeVQuoteAmount is submitted by liquidator', async () => {
-    await alice.perpetual.openPosition(aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
@@ -150,14 +150,18 @@ describe('Increment: liquidation', () => {
 
     const excessiveTentativeVQuoteAmount = aliceAmount.mul(10);
     await expect(
-      bob.perpetual.liquidate(alice.address, excessiveTentativeVQuoteAmount)
+      bob.clearingHouse.liquidate(
+        0,
+        alice.address,
+        excessiveTentativeVQuoteAmount
+      )
     ).to.be.revertedWith(
       'Amount submitted too far from the market price of the position'
     );
   });
 
   it('Should fail if the proposed tentativeVQuoteAmount is insufficient to buy back a SHORT position', async () => {
-    await alice.perpetual.openPosition(aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
@@ -171,7 +175,8 @@ describe('Increment: liquidation', () => {
 
     const insufficientVQuoteAmountToBuyVBaseShort = aliceAmount;
     await expect(
-      bob.perpetual.liquidate(
+      bob.clearingHouse.liquidate(
+        0,
         alice.address,
         insufficientVQuoteAmountToBuyVBaseShort
       )
@@ -179,18 +184,18 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should liquidate SHORT position out-of-the-money', async () => {
-    await alice.perpetual.openPosition(aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
     const positionOpenNotional = (
       await alice.perpetual.getTraderPosition(alice.address)
     ).openNotional;
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
-      alice.address,
-      alice.perpetual.address
+      0,
+      alice.address
     );
     const bobVaultBalanceBeforeLiquidation = await bob.vault.getBalance(
-      bob.address,
-      bob.perpetual.address
+      0,
+      bob.address
     );
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
@@ -211,11 +216,12 @@ describe('Increment: liquidation', () => {
       aliceAmount.div(4)
     );
     await expect(
-      bob.perpetual.liquidate(
+      bob.clearingHouse.liquidate(
+        0,
         alice.address,
         properVQuoteAmountToBuyBackShortPosition
       )
-    ).to.emit(alice.perpetual, 'LiquidationCall');
+    ).to.emit(alice.clearingHouse, 'LiquidationCall');
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
     const alicePosition = await alice.perpetual.getTraderPosition(
@@ -226,8 +232,8 @@ describe('Increment: liquidation', () => {
 
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
     const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      alice.address,
-      alice.perpetual.address
+      0,
+      alice.address
     );
     expect(aliceVaultBalanceAfterClosingPosition).to.be.lt(
       aliceVaultBalanceBeforeClosingPosition
@@ -236,8 +242,8 @@ describe('Increment: liquidation', () => {
     // Check liquidator's vault.balance is increased by the liquidation reward
     const liquidationReward = rMul(positionOpenNotional, LIQUIDATION_REWARD);
     const bobVaultBalanceAfterLiquidation = await bob.vault.getBalance(
-      bob.address,
-      bob.perpetual.address
+      0,
+      bob.address
     );
 
     // closeTo is used to avoid error of 1 wei here

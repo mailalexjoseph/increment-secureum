@@ -16,12 +16,16 @@ import {TEST_get_exactOutputSwap} from '../helpers/CurveUtils';
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
 
 async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
-  await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+  await user.clearingHouse.provideLiquidity(
+    0,
+    liquidityAmount,
+    user.usdc.address
+  );
 }
 
 async function openPosition(amount: BigNumber, user: User, direction: Side) {
-  await user.perpetual.deposit(amount.div(100), user.usdc.address); // invest 1 % of the capital
-  await user.perpetual.openPositionWithUSDC(amount.div(100), direction);
+  await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address); // invest 1 % of the capital
+  await user.clearingHouse.openPositionWithUSDC(0, amount.div(100), direction);
 }
 async function closePosition(user: User) {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
@@ -41,20 +45,17 @@ async function closePosition(user: User) {
     ).amountIn;
   }
 
-  await user.perpetual.closePosition(sellAmount);
+  await user.clearingHouse.closePosition(0, sellAmount);
 
-  const userDeposits = await user.vault.getReserveValue(
-    user.address,
-    user.perpetual.address
-  );
-  await user.perpetual.withdraw(userDeposits, user.usdc.address);
+  const userDeposits = await user.vault.getReserveValue(0, user.address);
+  await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);
 }
 
 async function withdrawLiquidity(user: User) {
   const userLpPosition = await user.perpetual.getLpPosition(user.address);
   const providedLiquidity = userLpPosition.liquidityBalance;
 
-  await user.perpetual.removeLiquidity(providedLiquidity);
+  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
 
   // console.log('**********After withdrawing liquidity**********');
   // await logMarketBalance(user);

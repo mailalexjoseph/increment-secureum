@@ -7,7 +7,7 @@ import {getChainlinkPrice} from '../../helpers/contracts-getters';
 
 describe('Increment Protocol: Deployment', function () {
   describe('Deployment', function () {
-    it('Should initialize Vault with its dependencies and Perpetual as its owner', async function () {
+    it('Should initialize Vault with its dependencies ', async function () {
       const {deployer} = await setup();
 
       expect(await deployer.vault.owner()).to.be.equal(deployer.address);
@@ -19,7 +19,7 @@ describe('Increment Protocol: Deployment', function () {
       expect(await deployer.vault.chainlinkOracle()).to.be.equal(
         deployer.chainlinkOracle.address
       );
-      expect(await deployer.vault.totalReserveToken()).to.be.equal(0);
+      expect(await deployer.vault.getTotalReserveToken()).to.be.equal(0);
     });
   });
   it('Should deploy Insurance with correct parameters', async function () {
@@ -35,7 +35,7 @@ describe('Increment Protocol: Deployment', function () {
     const {deployer} = await setup();
 
     expect(await deployer.clearingHouse.owner()).to.be.equal(deployer.address);
-    expect(await deployer.clearingHouse.perpetuals(0)).to.be(
+    expect(await deployer.clearingHouse.perpetuals(0)).to.be.equal(
       deployer.perpetual.address
     );
     expect(await deployer.clearingHouse.insurance()).to.be.equal(

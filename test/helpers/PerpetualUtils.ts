@@ -7,7 +7,7 @@ export async function setUpPoolLiquidity(
   depositAmount: BigNumber
 ): Promise<void> {
   await lp.usdc.approve(lp.vault.address, depositAmount);
-  await lp.perpetual.provideLiquidity(depositAmount, lp.usdc.address);
+  await lp.clearingHouse.provideLiquidity(0, depositAmount, lp.usdc.address);
 }
 
 export async function calcCloseShortPosition(

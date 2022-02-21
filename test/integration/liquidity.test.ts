@@ -34,16 +34,20 @@ describe('Increment App: Liquidity', function () {
   describe('Can deposit liquidity to the curve pool', async function () {
     it('Should not allow to deposit zero', async function () {
       await expect(
-        user.perpetual.provideLiquidity(0, user.usdc.address)
+        user.clearingHouse.provideLiquidity(0, 0, user.usdc.address)
       ).to.be.revertedWith('Zero amount');
     });
 
     it('Should allow to deposit positive, emit event', async function () {
       await expect(
-        user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
+        user.clearingHouse.provideLiquidity(
+          0,
+          liquidityAmount,
+          user.usdc.address
+        )
       )
-        .to.emit(user.perpetual, 'LiquidityProvided')
-        .withArgs(user.address, user.usdc.address, liquidityAmount);
+        .to.emit(user.clearingHouse, 'LiquidityProvided')
+        .withArgs(0, user.address, user.usdc.address, liquidityAmount);
 
       // should have correct balance in vault
       expect(await user.usdc.balanceOf(user.address)).to.be.equal(0);
@@ -53,12 +57,14 @@ describe('Increment App: Liquidity', function () {
     });
 
     it('Should not allow to deposit twice', async function () {
-      await user.perpetual.provideLiquidity(
+      await user.clearingHouse.provideLiquidity(
+        0,
         liquidityAmount.div(2),
         user.usdc.address
       );
       await expect(
-        user.perpetual.provideLiquidity(
+        user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount.div(2),
           user.usdc.address
         )
@@ -83,7 +89,11 @@ describe('Increment App: Liquidity', function () {
       expect(vQuoteBefore).to.be.equal(vQuotelpBalance);
 
       // deposit
-      await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+      await user.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmount,
+        user.usdc.address
+      );
 
       // after you deposit
       /* relative price should not change */
@@ -105,12 +115,20 @@ describe('Increment App: Liquidity', function () {
 
     it('Should split subsequent deposits according to current ratio in pool', async function () {
       // bob deposits some assets
-      await bob.perpetual.provideLiquidity(liquidityAmount, bob.usdc.address);
+      await bob.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmount,
+        bob.usdc.address
+      );
 
       // trade some assets to change the ratio in the pool
       const depositAmount = liquidityAmount.div(10);
-      await alice.perpetual.deposit(depositAmount, alice.usdc.address);
-      await alice.perpetual.openPosition(depositAmount.mul(2), Side.Long);
+      await alice.clearingHouse.deposit(0, depositAmount, alice.usdc.address);
+      await alice.clearingHouse.openPosition(
+        0,
+        depositAmount.mul(2),
+        Side.Long
+      );
 
       // before you deposit more liquidity
       const vBaseBefore = await user.vBase.balanceOf(user.market.address);
@@ -127,7 +145,11 @@ describe('Increment App: Liquidity', function () {
       ); // deposited liquidity with 18 decimals
 
       // deposit more liquidity
-      await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+      await user.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmount,
+        user.usdc.address
+      );
 
       // after you deposit
 
@@ -149,13 +171,14 @@ describe('Increment App: Liquidity', function () {
     describe('Can withdraw liquidity from the curve pool', async function () {
       it('Should not allow to withdraw liquidity when non provided', async function () {
         await expect(
-          user.perpetual.removeLiquidity(asBigNumber('1'))
+          user.clearingHouse.removeLiquidity(0, asBigNumber('1'))
         ).to.be.revertedWith('Not enough liquidity provided');
       });
 
       it('Should allow not to withdraw more liquidity than provided', async function () {
         // deposit
-        await user.perpetual.provideLiquidity(
+        await user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
@@ -166,7 +189,8 @@ describe('Increment App: Liquidity', function () {
         ).liquidityBalance;
 
         await expect(
-          user.perpetual.removeLiquidity(
+          user.clearingHouse.removeLiquidity(
+            0,
             providedLiquidity.add(BigNumber.from('1'))
           )
         ).to.be.revertedWith('Not enough liquidity provided');
@@ -174,7 +198,8 @@ describe('Increment App: Liquidity', function () {
 
       it('Should revert withdrawal if not enough liquidity in the pool', async function () {
         // deposit
-        await user.perpetual.provideLiquidity(
+        await user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
@@ -197,20 +222,22 @@ describe('Increment App: Liquidity', function () {
 
         // try withdrawal from pool:
         await expect(
-          user.perpetual.removeLiquidity(liquidityAmount)
+          user.clearingHouse.removeLiquidity(0, liquidityAmount)
         ).to.be.revertedWith('');
       });
 
       it('Should allow to remove liquidity from pool, emit event', async function () {
         // deposit
-        await user.perpetual.provideLiquidity(
+        await user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
 
         // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
         // and -1) for market.exchange to work when closing the PnL of the position
-        await bob.perpetual.provideLiquidity(
+        await bob.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
@@ -224,9 +251,9 @@ describe('Increment App: Liquidity', function () {
           user.perpetual.address
         );
 
-        await expect(user.perpetual.removeLiquidity(providedLiquidity))
-          .to.emit(user.perpetual, 'LiquidityRemoved')
-          .withArgs(user.address, providedLiquidity);
+        await expect(user.clearingHouse.removeLiquidity(0, providedLiquidity))
+          .to.emit(user.clearingHouse, 'LiquidityRemoved')
+          .withArgs(0, user.address, providedLiquidity);
 
         const perpetualVQuoteAmountAfterWithdraw = await user.vQuote.balanceOf(
           user.perpetual.address
@@ -239,7 +266,8 @@ describe('Increment App: Liquidity', function () {
 
       it('Should remove correct amount of liquidity from pool', async function () {
         // deposit
-        await user.perpetual.provideLiquidity(
+        await user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
@@ -257,10 +285,10 @@ describe('Increment App: Liquidity', function () {
         );
 
         await expect(
-          user.perpetual.removeLiquidity(positionBefore.liquidityBalance)
+          user.clearingHouse.removeLiquidity(0, positionBefore.liquidityBalance)
         )
-          .to.emit(user.perpetual, 'LiquidityRemoved')
-          .withArgs(user.address, positionBefore.liquidityBalance);
+          .to.emit(user.clearingHouse, 'LiquidityRemoved')
+          .withArgs(0, user.address, positionBefore.liquidityBalance);
 
         const positionAfter = await user.perpetual.getLpPosition(user.address);
 
@@ -272,14 +300,16 @@ describe('Increment App: Liquidity', function () {
 
       it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
         // deposit
-        await user.perpetual.provideLiquidity(
+        await user.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
 
         // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
         // and -1) for market.exchange to work when closing the PnL of the position
-        await bob.perpetual.provideLiquidity(
+        await bob.clearingHouse.provideLiquidity(
+          0,
           liquidityAmount,
           user.usdc.address
         );
@@ -289,11 +319,11 @@ describe('Increment App: Liquidity', function () {
           await user.perpetual.getLpPosition(user.address)
         ).liquidityBalance;
 
-        await expect(user.perpetual.removeLiquidity(providedLiquidity))
-          .to.emit(user.perpetual, 'LiquidityRemoved')
-          .withArgs(user.address, providedLiquidity);
+        await expect(user.clearingHouse.removeLiquidity(0, providedLiquidity))
+          .to.emit(user.clearingHouse, 'LiquidityRemoved')
+          .withArgs(0, user.address, providedLiquidity);
 
-        await user.perpetual.settleAndWithdrawLiquidity(0);
+        await user.clearingHouse.settleAndWithdrawLiquidity(0, 0);
 
         const positionAfter = await user.perpetual.getLpPosition(user.address);
 
@@ -315,7 +345,11 @@ describe('Increment App: Liquidity', function () {
 
         const PRECISION = asBigNumber('1');
         await expect(
-          user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address)
+          user.clearingHouse.provideLiquidity(
+            0,
+            liquidityAmount,
+            user.usdc.address
+          )
         )
           .to.emit(user.market, 'AddLiquidity')
           .withArgs(

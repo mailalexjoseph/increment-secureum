@@ -30,9 +30,9 @@ async function addTokensToInsurance(user: User, amount: BigNumber) {
   await setUSDCBalance(env, user.usdc, user.insurance.address, amount);
 }
 
-async function depositIntoPerpetual(user: User, amount: BigNumber) {
+async function depositIntoVault(user: User, amount: BigNumber) {
   await user.usdc.approve(user.vault.address, amount);
-  await user.perpetual.deposit(amount, user.usdc.address);
+  await user.clearingHouse.deposit(0, amount, user.usdc.address);
 }
 
 describe('Increment App: Insurance', function () {
@@ -46,7 +46,7 @@ describe('Increment App: Insurance', function () {
 
   beforeEach('Set up', async () => {
     ({user, lp, trader} = await setup());
-    INSURANCE_FEE = await user.perpetual.INSURANCE_FEE();
+    INSURANCE_FEE = await user.clearingHouse.INSURANCE_FEE();
 
     depositAmountUSDC = await funding();
     depositAmount = await tokenToWad(
@@ -57,15 +57,16 @@ describe('Increment App: Insurance', function () {
 
   it('Should revert if not enough money in insurance ', async function () {
     // deposit
-    await depositIntoPerpetual(user, depositAmountUSDC);
+    await depositIntoVault(user, depositAmountUSDC);
 
     await removeTokensAllTokensFromVault(user);
     await addTokensToInsurance(user, depositAmountUSDC.sub(1));
 
     // withdraw
     await expect(
-      user.perpetual.withdraw(
-        await user.vault.getReserveValue(user.address, user.perpetual.address),
+      user.clearingHouse.withdraw(
+        0,
+        await user.vault.getReserveValue(0, user.address),
         user.usdc.address
       )
     ).to.be.revertedWith('Insufficient insurance balance');
@@ -73,22 +74,23 @@ describe('Increment App: Insurance', function () {
 
   it('Should payout insurance when enough', async function () {
     // deposit
-    await depositIntoPerpetual(user, depositAmountUSDC);
+    await depositIntoVault(user, depositAmountUSDC);
 
     await removeTokensAllTokensFromVault(user);
     await addTokensToInsurance(user, depositAmountUSDC);
 
     // withdraw
     await expect(
-      user.perpetual.withdraw(
-        await user.vault.getReserveValue(user.address, user.perpetual.address),
+      user.clearingHouse.withdraw(
+        0,
+        await user.vault.getReserveValue(0, user.address),
         user.usdc.address
       )
     )
       .to.emit(user.insurance, 'DebtSettled')
       .withArgs(user.vault.address, depositAmountUSDC);
 
-    expect(await user.vault.badDebt()).to.be.eq(depositAmountUSDC);
+    expect(await user.vault.getBadDebt()).to.be.eq(depositAmountUSDC);
   });
 
   it('Trader should pay insurance fee when opening a position', async function () {
@@ -101,15 +103,15 @@ describe('Increment App: Insurance', function () {
       depositAmount.div(100),
     ]; // 1% of lp is traded
 
-    await depositIntoPerpetual(trader, tradeAmountUSDC);
+    await depositIntoVault(trader, tradeAmountUSDC);
 
     const traderReserveDeposited = await trader.vault.getBalance(
-      trader.address,
-      trader.perpetual.address
+      0,
+      trader.address
     );
 
     // open position
-    await trader.perpetual.openPosition(tradeAmount, Side.Long);
+    await trader.clearingHouse.openPosition(0, tradeAmount, Side.Long);
 
     const traderPosition = await trader.perpetual.getTraderPosition(
       trader.address
@@ -120,15 +122,12 @@ describe('Increment App: Insurance', function () {
       INSURANCE_FEE
     );
 
-    expect(
-      await trader.vault.getBalance(trader.address, trader.perpetual.address)
-    ).to.be.eq(traderReserveDeposited.sub(insurancePayed));
+    expect(await trader.vault.getBalance(0, trader.address)).to.be.eq(
+      traderReserveDeposited.sub(insurancePayed)
+    );
 
-    expect(
-      await trader.vault.getBalance(
-        trader.insurance.address,
-        trader.perpetual.address
-      )
-    ).to.be.eq(insurancePayed);
+    expect(await trader.vault.getBalance(0, trader.insurance.address)).to.be.eq(
+      insurancePayed
+    );
   });
 });
