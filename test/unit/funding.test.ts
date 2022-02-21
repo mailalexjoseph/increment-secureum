@@ -160,7 +160,7 @@ describe('Funding rate', async function () {
       minutes(1)
     );
 
-    await user.perpetual.updateFundingRate();
+    await user.perpetual.__TestPerpetual_updateFunding();
 
     // expected values after first trade
     const eCurrentTraderPremiumFirstTransac: BigNumber =
@@ -189,7 +189,7 @@ describe('Funding rate', async function () {
       env,
       minutes(5)
     );
-    await user.perpetual.updateFundingRate();
+    await user.perpetual.__TestPerpetual_updateFunding();
 
     // expected values after second trade
     const eCurrentTraderPremiumSecondTransac: BigNumber =

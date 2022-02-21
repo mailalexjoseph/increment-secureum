@@ -78,4 +78,8 @@ contract TestPerpetual is Perpetual {
 
         return market.exchange(tokenToSell, tokenToBuy, amountToSell, 0);
     }
+
+    function __TestPerpetual_updateFunding() external {
+        _updateFundingRate();
+    }
 }

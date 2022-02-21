@@ -322,7 +322,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     ///// COMMON OPERATIONS \\\\\
 
-    function updateFundingRate() public {
+    function _updateFundingRate() internal {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
 
@@ -400,7 +400,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         if (currentTime > timeOfLastTrade) {
             chainlinkTWAPOracle.updateEURUSDTWAP();
             poolTWAPOracle.updateEURUSDTWAP();
-            updateFundingRate();
+            _updateFundingRate();
         }
     }
 
