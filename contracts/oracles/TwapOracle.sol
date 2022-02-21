@@ -79,7 +79,7 @@ contract TwapOracle {
         // slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfPeriod >= PERIOD) {
             /*
-                TWAP = priceCumulative1 - priceCumulative0 / timeElapsed
+                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
             */
 
             console.log("update twap");
