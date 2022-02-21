@@ -63,7 +63,7 @@ export interface TestEnv {
 }
 
 /// @notice: get all deployed contracts
-const getContracts = async (deply: string) => {
+export const getContracts = async (deployAccount: string) => {
   const usdcAddress = getReserveAddress('USDC', env);
 
   const factory = await getCryptoSwapFactory(env);
@@ -74,23 +74,27 @@ const getContracts = async (deply: string) => {
     market: <CurveCryptoSwap2ETH>cryptoswap,
     curveToken: <CurveTokenV5>await getCurveToken(cryptoswap),
 
-    vBase: <VirtualToken>await ethers.getContract('VBase', deply),
-    vQuote: <VirtualToken>await ethers.getContract('VQuote', deply),
-    vault: <Vault>await ethers.getContract('Vault', deply),
-    perpetual: <TestPerpetual>await ethers.getContract('TestPerpetual', deply),
-    insurance: <Insurance>await ethers.getContract('Insurance', deply),
-    usdc: <ERC20>await ethers.getContractAt('ERC20', usdcAddress, deply),
+    vBase: <VirtualToken>await ethers.getContract('VBase', deployAccount),
+    vQuote: <VirtualToken>await ethers.getContract('VQuote', deployAccount),
+    vault: <Vault>await ethers.getContract('Vault', deployAccount),
+    perpetual: <TestPerpetual>(
+      await ethers.getContract('TestPerpetual', deployAccount)
+    ),
+    insurance: <Insurance>await ethers.getContract('Insurance', deployAccount),
+    usdc: <ERC20>(
+      await ethers.getContractAt('ERC20', usdcAddress, deployAccount)
+    ),
     clearingHouse: <ClearingHouse>(
-      await ethers.getContract('ClearingHouse', deply)
+      await ethers.getContract('ClearingHouse', deployAccount)
     ),
     chainlinkOracle: <ChainlinkOracle>(
-      await ethers.getContract('ChainlinkOracle', deply)
+      await ethers.getContract('ChainlinkOracle', deployAccount)
     ),
     chainlinkTWAPOracle: <ChainlinkTWAPOracle>(
-      await ethers.getContract('ChainlinkTWAPOracle', deply)
+      await ethers.getContract('ChainlinkTWAPOracle', deployAccount)
     ),
     poolTWAPOracle: <PoolTWAPOracle>(
-      await ethers.getContract('PoolTWAPOracle', deply)
+      await ethers.getContract('PoolTWAPOracle', deployAccount)
     ),
   };
 };

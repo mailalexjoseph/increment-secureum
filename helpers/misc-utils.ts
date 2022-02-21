@@ -87,7 +87,10 @@ export function getEthereumNetworkFromString(String: string): eEthereumNetwork {
 export function getEthereumNetworkFromHRE(
   hre: HardhatRuntimeEnvironment
 ): eEthereumNetwork {
-  const networkString: string = hre.network.name;
+  let networkString: string = hre.network.name;
+  if (networkString === 'localhost') {
+    networkString = 'hardhat';
+  }
 
   const networkEnum: eEthereumNetwork =
     getEthereumNetworkFromString(networkString);
