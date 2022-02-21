@@ -19,13 +19,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
 
-  let cryptoswap;
-  if (hre.network.name == 'kovan') {
-    cryptoswap = await ethers.getContract('CurveCryptoSwapTest', deployer);
-  } else {
-    const factory = await getCryptoSwapFactory(hre);
-    cryptoswap = await getCryptoSwap(factory);
-  }
+  // let cryptoswap;
+  // if (hre.network.name == 'kovan') {
+  //   cryptoswap = await ethers.getContract('CurveCryptoSwapTest', deployer);
+  // } else {
+  const factory = await getCryptoSwapFactory(hre);
+  const cryptoswap = await getCryptoSwap(factory);
+  // }
 
   const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
 

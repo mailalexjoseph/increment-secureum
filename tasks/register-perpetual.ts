@@ -30,21 +30,13 @@ task('register-perpetual', 'Register perpetual in vault').setAction(
       console.log('vUSD owner is already transferred');
     }
 
-    console.log(clearingHouse.address);
-    console.log(
-      'perpetuals(0)',
-      (await clearingHouse.perpetuals(0)).toString()
-    );
+    await clearingHouse.allowListPerpetual(perpetual.address);
 
-    if ((await clearingHouse.numMarkets()) > 0) {
-      if ((await clearingHouse.perpetuals(0)) !== perpetual.address) {
-        await (
-          await clearingHouse.allowListPerpetual(perpetual.address)
-        ).wait();
-        console.log('Perpetual is allowed');
-      } else {
-        console.log('Perpetual is already allowed');
-      }
-    }
+    // if ((await clearingHouse.numMarkets()) === 0) {
+    //   await (await clearingHouse.allowListPerpetual(perpetual.address)).wait();
+    //   console.log('Perpetual is allowed');
+    // } else {
+    //   console.log('Perpetual is already allowed');
+    // }
   }
 );
