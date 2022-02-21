@@ -27,6 +27,7 @@ import {
   Vault,
   VirtualToken,
   Insurance,
+  ClearingHouse,
 } from '../../typechain';
 import {BigNumber} from '../../helpers/types';
 import {
@@ -42,6 +43,7 @@ export type User = {address: string} & {
   vBase: VirtualToken;
   vQuote: VirtualToken;
   market: CurveCryptoSwap2ETH;
+  clearingHouse: ClearingHouse;
   insurance: Insurance;
   factory: Factory;
   chainlinkOracle: ChainlinkOracle;
@@ -78,6 +80,9 @@ const getContracts = async (deply: string) => {
     perpetual: <TestPerpetual>await ethers.getContract('TestPerpetual', deply),
     insurance: <Insurance>await ethers.getContract('Insurance', deply),
     usdc: <ERC20>await ethers.getContractAt('ERC20', usdcAddress, deply),
+    clearingHouse: <ClearingHouse>(
+      await ethers.getContract('ClearingHouse', deply)
+    ),
     chainlinkOracle: <ChainlinkOracle>(
       await ethers.getContract('ChainlinkOracle', deply)
     ),
