@@ -18,7 +18,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const vault = await ethers.getContract('Vault', deployer);
   const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
-  await vault.setClearingHouse(clearingHouse.address);
+
+  if ((await vault.clearingHouse()) !== clearingHouse.address) {
+    await (await vault.setClearingHouse(clearingHouse.address)).wait();
+  }
 
   console.log('We have deployed the ClearingHouse');
 };

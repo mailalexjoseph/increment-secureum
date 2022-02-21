@@ -8,8 +8,13 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const factory = await getCryptoSwapFactory(hre);
-  const cryptoswap = await getCryptoSwap(factory);
+  let cryptoswap;
+  if (hre.network.name == 'kovan') {
+    cryptoswap = await hre.ethers.getContract('CurveCryptoSwapTest', deployer);
+  } else {
+    const factory = await getCryptoSwapFactory(hre);
+    cryptoswap = await getCryptoSwap(factory);
+  }
 
   await hre.deployments.deploy('PoolTWAPOracle', {
     from: deployer,

@@ -4,6 +4,9 @@ import {deployments} from 'hardhat';
 
 import {Contract} from 'ethers';
 import {ethers} from 'hardhat';
+import {ContractTransaction} from 'ethers';
+
+export const waitForTx = async (tx: ContractTransaction) => await tx.wait(1);
 
 export async function setupUsers<T extends {[contractName: string]: Contract}>(
   addresses: string[],

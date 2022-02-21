@@ -22,8 +22,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // register vault in contract
   const insurance = await ethers.getContract('Insurance', deployer);
   const vault = await ethers.getContract('Vault', deployer);
-  await insurance.setVault(vault.address);
 
+  if ((await insurance.vault()) !== vault.address) {
+    await (await insurance.setVault(vault.address)).wait();
+  }
   console.log('We have deployed the vault');
 };
 

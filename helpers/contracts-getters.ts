@@ -29,6 +29,10 @@ export function getChainlinkOracle(
   return chainlinkOracles.priceOracles[getEthereumNetworkFromHRE(hre)][pair];
 }
 
+export function getWETH(hre: HardhatRuntimeEnvironment): tEthereumAddress {
+  return integrations[getEthereumNetworkFromHRE(hre)].WETH;
+}
+
 export async function getChainlinkPrice(
   hre: HardhatRuntimeEnvironment,
   pair: string

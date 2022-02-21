@@ -75,14 +75,17 @@ export const integrations = {
   [eEthereumNetwork.hardhat]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
     CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET, // reference to mainnet because we fork mainnet
+    WETH: '',
   },
   [eEthereumNetwork.kovan]: {
     AAVE_CONTRACTS_GATEWAY: '0x88757f2f99175387aB4C6a4b3067c77A695b0349',
     CURVE_FACTORY_CONTRACT: '',
+    WETH: '0xd0A1E359811322d97991E03f863a0C30C2cF029C', // used for cryptoswap
   },
   [eEthereumNetwork.main]: {
     AAVE_CONTRACTS_GATEWAY: '0xb53c1a33016b2dc2ff3653530bff1848a515c8c5',
     CURVE_FACTORY_CONTRACT: CURVE_FACTORY_MAINNET,
+    WETH: '',
   },
 };
 
