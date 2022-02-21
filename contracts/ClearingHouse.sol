@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: AGPL-3.0-or-later
+// SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.4;
 
 // contracts
@@ -305,5 +305,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     function getLpPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getLpPosition(account);
+    }
+
+    function numMarkets() public view returns (uint256) {
+        return perpetuals.length;
     }
 }
