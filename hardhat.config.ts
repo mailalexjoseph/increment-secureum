@@ -4,6 +4,7 @@ import path from 'path';
 import 'dotenv/config';
 import 'hardhat-gas-reporter';
 // import '@nomiclabs/hardhat-vyper';
+import 'hardhat-contract-sizer';
 
 import 'hardhat-contract-sizer';
 import 'hardhat-deploy';
@@ -153,20 +154,21 @@ const config: HardhatUserConfig = {
       },
     ],
   },
-  // contractSizer: {
-  //   alphaSort: true,
-  //   disambiguatePaths: false,
-  //   runOnCompile: true,
-  //   strict: true,
-  //   only: [
-  //     'Perpetual',
-  //     'Vault',
-  //     'Insurance',
-  //     'TWAPOracle',
-  //     'ChainlinkOracle',
-  //     'ChainlinkTWAPOracle',
-  //     'PoolTWAPOracle',
-  //   ],
-  // },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: true,
+    only: [
+      'Perpetual',
+      'Vault',
+      'Insurance',
+      'TWAPOracle',
+      'ChainlinkOracle',
+      'ChainlinkTWAPOracle',
+      'PoolTWAPOracle',
+      'ClearingHouse',
+    ],
+  },
 };
 export default config;
