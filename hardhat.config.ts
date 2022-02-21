@@ -66,6 +66,7 @@ const config: HardhatUserConfig = {
     mainnet: {
       url: node_url('mainnet'),
       accounts: accounts('mainnet'),
+      allowUnlimitedContractSize: true,
     },
     rinkeby: {
       url: node_url('rinkeby'),
