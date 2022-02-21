@@ -71,7 +71,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         IERC20 token
     ) external {
-        require(vault.deposit(idx, msg.sender, amount, token) > 0, "Not enough tokens");
+        require(vault.deposit(idx, msg.sender, amount, token) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
 
@@ -85,8 +85,20 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
-        require(vault.withdraw(idx, msg.sender, amount, token) > 0, "Not enough tokens");
+        require(vault.withdraw(idx, msg.sender, amount, token) > 0);
         emit Withdraw(idx, msg.sender, address(token), amount);
+    }
+
+    /// @notice Function to be called by clients depositing USDC as collateral
+    function openPositionWithUSDC(
+        uint256 idx,
+        uint256 amount,
+        LibPerpetual.Side direction
+    ) external returns (int256, int256) {
+        // transform USDC amount with 6 decimals to a value with 18 decimals
+        uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
+
+        return openPosition(idx, convertedWadAmount, direction);
     }
 
     /// @notice Open position, long or short
@@ -172,9 +184,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
 
         int256 collateral = getReserveValue(idx, account);
-        int256 fundingPayments = getFundingPayments(idx, msg.sender);
-        int256 unrealizedPositionPnl = getUnrealizedPnL(idx, msg.sender);
-        int256 openNotional = getTraderPosition(idx, msg.sender).openNotional;
+        int256 fundingPayments = getFundingPayments(idx, account);
+        int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
+        int256 openNotional = getTraderPosition(idx, account).openNotional;
 
         int256 positiveOpenNotional = LibMath.abs(openNotional);
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
@@ -183,28 +195,30 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
     function liquidate(
         uint256 idx,
-        address account,
+        address liquidatee,
         uint256 tentativeVQuoteAmount
     ) external {
-        uint256 positiveOpenNotional = uint256(LibMath.abs(perpetuals[idx].getTraderPosition(msg.sender).openNotional));
-
-        require(getTraderPosition(idx, msg.sender).openNotional != 0, "No position currently opened");
-        require(!marginIsValid(idx, account, MIN_MARGIN), "Margin is valid");
         address liquidator = msg.sender;
 
-        int256 profit = perpetuals[idx].closePosition(account, tentativeVQuoteAmount);
+        uint256 positiveOpenNotional = uint256(LibMath.abs(perpetuals[idx].getTraderPosition(liquidatee).openNotional));
+
+        require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
+        require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
+
+        int256 profit = perpetuals[idx].closePosition(liquidatee, tentativeVQuoteAmount);
 
         // adjust liquidator vault amount
+
         uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
 
-        // subtract reward from trader account
+        // subtract reward from liquidatee
         int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
-        vault.settleProfit(idx, account, reducedProfit);
+        vault.settleProfit(idx, liquidatee, reducedProfit);
 
         // add reward to liquidator
         vault.settleProfit(idx, liquidator, liquidationRewardAmount.toInt256());
 
-        emit LiquidationCall(idx, account, liquidator, uint128(block.timestamp), positiveOpenNotional);
+        emit LiquidationCall(idx, liquidatee, liquidator, uint128(block.timestamp), positiveOpenNotional);
     }
 
     ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
@@ -267,21 +281,21 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Return the curve price oracle
-    function marketPriceOracle(uint256 idx) public view returns (uint256) {
+    function marketPriceOracle(uint256 idx) external view returns (uint256) {
         return perpetuals[idx].marketPriceOracle();
     }
 
     /// @notice Return the last traded price (used for TWAP)
-    function marketPrice(uint256 idx) public view returns (uint256) {
+    function marketPrice(uint256 idx) external view returns (uint256) {
         return perpetuals[idx].marketPrice();
     }
 
     /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    function indexPrice(uint256 idx) public view returns (int256) {
+    function indexPrice(uint256 idx) external view returns (int256) {
         return perpetuals[idx].indexPrice();
     }
 
-    function getGlobalPosition(uint256 idx) public view returns (LibPerpetual.GlobalPosition memory) {
+    function getGlobalPosition(uint256 idx) external view returns (LibPerpetual.GlobalPosition memory) {
         return perpetuals[idx].getGlobalPosition();
     }
 
@@ -289,7 +303,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return perpetuals[idx].getTraderPosition(account);
     }
 
-    function getLpPosition(uint256 idx, address account) public view returns (LibPerpetual.UserPosition memory) {
+    function getLpPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getLpPosition(account);
     }
 }

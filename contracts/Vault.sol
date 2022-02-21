@@ -29,8 +29,8 @@ contract Vault is IVault, Context, IncreOwnable {
     using LibMath for int256;
 
     // constants
-    uint256 private constant MAX_DECIMALS = 18;
-    uint256 private immutable reserveTokenDecimals;
+    uint256 internal constant MAX_DECIMALS = 18;
+    uint256 internal immutable reserveTokenDecimals;
 
     // state
     IChainlinkOracle public immutable override chainlinkOracle;
@@ -38,8 +38,8 @@ contract Vault is IVault, Context, IncreOwnable {
     IERC20 public immutable override reserveToken;
     IClearingHouse public override clearingHouse;
 
-    uint256 public override totalReserveToken;
-    uint256 public override badDebt;
+    uint256 internal totalReserveToken;
+    uint256 internal badDebt;
     mapping(uint256 => mapping(address => int256)) private balances;
 
     //      trader     =>      market  => balances
@@ -48,7 +48,7 @@ contract Vault is IVault, Context, IncreOwnable {
         IChainlinkOracle _chainlinkOracle,
         IERC20 _reserveToken,
         IInsurance _insurance
-    ) public {
+    ) {
         require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
@@ -75,13 +75,14 @@ contract Vault is IVault, Context, IncreOwnable {
     /************************* functions *************************/
 
     modifier onlyClearingHouse() {
-        require(msg.sender == address(clearingHouse), "Only clearing house can call this function");
+        require(msg.sender == address(clearingHouse), "NO CLEARINGHOUSE");
         _;
     }
 
     // TODO: Only set once
-    function setClearingHouse(IClearingHouse _clearingHouse) public onlyOwner {
-        clearingHouse = _clearingHouse;
+    function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
+        require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
+        clearingHouse = newClearingHouse;
     }
 
     /**
@@ -152,10 +153,21 @@ contract Vault is IVault, Context, IncreOwnable {
             uint256 borrowedAmount = rawTokenAmount - withdrawToken.balanceOf(address(this));
             insurance.settleDebt(borrowedAmount);
             badDebt += borrowedAmount;
+            emit BadDebtGenerated(0, user, borrowedAmount);
         }
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
 
         return rawTokenAmount;
+    }
+
+    function settleProfit(
+        uint256 idx,
+        address user,
+        int256 amount
+    ) external override onlyClearingHouse {
+        //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
+        int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
+        balances[idx][user] += settlement;
     }
 
     /**
@@ -180,13 +192,11 @@ contract Vault is IVault, Context, IncreOwnable {
         return 1e18;
     }
 
-    function settleProfit(
-        uint256 idx,
-        address user,
-        int256 amount
-    ) external override onlyClearingHouse {
-        //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
-        int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
-        balances[idx][user] += settlement;
+    function getBadDebt() external view override returns (uint256) {
+        return badDebt;
+    }
+
+    function getTotalReserveToken() external view override returns (uint256) {
+        return badDebt;
     }
 }

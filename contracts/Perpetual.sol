@@ -89,7 +89,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         address account,
         uint256 amount,
         LibPerpetual.Side direction
-    ) public override onlyClearingHouse returns (int256, int256) {
+    ) external override onlyClearingHouse returns (int256, int256) {
         /*
             if amount > 0
 
@@ -194,7 +194,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return profit;
     }
 
-    function getUnrealizedPnL(address account) public view override returns (int256) {
+    function getUnrealizedPnL(address account) external view override returns (int256) {
         LibPerpetual.UserPosition memory trader = traderPosition[account];
         int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
         int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
@@ -354,7 +354,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         user.cumFundingRate = global.cumFundingRate;
     }
 
-    function getFundingPayments(address account) public view override returns (int256) {
+    function getFundingPayments(address account) external view override returns (int256) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
         return _getFundingPayments(user, global);
@@ -363,7 +363,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     /// @notice Calculate missed funding payments
     // slither-disable-next-line timestamp
     function _getFundingPayments(LibPerpetual.UserPosition memory user, LibPerpetual.GlobalPosition memory global)
-        public
+        internal
         pure
         returns (int256 upcomingFundingPayment)
     {

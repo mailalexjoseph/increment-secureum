@@ -10,6 +10,10 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 // @dev: deposit uint and withdraw int
 // @author: The interface used in other contracts
 interface IVault {
+    // Event
+    event BadDebtGenerated(uint256 idx, address beneficiary, uint256 amount);
+
+    // dependencies
     function chainlinkOracle() external view returns (IChainlinkOracle);
 
     function reserveToken() external view returns (IERC20);
@@ -18,10 +22,7 @@ interface IVault {
 
     function clearingHouse() external view returns (IClearingHouse);
 
-    function totalReserveToken() external view returns (uint256);
-
-    function badDebt() external view returns (uint256);
-
+    // state modifying functions
     function deposit(
         uint256 idx,
         address user,
@@ -35,6 +36,12 @@ interface IVault {
         IERC20 withdrawToken
     ) external returns (uint256);
 
+    function settleProfit(
+        uint256 idx,
+        address user,
+        int256 amount
+    ) external;
+
     function withdraw(
         uint256 idx,
         address user,
@@ -42,15 +49,14 @@ interface IVault {
         IERC20 token
     ) external returns (uint256);
 
-    function getReserveValue(uint256 idx, address account) external view returns (int256);
-
+    // viewer functions
     function getReserveTokenDecimals() external view returns (uint256);
 
-    function settleProfit(
-        uint256 idx,
-        address user,
-        int256 amount
-    ) external;
+    function getTotalReserveToken() external view returns (uint256);
+
+    function getBadDebt() external view returns (uint256);
+
+    function getReserveValue(uint256 idx, address account) external view returns (int256);
 
     function getBalance(uint256 idx, address user) external view returns (int256);
 }
