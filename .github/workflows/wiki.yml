@@ -15,22 +15,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      # - uses: actions/setup-node@v2
-      #   with:
-      #     node-version: 16.13.1
-      #     cache: yarn
+      - uses: actions/setup-node@v2
+        with:
+          node-version: 16.13.1
+          cache: yarn
 
-      # - name: Init Yarn
-      #   run: yarn install --frozen-lockfile
+      - name: Init Yarn
+        run: yarn install --frozen-lockfile
 
-      # - name: Print dir
-      #   run: tree
-
-      # - name: Clone Wiki Repo
-      #   uses: actions/checkout@v2
-      #   with:
-      #     repository: 'Increment-Finance/increment-protocol.wiki'
-      #     path: 'wiki'
+      - name: Print dir
+        run: ls wiki
 
       - uses: ineshbose/wiki-action@v1
         with:
