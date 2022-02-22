@@ -32,7 +32,8 @@ jobs:
       #     repository: 'Increment-Finance/increment-protocol.wiki'
       #     path: 'wiki'
 
-      - uses: OrlovM/Wiki-Action@v1
+      - uses: Increment-Finance/wiki-action@master
         with:
-          path: 'wiki'
-          token: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_DIR: 'wiki'
+          AUTO_SIDEBAR: true
