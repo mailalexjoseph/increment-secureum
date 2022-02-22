@@ -3,9 +3,8 @@ name: Update Wiki
 on:
   push:
     paths:
-      - '*/**'
+      - 'contracts/**'
     branches:
-      - feat/wiki
       - main
 
 jobs:
@@ -22,9 +21,6 @@ jobs:
 
       - name: Init Yarn
         run: yarn install --frozen-lockfile
-
-      - name: Print dir
-        run: ls wiki
 
       - uses: ineshbose/wiki-action@v1
         with:

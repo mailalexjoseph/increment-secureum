@@ -23,14 +23,13 @@ deployments/localhost
 
 _toDo/
 notes.md
+notes.org
 
 depreciated/
 contracts/depreciated/
 contracts/external/
 
-docs/.docusaurus/
-docs/node_modules/
-docs/build/
+wiki/
 
 docgen/
 *.png
