@@ -16,26 +16,17 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   if ((await vEUR.owner()) !== perpetual.address) {
     await (await vEUR.transferOwner(perpetual.address, true)).wait();
-    console.log('vEUR owner is transferred');
   } else {
     console.log('vEUR owner is already transferred');
   }
 
   if ((await vUSD.owner()) !== perpetual.address) {
     await (await vUSD.transferOwner(perpetual.address, true)).wait();
-    console.log('vUSD owner is transferred');
   } else {
-    console.log('vUSD owner is already transferred');
   }
 
-  const listedMarket = await clearingHouse.numMarkets();
-  console.log(`Number of listed markets: ${listedMarket}`);
-
   await clearingHouse.allowListPerpetual(perpetual.address);
-  // console.log(
-  //   'First listed market is: ',
-  //   (await clearingHouse.perpetuals(0)).toString()
-  // );
+  // const listedMarket = await clearingHouse.numMarkets();
   // if (listedMarket.lt(1)) {
   //   await (await clearingHouse.allowListPerpetual(perpetual.address)).wait();
   //   console.log('Perpetual is allowed');
