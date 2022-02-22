@@ -16,7 +16,7 @@ jobs:
       - name: Clone Wiki Repo
         uses: actions/checkout@v2
         with:
-          repository: 'Increment-Finance/increment-protocol/wiki'
+          repository: 'Increment-Finance/increment-protocol.wiki'
           path: 'wiki'
 
       - uses: actions/setup-node@v2
