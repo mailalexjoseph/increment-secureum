@@ -2,36 +2,58 @@ import {ethers, getNamedAccounts} from 'hardhat';
 import {BigNumber} from 'ethers';
 import env = require('hardhat');
 
-import {funding, getContracts, User} from '../test/integration/helpers/setup';
-import {Side} from '../test/integration/helpers/utils/types';
-import {setLatestChainlinkPrice} from '../test/integration/helpers/utils/manipulateStorage';
+import {funding, getContracts, User} from '../test/helpers/setup';
+import {Side} from '../test/helpers/utils/types';
+import {setLatestChainlinkPrice} from '../test/helpers/utils/manipulateStorage';
 import {setupUsers} from '../helpers/misc-utils';
-import {getChainlinkOracle} from '../helpers/contracts-deployments';
+import {getChainlinkOracle} from '../helpers/contracts-getters';
+import {TEST_get_exactOutputSwap} from '../test/helpers/CurveUtils';
 import {AggregatorV3Interface} from '../typechain';
 
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
 
 async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
-  await user.perpetual.provideLiquidity(liquidityAmount, user.usdc.address);
+  await user.clearingHouse.provideLiquidity(
+    0,
+    liquidityAmount,
+    user.usdc.address
+  );
 }
 
 async function openPosition(amount: BigNumber, user: User, direction: Side) {
-  await user.perpetual.deposit(amount, user.usdc.address);
-  await user.perpetual.openPosition(amount.mul(10), direction); // 10x leverage long
+  await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address);
+  await user.clearingHouse.openPositionWithUSDC(0, amount.div(100), direction); // 10x leverage long
 }
 
 async function closePosition(user: User, trader: User) {
-  await user.perpetual.closePosition();
-  const traderDeposits = await trader.vault.getReserveValue(trader.address);
-  await user.perpetual.withdraw(traderDeposits, user.usdc.address);
+  const traderPosition = await user.perpetual.getTraderPosition(user.address);
+
+  let sellAmount;
+  if (traderPosition.positionSize.gt(0)) {
+    sellAmount = traderPosition.positionSize;
+  } else {
+    sellAmount = (
+      await TEST_get_exactOutputSwap(
+        user.market,
+        traderPosition.positionSize.abs(),
+        ethers.constants.MaxUint256,
+        0,
+        1
+      )
+    ).amountIn;
+  }
+
+  await user.clearingHouse.closePosition(0, sellAmount);
+
+  const userDeposits = await user.vault.getReserveValue(0, user.address);
+  await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);
 }
 
 async function withdrawLiquidity(user: User) {
-  const providedLiquidity = (
-    await user.perpetual.liquidityPosition(user.address)
-  )[0];
+  const userLpPosition = await user.perpetual.getLpPosition(user.address);
+  const providedLiquidity = userLpPosition.liquidityBalance;
 
-  await user.perpetual.withdrawLiquidity(providedLiquidity, user.usdc.address);
+  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
 }
 
 async function changeOraclePrice(
@@ -65,7 +87,7 @@ const main = async function () {
 
   await provideLiquidity(liquidityAmount, deployer);
 
-  // Scenerio
+  // Scenario
   await provideLiquidity(liquidityAmount, lp);
 
   await openPosition(liquidityAmount.div(10), trader, Side.Long);

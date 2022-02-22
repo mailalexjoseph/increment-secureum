@@ -80,7 +80,7 @@
     "fork:test": "node ./_scripts.js fork:test",
     "contract:size": "echo 'maximum contract size is 24KB' && yarn run hardhat size-contracts",
     "compile:vyper": "rm ./typechain -r & yarn hardhat clean && yarn hardhat compile-vyper --directory contracts-vyper",
-    "prerun:scenerio": "mkdir deployments/mainnet || cp -r deployments/localhost/* deployments/mainnet",
-    "run:scenerio": "hardhat run scripts/scenerio.ts --network localhost"
+    "prerun:scenario": "mkdir deployments/mainnet || cp -r deployments/localhost/* deployments/mainnet",
+    "run:scenario": "hardhat run scripts/scenario.ts --network localhost"
   }
 }
