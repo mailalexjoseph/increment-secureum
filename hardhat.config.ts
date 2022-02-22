@@ -173,7 +173,7 @@ const config: HardhatUserConfig = {
     ],
   },
   dodoc: {
-    outputDir: 'wiki/contracts/',
+    outputDir: 'wiki/',
     include: [
       'Insurance',
       'Vault',
