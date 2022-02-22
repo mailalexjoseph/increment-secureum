@@ -33,7 +33,7 @@ jobs:
       #     path: 'wiki'
 
       - uses: ineshbose/wiki-action@v1
-          with:
-            GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-            WIKI_DIR: 'wiki'
-            AUTO_SIDEBAR: true
+        with:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          WIKI_DIR: 'wiki'
+          AUTO_SIDEBAR: true
