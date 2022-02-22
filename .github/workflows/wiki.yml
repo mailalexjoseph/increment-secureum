@@ -20,8 +20,8 @@ jobs:
           node-version: 16.13.1
           cache: yarn
 
-      # - name: Init Yarn
-      #   run: yarn install --frozen-lockfile
+      - name: Init Yarn
+        run: yarn install --frozen-lockfile
 
       - name: Print dir
         run: tree
