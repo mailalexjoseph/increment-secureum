@@ -1,12 +1,14 @@
 name: Update Wiki
 
 on:
-  push:
-    paths:
-      - 'wiki/**'
-    branches:
-      - feat/wiki
-      - main
+  [workflow_dispatch]
+  # push:
+  #   paths:
+  #     - 'wiki/**'
+  #   branches:
+  #     - feat/wiki
+  #     - main
+  #
 jobs:
   update-wiki:
     runs-on: ubuntu-latest
