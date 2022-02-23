@@ -93,12 +93,13 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function openPositionWithUSDC(
         uint256 idx,
         uint256 amount,
-        LibPerpetual.Side direction
+        LibPerpetual.Side direction,
+        uint256 minAmount
     ) external returns (int256, int256) {
         // transform USDC amount with 6 decimals to a value with 18 decimals
         uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
 
-        return openPosition(idx, convertedWadAmount, direction);
+        return openPosition(idx, convertedWadAmount, direction, minAmount);
     }
 
     /// @notice Open position, long or short
@@ -108,7 +109,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function openPosition(
         uint256 idx,
         uint256 amount,
-        LibPerpetual.Side direction
+        LibPerpetual.Side direction,
+        uint256 minAmount
     ) public returns (int256, int256) {
         /*
             if amount > 0
@@ -133,7 +135,12 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         require(amount > 0, "The amount can't be null");
 
-        (int256 openNotional, int256 positionSize) = perpetuals[idx].openPosition(msg.sender, amount, direction);
+        (int256 openNotional, int256 positionSize) = perpetuals[idx].openPosition(
+            msg.sender,
+            amount,
+            direction,
+            minAmount
+        );
 
         // pay insurance fee: TODO: can never withdraw this amount!
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(openNotional), INSURANCE_FEE);
@@ -149,13 +156,17 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Closes position from account holder
     /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
-    function closePosition(uint256 idx, uint256 tentativeVQuoteAmount) external {
+    function closePosition(
+        uint256 idx,
+        uint256 tentativeVQuoteAmount,
+        uint256 minAmount
+    ) external {
         LibPerpetual.UserPosition memory trader = getTraderPosition(idx, msg.sender);
         LibPerpetual.Side direction = trader.positionSize > 0 ? LibPerpetual.Side.Long : LibPerpetual.Side.Short;
 
         require(trader.openNotional != 0, "No position currently opened");
 
-        int256 profit = perpetuals[idx].closePosition(msg.sender, tentativeVQuoteAmount);
+        int256 profit = perpetuals[idx].closePosition(msg.sender, tentativeVQuoteAmount, minAmount);
 
         // apply changes to collateral
         vault.settleProfit(idx, msg.sender, profit);
@@ -205,7 +216,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
 
-        int256 profit = perpetuals[idx].closePosition(liquidatee, tentativeVQuoteAmount);
+        int256 profit = perpetuals[idx].closePosition(liquidatee, tentativeVQuoteAmount, 0);
 
         // adjust liquidator vault amount
 

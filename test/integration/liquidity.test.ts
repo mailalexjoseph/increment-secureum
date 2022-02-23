@@ -127,7 +127,8 @@ describe('Increment App: Liquidity', function () {
       await alice.clearingHouse.openPosition(
         0,
         depositAmount.mul(2),
-        Side.Long
+        Side.Long,
+        0
       );
 
       // before you deposit more liquidity

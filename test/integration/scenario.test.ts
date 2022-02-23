@@ -25,7 +25,12 @@ async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
 
 async function openPosition(amount: BigNumber, user: User, direction: Side) {
   await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address); // invest 1 % of the capital
-  await user.clearingHouse.openPositionWithUSDC(0, amount.div(100), direction);
+  await user.clearingHouse.openPositionWithUSDC(
+    0,
+    amount.div(100),
+    direction,
+    0
+  );
 }
 async function closePosition(user: User) {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
@@ -45,7 +50,7 @@ async function closePosition(user: User) {
     ).amountIn;
   }
 
-  await user.clearingHouse.closePosition(0, sellAmount);
+  await user.clearingHouse.closePosition(0, sellAmount, 0);
 
   const userDeposits = await user.vault.getReserveValue(0, user.address);
   await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);

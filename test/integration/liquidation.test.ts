@@ -71,7 +71,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should fail if user has enough margin', async () => {
-    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long, 0);
 
     await expect(
       bob.clearingHouse.liquidate(0, alice.address, depositAmount)
@@ -79,7 +79,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should liquidate LONG position out-of-the-money', async () => {
-    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Long, 0);
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
       0,
@@ -134,7 +134,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should fail to liquidate SHORT position out-of-the-money if excessive tentativeVQuoteAmount is submitted by liquidator', async () => {
-    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short, 0);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
@@ -157,7 +157,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should fail if the proposed tentativeVQuoteAmount is insufficient to buy back a SHORT position', async () => {
-    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short, 0);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
@@ -178,7 +178,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should liquidate SHORT position out-of-the-money', async () => {
-    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short);
+    await alice.clearingHouse.openPosition(0, aliceAmount, Side.Short, 0);
     const positionOpenNotional = (
       await alice.perpetual.getTraderPosition(alice.address)
     ).openNotional;

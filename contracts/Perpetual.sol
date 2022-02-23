@@ -88,7 +88,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function openPosition(
         address account,
         uint256 amount,
-        LibPerpetual.Side direction
+        LibPerpetual.Side direction,
+        uint256 minAmount
     ) external override onlyClearingHouse returns (int256, int256) {
         /*
             if amount > 0
@@ -122,7 +123,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         // open position
         bool isLong = direction == LibPerpetual.Side.Long ? true : false;
-        (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong);
+        (int256 openNotional, int256 positionSize) = _openPosition(amount, isLong, minAmount);
 
         // update position
         traderPosition[account] = LibPerpetual.UserPosition({
@@ -135,7 +136,11 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         return (openNotional, positionSize);
     }
 
-    function _openPosition(uint256 amount, bool isLong) internal returns (int256 openNotional, int256 positionSize) {
+    function _openPosition(
+        uint256 amount,
+        bool isLong,
+        uint256 minAmount
+    ) internal returns (int256 openNotional, int256 positionSize) {
         /*  if long:
                 openNotional = vQuote traded   to market   (or "- vQuote")
                 positionSize = vBase  received from market (or "+ vBase")
@@ -146,16 +151,20 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         if (isLong) {
             openNotional = -amount.toInt256();
-            positionSize = _quoteForBase(amount, 0).toInt256();
+            positionSize = _quoteForBase(amount, minAmount).toInt256();
         } else {
-            openNotional = _baseForQuote(amount, 0).toInt256();
+            openNotional = _baseForQuote(amount, minAmount).toInt256();
             positionSize = -amount.toInt256();
         }
     }
 
     /// @notice Closes position from account holder
     /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
-    function closePosition(address account, uint256 tentativeVQuoteAmount) external override returns (int256) {
+    function closePosition(
+        address account,
+        uint256 tentativeVQuoteAmount,
+        uint256 minAmount
+    ) external override returns (int256) {
         /*
         after opening the position:
 
@@ -187,7 +196,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
         updateGenericProtocolState();
 
-        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount);
+        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount, minAmount);
 
         delete traderPosition[account];
 
@@ -212,7 +221,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.UserPosition storage trader = traderPosition[liquidatee];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
-        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount);
+        int256 profit = _closePosition(trader, global, tentativeVQuoteAmount, 0);
 
         return profit;
     }
@@ -315,7 +324,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         updateGenericProtocolState();
 
         // profit = pnl + fundingPayments
-        profit = _closePosition(lp, global, tentativeVQuoteAmount);
+        profit = _closePosition(lp, global, tentativeVQuoteAmount, 0);
 
         delete lpPosition[account];
     }
@@ -409,7 +418,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     function _closePosition(
         LibPerpetual.UserPosition storage user,
         LibPerpetual.GlobalPosition storage global,
-        uint256 tentativeVQuoteAmount
+        uint256 tentativeVQuoteAmount,
+        uint256 minAmount
     ) internal returns (int256 profit) {
         bool isShort = user.positionSize < 0 ? true : false;
         if (isShort) {
@@ -434,21 +444,22 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         profit += _settleFundingRate(user, global);
 
         // pnL of the position
-        profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount) + user.openNotional;
+        profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount, minAmount) + user.openNotional;
     }
 
     /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
-    function _closePositionOnMarket(int256 positionSize, uint256 tentativeVQuoteAmount)
-        internal
-        returns (int256 vQuoteProceeds)
-    {
+    function _closePositionOnMarket(
+        int256 positionSize,
+        uint256 tentativeVQuoteAmount,
+        uint256 minAmount
+    ) internal returns (int256 vQuoteProceeds) {
         bool isLong = positionSize > 0 ? true : false;
         uint256 position = isLong ? positionSize.toUint256() : (-positionSize).toUint256();
         if (isLong) {
-            uint256 amount = _baseForQuote(position, 0);
+            uint256 amount = _baseForQuote(position, minAmount);
             vQuoteProceeds = amount.toInt256();
         } else {
-            uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, 0);
+            uint256 vBaseProceeds = _quoteForBase(tentativeVQuoteAmount, minAmount);
 
             require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
 

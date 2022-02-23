@@ -82,7 +82,6 @@ contract TwapOracle {
                 TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
             */
 
-            console.log("update twap");
             // calculate chainlink twap
             oracleTwap =
                 (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /

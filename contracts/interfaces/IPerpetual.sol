@@ -58,10 +58,15 @@ interface IPerpetual {
     function openPosition(
         address account,
         uint256 amount,
-        LibPerpetual.Side direction
+        LibPerpetual.Side direction,
+        uint256 minAmount
     ) external returns (int256, int256);
 
-    function closePosition(address account, uint256 amount) external returns (int256);
+    function closePosition(
+        address account,
+        uint256 amount,
+        uint256 minAmount
+    ) external returns (int256);
 
     // user position function
     function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
