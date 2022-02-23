@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {utils, BigNumber, ethers} from 'ethers';
+import {BigNumber, ethers} from 'ethers';
 import env from 'hardhat';
 
 import {rMul, rDiv} from '../helpers/utils/calculations';
@@ -8,7 +8,6 @@ import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {Side} from '../helpers/utils/types';
-import {kill} from 'process';
 
 describe('Increment: open/close long/short trading positions', () => {
   let alice: User;
@@ -103,33 +102,27 @@ describe('Increment: open/close long/short trading positions', () => {
 
   async function _openAndCheckPosition(
     direction: Side,
-    expectedTokensBought: string
+    expectedTokensBought: string,
+    minAmount: BigNumber
   ) {
-    // set-up
-    await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-
     // expected values
-    let tokenSold = await tokenToWad(
-      await alice.vault.getReserveTokenDecimals(),
-      aliceUSDCAmount
-    );
-
     const nextBlockTimestamp = await setNextBlockTimestamp(env);
 
     let positionSize, notionalAmount;
     if (direction === Side.Long) {
       positionSize = expectedTokensBought;
-      notionalAmount = tokenSold.mul(-1);
+      notionalAmount = depositAmount.mul(-1);
     } else {
       const EURUSDChainlinkPrice = await alice.perpetual.indexPrice();
 
-      tokenSold = rDiv(tokenSold, EURUSDChainlinkPrice);
+      depositAmount = rDiv(depositAmount, EURUSDChainlinkPrice);
       notionalAmount = expectedTokensBought;
-      positionSize = tokenSold.mul(-1);
+      positionSize = depositAmount.mul(-1);
     }
 
-    await expect(alice.clearingHouse.openPosition(0, tokenSold, direction, 0))
+    await expect(
+      alice.clearingHouse.openPosition(0, depositAmount, direction, minAmount)
+    )
       .to.emit(alice.clearingHouse, 'OpenPosition')
       .withArgs(
         0,
@@ -148,6 +141,12 @@ describe('Increment: open/close long/short trading positions', () => {
     // cumFundingRate is set at 0 because there's no activity before in this test
     expect(alicePosition.cumFundingRate).to.be.equal(0);
 
+    if (direction === Side.Long) {
+      expect(alicePosition.positionSize).to.be.gte(minAmount);
+    } else {
+      expect(alicePosition.openNotional).to.be.gte(minAmount);
+    }
+
     // the USDC amount (with 6 decimals) must be converted to 18 decimals
     expect(
       alicePosition.openNotional.abs().div(ethers.utils.parseEther('1'))
@@ -155,15 +154,43 @@ describe('Increment: open/close long/short trading positions', () => {
   }
 
   it('Should open LONG position', async () => {
+    // set-up (needed for `getExpectedVBaseAmount` to work)
+    await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
+
+    const expectedVBase = await alice.clearingHouse.getExpectedVBaseAmount(
+      0,
+      depositAmount
+    );
+    const minVBaseAmount = rMul(expectedVBase, ethers.utils.parseEther('0.99'));
+
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-    const expectedSharesBought = '7788801268869637352'; // vBase amount
-    await _openAndCheckPosition(Side.Long, expectedSharesBought);
+    const expectedVBaseBought = '29972463159707424739';
+    await _openAndCheckPosition(Side.Long, expectedVBaseBought, minVBaseAmount);
   });
 
   it('Should open SHORT position', async () => {
+    // set-up (needed for `getExpectedVQuoteAmount` to work)
+    await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
+
+    const expectedVQuote = await alice.clearingHouse.getExpectedVQuoteAmount(
+      0,
+      depositAmount
+    );
+    // NOTE: unlike with minVBaseAmount with expectedVBase, 99% of expectedVQuote doesn't work
+    const minVQuoteAmount = rMul(
+      expectedVQuote,
+      ethers.utils.parseEther('0.95')
+    );
+
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-    const expectedSharesBought = '8838809567925953140'; // vQuote amount
-    await _openAndCheckPosition(Side.Short, expectedSharesBought);
+    const expectedVQuoteBought = '34013050918267582660';
+    await _openAndCheckPosition(
+      Side.Short,
+      expectedVQuoteBought,
+      minVQuoteAmount
+    );
   });
 
   it('Should work if trader opens position after having closed one', async () => {
@@ -173,14 +200,9 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.clearingHouse.closePosition(0, 0, 0);
 
     // expected values
-    const positionNotionalAmount = await tokenToWad(
-      await alice.vault.getReserveTokenDecimals(),
-      aliceUSDCAmount
-    );
-
     const nextBlockTimestamp = await setNextBlockTimestamp(env);
     await expect(
-      alice.clearingHouse.openPosition(0, depositAmount.div(10), Side.Long, 0)
+      alice.clearingHouse.openPosition(0, depositAmount, Side.Long, 0)
     )
       .to.emit(alice.clearingHouse, 'OpenPosition')
       .withArgs(
@@ -188,8 +210,8 @@ describe('Increment: open/close long/short trading positions', () => {
         alice.address,
         nextBlockTimestamp,
         Side.Long,
-        positionNotionalAmount.mul(-1),
-        '7732665341504984598' // very brittle
+        depositAmount.mul(-1),
+        '29874390659941031931' // very brittle
       );
   });
 
@@ -279,10 +301,9 @@ describe('Increment: open/close long/short trading positions', () => {
     const vQuoteLiquidityAfterPositionCreated = await alice.market.balances(
       VQUOTE_INDEX
     );
-    const aliceUserPosition = await alice.perpetual.getTraderPosition(
-      alice.address
-    );
-    const aliceOpenNotional = aliceUserPosition.openNotional;
+    const alicePositionBeforeClosingPosition =
+      await alice.perpetual.getTraderPosition(alice.address);
+    const aliceOpenNotional = alicePositionBeforeClosingPosition.openNotional;
     const expectedAdditionalVQuote = vQuoteLiquidityBeforePositionCreated.add(
       aliceOpenNotional.mul(-1)
     );
@@ -307,9 +328,14 @@ describe('Increment: open/close long/short trading positions', () => {
       .add(expectedProfit)
       .sub(insurancePayed);
 
-    const newVaultBalance = await alice.vault.getBalance(0, alice.address);
+    const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
+      0,
+      alice.address
+    );
 
-    expect(expectedNewVaultBalance).to.equal(newVaultBalance);
+    expect(expectedNewVaultBalance).to.equal(
+      aliceVaultBalanceAfterClosingPosition
+    );
   });
 
   it('No exchange rate applied for SHORT positions', async () => {

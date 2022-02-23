@@ -277,6 +277,18 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit LiquidityWithdrawn(idx, msg.sender);
     }
 
+    /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) public view returns (uint256) {
+        return perpetuals[idx].getExpectedVBaseAmount(vQuoteAmountToSpend);
+    }
+
+    /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) public view returns (uint256) {
+        return perpetuals[idx].getExpectedVQuoteAmount(vBaseAmountToSpend);
+    }
+
     /// @notice Calculate missed funding payments
     // slither-disable-next-line timestamp
     function getFundingPayments(uint256 idx, address account) public view returns (int256 upcomingFundingPayment) {

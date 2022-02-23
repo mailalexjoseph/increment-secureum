@@ -81,6 +81,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         _;
     }
 
+    ///// TRADING FLOW OPERATIONS \\\\\
+
     /// @notice Open position, long or short
     /// @param amount to be sold, in vQuote (if long) or vBase (if short)
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
@@ -501,6 +503,18 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             );
             return 0;
         }
+    }
+
+    /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` (excluding slippage)
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view override returns (uint256) {
+        return market.get_dy(VQUOTE_INDEX, VBASE_INDEX, vQuoteAmountToSpend);
+    }
+
+    /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` (excluding slippage)
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view override returns (uint256) {
+        return market.get_dy(VBASE_INDEX, VQUOTE_INDEX, vBaseAmountToSpend);
     }
 
     /// @notice Return the curve price oracle

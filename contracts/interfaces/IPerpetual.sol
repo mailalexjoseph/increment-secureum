@@ -87,6 +87,10 @@ interface IPerpetual {
     function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount) external returns (int256);
 
     // price getter
+    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);
+
+    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view returns (uint256);
+
     function marketPriceOracle() external view returns (uint256);
 
     function marketPrice() external view returns (uint256);
