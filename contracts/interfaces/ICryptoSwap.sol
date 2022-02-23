@@ -28,4 +28,6 @@ interface ICryptoSwap {
     function remove_liquidity(uint256 _amount, uint256[2] memory min_amounts) external; // WARNING: Has to be memory to be called within the perpetual contract, but you should use calldata
 
     function last_prices() external view returns (uint256);
+
+    function token() external view returns (address);
 }

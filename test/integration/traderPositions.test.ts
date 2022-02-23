@@ -63,11 +63,7 @@ describe('Increment: open/close long/short trading positions', () => {
         Side.Long,
         0
       )
-    )
-      .to.emit(alice.perpetual, 'Log')
-      .withArgs(
-        'Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange'
-      );
+    ).to.be.revertedWith(''); // no error message by curve
   });
 
   it('Should fail if the amount is null', async () => {

@@ -20,6 +20,7 @@ import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
+import {ICurveToken} from "./interfaces/ICurveToken.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -54,6 +55,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     mapping(address => LibPerpetual.UserPosition) internal lpPosition;
     uint256 internal totalLiquidityProvided;
 
+    uint256 internal vBaseDust;
+
     constructor(
         IChainlinkOracle _chainlinkOracle,
         PoolTWAPOracle _poolTWAPOracle,
@@ -72,7 +75,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         clearingHouse = _clearingHouse;
 
         // approve all future transfers between Perpetual and market (curve pool)
-        require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL. PLZ CHANGE THIS TO DURING CALL");
+        require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL. TODO: PLZ CHANGE THIS TO DURING CALL");
         require(vQuote.approve(address(market), type(uint256).max), "NO APPROVAL");
     }
 
@@ -449,6 +452,30 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         profit += _closePositionOnMarket(user.positionSize, tentativeVQuoteAmount, minAmount) + user.openNotional;
     }
 
+    function _canSellBase(uint256 sellAmount) internal returns (bool) {
+        try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, sellAmount) {
+            return true;
+        } catch {
+            emit Log("Swap impossible");
+            return false;
+        }
+    }
+
+    /// @dev Donate dust amount to LP providers
+    /// @notice External function to to be called by everybody
+    function donateDust() external {
+        uint256 liquidity = market.add_liquidity([0, vBaseDust], 0); //  first token in curve pool is vQuote & second token is vBase
+
+        ICurveToken(market.token()).burnFrom(address(this), liquidity);
+        vBaseDust = 0;
+
+        emit TokenDonated(msg.sender, vBaseDust, liquidity);
+    }
+
+    function getBaseDust() external view returns (uint256) {
+        return vBaseDust;
+    }
+
     /// @param tentativeVQuoteAmount arbitrary value, hopefully, big enough to be able to close the short position
     function _closePositionOnMarket(
         int256 positionSize,
@@ -465,10 +492,16 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
             require(vBaseProceeds >= position, "Not enough returned, proposed amount too low");
 
+            // have to sell remaining tokens
             uint256 baseRemaining = vBaseProceeds - position;
             uint256 additionalProceeds = 0;
             if (baseRemaining > 0) {
-                additionalProceeds = _baseForQuote(baseRemaining, 0);
+                if (_canSellBase(baseRemaining)) {
+                    additionalProceeds = _baseForQuote(baseRemaining, 0);
+                } else {
+                    // dust vBase balance can not be sold
+                    vBaseDust += baseRemaining;
+                }
             }
             // sell all remaining tokens
             vQuoteProceeds = -tentativeVQuoteAmount.toInt256() + additionalProceeds.toInt256();
@@ -477,32 +510,18 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
         // slither-disable-next-line unused-return
-        try market.get_dy(VQUOTE_INDEX, VBASE_INDEX, quoteAmount) {
-            vQuote.mint(quoteAmount);
-            uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
-            vBase.burn(vBaseReceived);
-            return vBaseReceived;
-        } catch {
-            emit Log(
-                "Incorrect amount, submit a bigger value or one matching more closely the amount of vQuote needed to perform the exchange"
-            );
-            return 0;
-        }
+        vQuote.mint(quoteAmount);
+        uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
+        vBase.burn(vBaseReceived);
+        return vBaseReceived;
     }
 
     function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        // slither-disable-next-line unused-return
-        try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, baseAmount) {
-            vBase.mint(baseAmount);
-            uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
-            vQuote.burn(vQuoteReceived);
-            return vQuoteReceived;
-        } catch {
-            emit Log(
-                "Incorrect amount, submit a bigger value or one matching more closely the amount of vBase needed to perform the exchange"
-            );
-            return 0;
-        }
+        // slither-disable-next-line unused-retur
+        vBase.mint(baseAmount);
+        uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
+        vQuote.burn(vQuoteReceived);
+        return vQuoteReceived;
     }
 
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` (excluding slippage)

@@ -39,6 +39,8 @@ interface IPerpetual {
     event LiquidityWithdrawn(address indexed liquidityProvider);
     event Log(string errorMessage);
 
+    event TokenDonated(address indexed burner, uint256 vBaseAmount, uint256 liquidity);
+
     function market() external view returns (ICryptoSwap);
 
     function chainlinkOracle() external view returns (IChainlinkOracle);
