@@ -24,16 +24,16 @@ async function _checkTokenBalance(
 ): Promise<void> {
   const usdcBalance = await token.balanceOf(user.address);
   if (usdcAmount.gt(usdcBalance)) {
-    throw 'Not enough USDC';
+    throw `${user.address} balance of ${usdcBalance} not enough to deposit ${usdcAmount}`;
   }
 }
 
-async function _derive_tentativeQuoteAmount(
+export async function derive_tentativeQuoteAmount(
   position: UserPositionStructOutput,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
   let tentativeQuoteAmount;
-  if (position.positionSize.gt(0)) {
+  if (position.positionSize.gte(0)) {
     tentativeQuoteAmount = BigNumber.from(0);
   } else {
     tentativeQuoteAmount = (
@@ -74,7 +74,7 @@ export async function closePosition(
 ): Promise<void> {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
 
-  const tentativeQuoteAmount = await _derive_tentativeQuoteAmount(
+  const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
     traderPosition,
     user.market
   );
@@ -114,7 +114,7 @@ export async function withdrawLiquidity(
     throw 'Liquidity not withdrawn';
   }
 
-  const tentativeQuoteAmount = await _derive_tentativeQuoteAmount(
+  const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
     positionAfter,
     user.market
   );

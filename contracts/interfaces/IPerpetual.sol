@@ -38,8 +38,8 @@ interface IPerpetual {
     event LiquidityRemoved(address indexed liquidityProvider, uint256 amount);
     event LiquidityWithdrawn(address indexed liquidityProvider);
     event Log(string errorMessage);
-
     event TokenDonated(address indexed burner, uint256 vBaseAmount, uint256 liquidity);
+    event DustGenerated(uint256 vBaseAmount);
 
     function market() external view returns (ICryptoSwap);
 

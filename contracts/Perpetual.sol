@@ -453,25 +453,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     function _canSellBase(uint256 sellAmount) internal returns (bool) {
+        // slither-disable-next-line unused-return
         try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, sellAmount) {
             return true;
         } catch {
             emit Log("Swap impossible");
+
             return false;
         }
     }
 
-    /// @dev Donate dust amount to LP providers
-    /// @notice External function to to be called by everybody
-    function donateDust() external {
-        uint256 liquidity = market.add_liquidity([0, vBaseDust], 0); //  first token in curve pool is vQuote & second token is vBase
-
-        ICurveToken(market.token()).burnFrom(address(this), liquidity);
-        vBaseDust = 0;
-
-        emit TokenDonated(msg.sender, vBaseDust, liquidity);
-    }
-
+    /// TODO: find a way to withdraw the dust
     function getBaseDust() external view returns (uint256) {
         return vBaseDust;
     }
@@ -500,6 +492,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
                     additionalProceeds = _baseForQuote(baseRemaining, 0);
                 } else {
                     // dust vBase balance can not be sold
+                    emit DustGenerated(baseRemaining);
                     vBaseDust += baseRemaining;
                 }
             }
