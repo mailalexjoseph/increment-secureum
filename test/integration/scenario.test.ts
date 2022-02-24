@@ -6,6 +6,7 @@ import {ethers} from 'hardhat';
 import {BigNumber} from 'ethers';
 import {Side} from '../helpers/utils/types';
 import {getChainlinkOracle} from '../../helpers/contracts-getters';
+import {tokenToWad} from '../../helpers/contracts-helpers';
 
 import {setLatestChainlinkPrice} from '../helpers/utils/manipulateStorage';
 import {AggregatorV3Interface} from '../../typechain';
@@ -23,15 +24,21 @@ async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
   );
 }
 
-async function openPosition(amount: BigNumber, user: User, direction: Side) {
-  await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address); // invest 1 % of the capital
-  await user.clearingHouse.openPositionWithUSDC(
-    0,
-    amount.div(100),
-    direction,
-    0
+async function openPosition(
+  amountUSDC: BigNumber,
+  user: User,
+  direction: Side
+) {
+  await user.clearingHouse.deposit(0, amountUSDC.div(100), user.usdc.address); // invest 1 % of the capital
+
+  const amount = await tokenToWad(
+    await user.vault.getReserveTokenDecimals(),
+    amountUSDC
   );
+
+  await user.clearingHouse.openPosition(0, amount.div(100), direction, 0);
 }
+
 async function closePosition(user: User) {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
 

@@ -9,6 +9,7 @@ import {setupUsers} from '../helpers/misc-utils';
 import {getChainlinkOracle} from '../helpers/contracts-getters';
 import {TEST_get_exactOutputSwap} from '../test/helpers/CurveUtils';
 import {AggregatorV3Interface} from '../typechain';
+import {tokenToWad} from '../helpers/contracts-helpers';
 
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
 
@@ -22,7 +23,7 @@ async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
 
 async function openPosition(amount: BigNumber, user: User, direction: Side) {
   await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address);
-  await user.clearingHouse.openPositionWithUSDC(0, amount.div(100), direction); // 10x leverage long
+  await user.clearingHouse.openPosition(0, amount.div(100), direction, 0); // 10x leverage long
 }
 
 async function closePosition(user: User, trader: User) {
@@ -43,7 +44,7 @@ async function closePosition(user: User, trader: User) {
     ).amountIn;
   }
 
-  await user.clearingHouse.closePosition(0, sellAmount);
+  await user.clearingHouse.closePosition(0, sellAmount, 0);
 
   const userDeposits = await user.vault.getReserveValue(0, user.address);
   await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);
@@ -79,16 +80,21 @@ const main = async function () {
     contracts
   );
 
-  const liquidityAmount = await funding();
+  const liquidityAmountUSDC = await funding();
 
-  await lp.usdc.approve(lp.vault.address, liquidityAmount);
-  await deployer.usdc.approve(deployer.vault.address, liquidityAmount);
-  await trader.usdc.approve(trader.vault.address, liquidityAmount);
+  const liquidityAmount = await tokenToWad(
+    await alice.vault.getReserveTokenDecimals(),
+    liquidityAmountUSDC
+  );
 
-  await provideLiquidity(liquidityAmount, deployer);
+  await lp.usdc.approve(lp.vault.address, liquidityAmountUSDC);
+  await deployer.usdc.approve(deployer.vault.address, liquidityAmountUSDC);
+  await trader.usdc.approve(trader.vault.address, liquidityAmountUSDC);
+
+  await provideLiquidity(liquidityAmountUSDC, deployer);
 
   // Scenario
-  await provideLiquidity(liquidityAmount, lp);
+  await provideLiquidity(liquidityAmountUSDC, lp);
 
   await openPosition(liquidityAmount.div(10), trader, Side.Long);
 

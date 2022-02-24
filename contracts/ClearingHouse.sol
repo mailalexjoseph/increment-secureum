@@ -89,19 +89,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit Withdraw(idx, msg.sender, address(token), amount);
     }
 
-    /// @notice Function to be called by clients depositing USDC as collateral
-    function openPositionWithUSDC(
-        uint256 idx,
-        uint256 amount,
-        LibPerpetual.Side direction,
-        uint256 minAmount
-    ) external returns (int256, int256) {
-        // transform USDC amount with 6 decimals to a value with 18 decimals
-        uint256 convertedWadAmount = LibReserve.tokenToWad(vault.getReserveTokenDecimals(), amount);
-
-        return openPosition(idx, convertedWadAmount, direction, minAmount);
-    }
-
     /// @notice Open position, long or short
     /// @param amount to be sold, in vQuote (if long) or vBase (if short)
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION

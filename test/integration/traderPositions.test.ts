@@ -57,12 +57,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
     // no error message as the code fails with the pool
     await expect(
-      alice.clearingHouse.openPositionWithUSDC(
-        0,
-        depositAmountUSDC.div(10),
-        Side.Long,
-        0
-      )
+      alice.clearingHouse.openPosition(0, depositAmount.div(10), Side.Long, 0)
     )
       .to.emit(alice.perpetual, 'Log')
       .withArgs(
@@ -72,7 +67,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should fail if the amount is null', async () => {
     await expect(
-      alice.clearingHouse.openPositionWithUSDC(0, 0, Side.Long, 0)
+      alice.clearingHouse.openPosition(0, 0, Side.Long, 0)
     ).to.be.revertedWith("The amount can't be null");
   });
 
@@ -80,21 +75,11 @@ describe('Increment: open/close long/short trading positions', () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-    await alice.clearingHouse.openPositionWithUSDC(
-      0,
-      depositAmountUSDC,
-      Side.Long,
-      0
-    );
+    await alice.clearingHouse.openPosition(0, depositAmount, Side.Long, 0);
 
     // try to create a new trader position for Alice
     await expect(
-      alice.clearingHouse.openPositionWithUSDC(
-        0,
-        depositAmountUSDC,
-        Side.Long,
-        0
-      )
+      alice.clearingHouse.openPosition(0, depositAmount, Side.Long, 0)
     ).to.be.revertedWith('Cannot open a position with one already opened');
   });
 
