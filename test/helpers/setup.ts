@@ -59,7 +59,9 @@ export interface TestEnv {
   bob: User;
   alice: User;
   trader: User;
+  traderTwo: User;
   lp: User;
+  lpTwo: User;
   users: User[];
 }
 
@@ -110,13 +112,16 @@ async function _fundAccount(account: string): Promise<BigNumber> {
 
 /// @notice: fund user accounts
 export const funding = deployments.createFixture(async () => {
-  const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
+  const {deployer, bob, alice, user, trader, traderTwo, lp, lpTwo} =
+    await getNamedAccounts();
 
   await _fundAccount(deployer);
   await _fundAccount(bob);
   await _fundAccount(alice);
   await _fundAccount(trader);
+  await _fundAccount(traderTwo);
   await _fundAccount(lp);
+  await _fundAccount(lpTwo);
   return await _fundAccount(user);
 });
 
@@ -126,7 +131,8 @@ export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   await deployments.fixture('UpdateReferencesToPerpetual');
 
   await logDeployments();
-  const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();
+  const {deployer, bob, alice, user, trader, traderTwo, lp, lpTwo} =
+    await getNamedAccounts();
   const contracts = await getContracts(deployer);
 
   // container
@@ -137,7 +143,9 @@ export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   testEnv.bob = await setupUser(bob, contracts);
   testEnv.alice = await setupUser(alice, contracts);
   testEnv.trader = await setupUser(trader, contracts);
+  testEnv.traderTwo = await setupUser(traderTwo, contracts);
   testEnv.lp = await setupUser(lp, contracts);
+  testEnv.lpTwo = await setupUser(lpTwo, contracts);
   testEnv.users = await setupUsers(await getUnnamedAccounts(), contracts);
 
   return testEnv;

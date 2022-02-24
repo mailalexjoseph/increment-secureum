@@ -114,10 +114,10 @@ const config: HardhatUserConfig = {
       default: 5,
     },
     traderTwo: {
-      default: 4,
+      default: 6,
     },
     lpTwo: {
-      default: 5,
+      default: 7,
     },
   },
   etherscan: {
