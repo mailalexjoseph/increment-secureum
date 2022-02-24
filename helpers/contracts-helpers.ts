@@ -11,22 +11,30 @@ export async function convertToCurrencyDecimals(
   const decimals = (await token.decimals()).toString();
   return utils.parseUnits(amount, decimals);
 }
-
-// @author: convert BigNumber with token decimals to BigNumber with 18 decimals
-export async function tokenToWad(
-  decimals: BigNumber,
-  amount: BigNumber
-): Promise<BigNumber> {
-  const amountAsString = utils.formatUnits(amount, decimals);
-  return utils.parseEther(amountAsString);
-}
-
 export async function convertToCurrencyUnits(
   token: ERC20,
   amount: BigNumber
 ): Promise<string> {
   const decimals = await token.decimals();
   return utils.formatUnits(amount, decimals);
+}
+
+// @author: convert BigNumber with tokenDecimals to BigNumber with 18 decimals
+export async function tokenToWad(
+  tokenDecimals: number | BigNumber,
+  amount: BigNumber
+): Promise<BigNumber> {
+  const amountAsString = utils.formatUnits(amount, tokenDecimals);
+  return utils.parseEther(amountAsString);
+}
+
+// @author: convert BigNumber with 18 decimals to BigNumber with tokenDecimals
+export async function wadToToken(
+  decimals: number,
+  amount: BigNumber
+): Promise<BigNumber> {
+  const amountAsString = utils.formatEther(amount);
+  return utils.parseUnits(amountAsString, decimals);
 }
 
 export async function getBlockTime(): Promise<number> {
