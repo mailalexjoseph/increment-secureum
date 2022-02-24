@@ -295,16 +295,19 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param idx Index of the perpetual market
-    /// @param tentativeVQuoteAmount Amount at which to buy the LP position (if it looks like a short, more vQuote than vBase). 18 decimals
-    function settleAndWithdrawLiquidity(uint256 idx, uint256 tentativeVQuoteAmount) external {
+    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
+    function settleAndWithdrawLiquidity(
+        uint256 idx,
+        uint256 tentativeVQuoteAmount,
+        IERC20 token
+    ) external {
         // profit = pnl + fundingPayments
         int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, tentativeVQuoteAmount);
         vault.settleProfit(idx, msg.sender, profit);
 
         // remove the liquidity provider from the list
         // slither-disable-next-line unused-return // can be zero amount
-        vault.withdrawAll(idx, msg.sender, vault.reserveToken());
+        vault.withdrawAll(idx, msg.sender, token);
 
         emit LiquidityWithdrawn(idx, msg.sender);
     }
