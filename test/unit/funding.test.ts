@@ -249,7 +249,7 @@ describe('Funding rate', async function () {
       );
     const expectedUpcomingFundingPayment = rMul(
       expectedUpcomingFundingRate,
-      userPositionBeforeSecondUpdate.openNotional.mul(-1) // absolute value
+      userPositionBeforeSecondUpdate.positionSize // absolute value
     );
 
     const secondFundingPayment = await user.perpetual.getFundingPayments(

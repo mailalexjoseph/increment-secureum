@@ -50,7 +50,7 @@ export async function derive_tentativeQuoteAmount(
 }
 
 // open position with 18 decimals
-export async function openPosition(
+export async function extendPositionWithCollateral(
   user: User,
   token: IERC20Metadata,
   depositAmount: BigNumber,
@@ -64,21 +64,28 @@ export async function openPosition(
   await token.approve(user.vault.address, depositAmount);
   await user.clearingHouse.deposit(0, tokenAmount, token.address);
 
-  await user.clearingHouse.openPosition(0, positionAmount, direction, 0);
+  await user.clearingHouse.extendPosition(0, positionAmount, direction, 0);
 }
 
-// complete close of position
-export async function closePosition(
+// reduce or close a position
+export async function reducePosition(
   user: User,
+  direction: Side,
   token: IERC20Metadata
 ): Promise<void> {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
 
-  const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
-    traderPosition,
-    user.market
-  );
-  await user.clearingHouse.closePosition(0, tentativeQuoteAmount, 0);
+  let proposedAmount;
+  if (direction === Side.Long) {
+    proposedAmount = traderPosition.positionSize;
+  } else {
+    proposedAmount = await derive_tentativeQuoteAmount(
+      traderPosition,
+      user.market
+    );
+  }
+
+  await user.clearingHouse.reducePosition(0, proposedAmount, 0);
 
   const userDeposits = await user.vault.getReserveValue(0, user.address);
   await user.clearingHouse.withdraw(0, userDeposits, token.address);

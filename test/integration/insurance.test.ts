@@ -111,7 +111,7 @@ describe('Increment App: Insurance', function () {
     );
 
     // open position
-    await trader.clearingHouse.openPosition(0, tradeAmount, Side.Long, 0);
+    await trader.clearingHouse.extendPosition(0, tradeAmount, Side.Long, 0);
 
     const traderPosition = await trader.perpetual.getTraderPosition(
       trader.address

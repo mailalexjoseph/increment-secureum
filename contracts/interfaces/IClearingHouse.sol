@@ -11,22 +11,20 @@ interface IClearingHouse {
     event MarketAdded(IPerpetual indexed perpetual, uint256 numPerpetuals);
     event Deposit(uint256 idx, address indexed user, address indexed asset, uint256 amount);
     event Withdraw(uint256 idx, address indexed user, address indexed asset, uint256 amount);
-    event Settlement(uint256 idx, address indexed user, int256 amount);
-    event OpenPosition(
+    event ExtendPosition(
         uint256 idx,
         address indexed user,
         uint128 indexed timeStamp,
         LibPerpetual.Side direction,
-        int256 notional,
-        int256 amount
+        int256 addedOpenNotional,
+        int256 addedPositionSize
     );
-    event ClosePosition(
+    event ReducePosition(
         uint256 idx,
         address indexed user,
         uint128 indexed timeStamp,
-        LibPerpetual.Side direction,
-        int256 notional,
-        int256 amount
+        int256 reducedOpenNotional,
+        int256 reducedPositionSize
     );
     event LiquidationCall(
         uint256 idx,

@@ -90,7 +90,7 @@ describe('Increment Protocol: Governance', function () {
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(
-        user.clearingHouse.openPosition(0, 1, 1, 0)
+        user.clearingHouse.extendPosition(0, 1, 1, 0)
       ).to.be.revertedWith('Pausable: paused');
       await expect(
         user.clearingHouse.createPositionWithCollateral(
@@ -103,7 +103,7 @@ describe('Increment Protocol: Governance', function () {
         )
       ).to.be.revertedWith('Pausable: paused');
       await expect(
-        user.clearingHouse.closePosition(0, 1, 1)
+        user.clearingHouse.reducePosition(0, 1, 1)
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(

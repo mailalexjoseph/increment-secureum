@@ -82,7 +82,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 minAmount
     ) external returns (int256, int256) {
         deposit(idx, collateralAmount, token);
-        return openPosition(idx, positionAmount, direction, minAmount);
+        return extendPosition(idx, positionAmount, direction, minAmount);
     }
 
     /// @notice Deposit tokens into the vault
@@ -115,93 +115,88 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit Withdraw(idx, msg.sender, address(token), amount);
     }
 
-    /// @notice Open position, long or short
+    /// @notice Open or increase a position, either long or short
     /// @param idx Index of the perpetual market
-    /// @param amount to be sold, in vQuote (if long) or vBase (if short). 18 decimals
+    /// @param amount Represent amount in vQuote (if long) or vBase (if short) to sell. 18 decimals
     /// @param direction Whether the position is LONG or SHORT
     /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
     /// @dev No checks are done if bought amount exceeds allowance
-    function openPosition(
+    function extendPosition(
         uint256 idx,
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
     ) public whenNotPaused returns (int256, int256) {
         /*
-            if amount > 0
+            if direction = Long
 
                 trader goes long EUR
                 trader accrues openNotional debt
                 trader receives positionSize assets
 
                 openNotional = vQuote traded   to market   ( < 0)
-                positionSize = vBase received from market ( > 0)
+                positionSize = vBase  received from market ( > 0)
 
-            else amount < 0
+            else direction = Short
 
                 trader goes short EUR
                 trader receives openNotional assets
                 trader accrues positionSize debt
 
                 openNotional = vQuote received from market ( > 0)
-                positionSize = vBase traded   to market   ( < 0)
+                positionSize = vBase  traded   to market   ( < 0)
 
         */
-
         require(amount > 0, "The amount can't be null");
 
-        (int256 openNotional, int256 positionSize) = perpetuals[idx].openPosition(
+        (int256 addedOpenNotional, int256 addedPositionSize, int256 fundingRate) = perpetuals[idx].extendPosition(
             msg.sender,
             amount,
             direction,
             minAmount
         );
 
-        // pay insurance fee: TODO: can never withdraw this amount!
-        int256 insuranceFee = LibMath.wadMul(LibMath.abs(openNotional), INSURANCE_FEE);
-        vault.settleProfit(idx, msg.sender, -insuranceFee);
+        // pay insurance fee on extra, added openNotional amount (in vQuote)
+        int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
         vault.settleProfit(idx, address(insurance), insuranceFee);
+
+        int256 traderVaultDiff = fundingRate - insuranceFee;
+        vault.settleProfit(idx, msg.sender, traderVaultDiff);
 
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
-        emit OpenPosition(idx, msg.sender, uint128(block.timestamp), direction, openNotional, positionSize);
+        emit ExtendPosition(idx, msg.sender, uint128(block.timestamp), direction, addedOpenNotional, addedPositionSize);
 
-        return (openNotional, positionSize);
+        return (addedOpenNotional, addedPositionSize);
     }
 
-    /// @notice Closes position from account holder
+    /// @notice Reduces, or closes in full, a position from an account holder
     /// @param idx Index of the perpetual market
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position). 18 decimals
-    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
-    function closePosition(
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    function reducePosition(
         uint256 idx,
-        uint256 tentativeVQuoteAmount,
+        uint256 proposedAmount,
         uint256 minAmount
     ) external whenNotPaused {
-        LibPerpetual.UserPosition memory trader = getTraderPosition(idx, msg.sender);
-        LibPerpetual.Side direction = trader.positionSize > 0 ? LibPerpetual.Side.Long : LibPerpetual.Side.Short;
+        require(proposedAmount > 0, "The proposed amount can't be null");
 
-        require(trader.openNotional != 0, "No position currently opened");
-
-        int256 profit = perpetuals[idx].closePosition(msg.sender, tentativeVQuoteAmount, minAmount);
+        (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
+            msg.sender,
+            proposedAmount,
+            minAmount
+        );
 
         // apply changes to collateral
         vault.settleProfit(idx, msg.sender, profit);
 
-        emit ClosePosition(
-            idx,
-            msg.sender,
-            uint128(block.timestamp),
-            direction,
-            trader.openNotional,
-            trader.positionSize
-        );
+        emit ReducePosition(idx, msg.sender, uint128(block.timestamp), reducedOpenNotional, reducedPositionSize);
     }
 
     /// @notice Determines whether or not a position is valid for a given margin ratio
     /// @param idx Index of the perpetual market
-    /// @param account Account of the position to get the margin ratio from. 18 decimals
+    /// @param account Account of the position to get the margin ratio from
     /// @param ratio Proposed ratio to compare the position against
     function marginIsValid(
         uint256 idx,
@@ -231,11 +226,11 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
     /// @param idx Index of the perpetual market
     /// @param liquidatee Address of the trader to liquidate
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position). 18 decimals
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     function liquidate(
         uint256 idx,
         address liquidatee,
-        uint256 tentativeVQuoteAmount
+        uint256 proposedAmount
     ) external whenNotPaused {
         address liquidator = msg.sender;
 
@@ -244,10 +239,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
 
-        int256 profit = perpetuals[idx].closePosition(liquidatee, tentativeVQuoteAmount, 0);
+        (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, proposedAmount, 0);
+
+        // traders are allowed to reduce their positions partially, but liquidators have to close positions in full
+        require(
+            getTraderPosition(idx, liquidatee).openNotional == 0,
+            "Proposed amount insufficient to liquidate the position in its entirety"
+        );
 
         // adjust liquidator vault amount
-
         uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
 
         // subtract reward from liquidatee
@@ -294,14 +294,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
+    /// @notice `proposedAmount` should big enough so that the entire LP position is closed
+    /// @param idx Index of the perpetual market
+    /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     function settleAndWithdrawLiquidity(
         uint256 idx,
-        uint256 tentativeVQuoteAmount,
+        uint256 proposedAmount,
         IERC20 token
     ) external whenNotPaused {
         // profit = pnl + fundingPayments
-        int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, tentativeVQuoteAmount);
+        int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, proposedAmount);
         vault.settleProfit(idx, msg.sender, profit);
 
         // remove the liquidity provider from the list
@@ -312,7 +314,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
     /// @param idx Index of the perpetual market
     /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
     function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view returns (uint256) {
@@ -320,7 +322,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
+    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
     /// @param idx Index of the perpetual market
     /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
     function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view returns (uint256) {

@@ -71,7 +71,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should fail if user has enough margin', async () => {
-    await alice.clearingHouse.openPosition(0, tradeAmount, Side.Long, 0);
+    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Long, 0);
 
     await expect(
       bob.clearingHouse.liquidate(0, alice.address, depositAmount)
@@ -79,7 +79,7 @@ describe('Increment: liquidation', () => {
   });
 
   it('Should liquidate LONG position out-of-the-money', async () => {
-    await alice.clearingHouse.openPosition(0, tradeAmount, Side.Long, 0);
+    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Long, 0);
 
     const aliceVaultBalanceBeforeClosingPosition = await alice.vault.getBalance(
       0,
@@ -98,13 +98,16 @@ describe('Increment: liquidation', () => {
       utils.parseEther('10000') // set very large cumFundingRate so that the position ends up below MIN_MARGIN
     );
 
+    const alicePositionSize = (
+      await alice.perpetual.getTraderPosition(alice.address)
+    ).positionSize;
+
     // Check `LiquidationCall` event sent with proper values
     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
     // so we don't check the values of the arguments of the event
-    await expect(bob.clearingHouse.liquidate(0, alice.address, 0)).to.emit(
-      alice.clearingHouse,
-      'LiquidationCall'
-    );
+    await expect(
+      bob.clearingHouse.liquidate(0, alice.address, alicePositionSize)
+    ).to.emit(alice.clearingHouse, 'LiquidationCall');
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
     const alicePosition = await alice.perpetual.getTraderPosition(
@@ -133,16 +136,25 @@ describe('Increment: liquidation', () => {
     );
   });
 
-  it('Should fail to liquidate SHORT position out-of-the-money if excessive tentativeVQuoteAmount is submitted by liquidator', async () => {
-    await alice.clearingHouse.openPosition(0, tradeAmount, Side.Short, 0);
+  async function _tryToLiquidatePositionWithInsufficient(direction: Side) {
+    await alice.clearingHouse.extendPosition(0, tradeAmount, direction, 0);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
-    await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      timestampJustBefore,
-      utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
-    );
+
+    if (direction === Side.Long) {
+      await bob.perpetual.__TestPerpetual_setGlobalPosition(
+        timestampJustBefore,
+        utils.parseEther('10000') // set very large positive cumFundingRate so that LONG position ends up below MIN_MARGIN
+      );
+    } else {
+      await bob.perpetual.__TestPerpetual_setGlobalPosition(
+        timestampJustBefore,
+        utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that SHORT position ends up below MIN_MARGIN
+      );
+    }
+
     const excessiveTentativeVQuoteAmount = tradeAmount.mul(10);
     await expect(
       bob.clearingHouse.liquidate(
@@ -153,31 +165,67 @@ describe('Increment: liquidation', () => {
     ).to.be.revertedWith(
       'Amount submitted too far from the market price of the position'
     );
+  }
+
+  it('Should fail to liquidate LONG position out-of-the-money if excessive proposedAmount is submitted by liquidator', async () => {
+    await _tryToLiquidatePositionWithInsufficient(Side.Long);
   });
 
-  it('Should fail if the proposed tentativeVQuoteAmount is insufficient to buy back a SHORT position', async () => {
-    await alice.clearingHouse.openPosition(0, tradeAmount, Side.Short, 0);
+  it('Should fail to liquidate SHORT position out-of-the-money if excessive proposedAmount is submitted by liquidator', async () => {
+    await _tryToLiquidatePositionWithInsufficient(Side.Short);
+  });
+
+  async function _tryLiquidatePositionWithLowProposedAmount(direction: Side) {
+    await alice.clearingHouse.extendPosition(0, tradeAmount, direction, 0);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
-    await bob.perpetual.__TestPerpetual_setGlobalPosition(
-      timestampJustBefore,
-      utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that the position ends up below MIN_MARGIN
-    );
 
-    const insufficientVQuoteAmountToBuyVBaseShort = tradeAmount;
+    let insufficientAmountToClosePosition;
+    if (direction === Side.Long) {
+      await bob.perpetual.__TestPerpetual_setGlobalPosition(
+        timestampJustBefore,
+        utils.parseEther('10000') // set very large positive cumFundingRate so that LONG position ends up below MIN_MARGIN
+      );
+
+      const alicePositionSize = (
+        await alice.perpetual.getTraderPosition(alice.address)
+      ).positionSize;
+
+      insufficientAmountToClosePosition = alicePositionSize.sub(
+        alicePositionSize.div(10)
+      );
+    } else {
+      await bob.perpetual.__TestPerpetual_setGlobalPosition(
+        timestampJustBefore,
+        utils.parseEther('10000').mul(-1) // set very large negative cumFundingRate so that SHORT position ends up below MIN_MARGIN
+      );
+
+      insufficientAmountToClosePosition = tradeAmount;
+    }
+
     await expect(
       bob.clearingHouse.liquidate(
         0,
         alice.address,
-        insufficientVQuoteAmountToBuyVBaseShort
+        insufficientAmountToClosePosition
       )
-    ).to.be.revertedWith('Not enough returned, proposed amount too low');
+    ).to.be.revertedWith(
+      'Proposed amount insufficient to liquidate the position in its entirety'
+    );
+  }
+
+  it('Should fail if the proposed proposedAmount is insufficient to liquidate a full LONG position', async () => {
+    await _tryLiquidatePositionWithLowProposedAmount(Side.Long);
+  });
+
+  it('Should fail if the proposed proposedAmount is insufficient to liquidate a full SHORT position', async () => {
+    await _tryLiquidatePositionWithLowProposedAmount(Side.Short);
   });
 
   it('Should liquidate SHORT position out-of-the-money', async () => {
-    await alice.clearingHouse.openPosition(0, tradeAmount, Side.Short, 0);
+    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
     const positionOpenNotional = (
       await alice.perpetual.getTraderPosition(alice.address)
     ).openNotional;
@@ -204,7 +252,7 @@ describe('Increment: liquidation', () => {
     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
     // so we don't check the values of the arguments of the event
     const properVQuoteAmountToBuyBackShortPosition = tradeAmount.add(
-      tradeAmount.div(4)
+      tradeAmount.div(2)
     );
     await expect(
       bob.clearingHouse.liquidate(

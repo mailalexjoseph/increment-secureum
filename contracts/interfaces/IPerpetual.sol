@@ -14,21 +14,6 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
-    event Settlement(address indexed user, int256 amount);
-    event OpenPosition(
-        address indexed user,
-        uint128 indexed timeStamp,
-        LibPerpetual.Side direction,
-        int256 notional,
-        int256 amount
-    );
-    event ClosePosition(
-        address indexed user,
-        uint128 indexed timeStamp,
-        LibPerpetual.Side direction,
-        int256 notional,
-        int256 amount
-    );
     event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint128 timestamp, uint256 notional);
     event FundingPayment(uint256 indexed blockNumber, uint256 value, bool isPositive);
     event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
@@ -48,18 +33,30 @@ interface IPerpetual {
 
     // buy/ sell functions
 
-    function openPosition(
+    function extendPosition(
         address account,
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) external returns (int256, int256);
+    )
+        external
+        returns (
+            int256,
+            int256,
+            int256
+        );
 
-    function closePosition(
+    function reducePosition(
         address account,
         uint256 amount,
         uint256 minAmount
-    ) external returns (int256);
+    )
+        external
+        returns (
+            int256,
+            int256,
+            int256
+        );
 
     // user position function
     function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
@@ -77,7 +74,7 @@ interface IPerpetual {
 
     function removeLiquidity(address account, uint256 amount) external;
 
-    function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount) external returns (int256);
+    function settleAndWithdrawLiquidity(address account, uint256 proposedAmount) external returns (int256);
 
     // price getter
     function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);

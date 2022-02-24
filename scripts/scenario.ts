@@ -10,8 +10,8 @@ import {getChainlinkOracle} from '../helpers/contracts-getters';
 import {AggregatorV3Interface} from '../typechain';
 import {tokenToWad} from '../helpers/contracts-helpers';
 import {
-  openPosition,
-  closePosition,
+  extendPositionWithCollateral,
+  reducePosition,
   provideLiquidity,
   withdrawLiquidity,
 } from '../test/helpers/PerpetualUtils';
@@ -52,7 +52,7 @@ const main = async function () {
   // Scenario
   await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-  await openPosition(
+  await extendPositionWithCollateral(
     trader,
     trader.usdc,
     liquidityAmount.div(10),
@@ -63,7 +63,7 @@ const main = async function () {
   // change price
   await changeOraclePrice(oracle, parsePrice('1.2'));
 
-  await closePosition(trader, trader.usdc);
+  await reducePosition(trader, trader.usdc);
 
   await withdrawLiquidity(lp, lp.usdc);
 };
