@@ -54,10 +54,15 @@ describe('Increment: open/close long/short trading positions', () => {
   );
 
   it('Should fail if the pool has no liquidity in it', async () => {
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-    // no error message as the code fails with the pool
     await expect(
-      alice.clearingHouse.openPosition(0, depositAmount.div(10), Side.Long, 0)
+      alice.clearingHouse.createPositionWithCollateral(
+        0,
+        depositAmountUSDC,
+        alice.usdc.address,
+        depositAmount.div(10),
+        Side.Long,
+        0
+      )
     )
       .to.emit(alice.perpetual, 'Log')
       .withArgs(
@@ -184,8 +189,15 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should work if trader opens position after having closed one', async () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.div(2));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-    await alice.clearingHouse.openPosition(0, depositAmount, Side.Long, 0);
+    await alice.clearingHouse.createPositionWithCollateral(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      depositAmount,
+      Side.Long,
+      0
+    );
+
     await alice.clearingHouse.closePosition(0, 0, 0);
 
     // expected values

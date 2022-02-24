@@ -67,6 +67,25 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     ///// TRADER FLOW OPERATIONS \\\\\
 
+    /// @notice Single open position function, group collateral deposit and open position
+    /// @param idx Index of the perpetual market
+    /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
+    /// @param token Token to be used for the collateral of the position
+    /// @param positionAmount Amount to be sold, in vQuote (if long) or vBase (if short). Must be 18 decimals
+    /// @param direction Whether the position is LONG or SHORT
+    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
+    function createPositionWithCollateral(
+        uint256 idx,
+        uint256 collateralAmount,
+        IERC20 token,
+        uint256 positionAmount,
+        LibPerpetual.Side direction,
+        uint256 minAmount
+    ) external returns (int256, int256) {
+        deposit(idx, collateralAmount, token);
+        return openPosition(idx, positionAmount, direction, minAmount);
+    }
+
     /// @notice Deposit tokens into the vault
     /// @param idx Index of the perpetual market
     /// @param amount Amount to be used as collateral. Might not be 18 decimals
