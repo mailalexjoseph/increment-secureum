@@ -313,7 +313,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount).
     /// @notice Separated from `removeLiquidity` because `tentativeVQuoteAmount` can't guessed at the moment when user calls `removeLiquidity`
-    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
+    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase). 18 decimals
     function settleAndWithdrawLiquidity(address account, uint256 tentativeVQuoteAmount)
         external
         override

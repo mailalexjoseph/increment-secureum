@@ -58,6 +58,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /*     Governance     */
     /* ****************** */
 
+    /// @notice Add one perpetual market to the list of markets
+    /// @param perp Market to add to the list of supported market
     function allowListPerpetual(IPerpetual perp) external onlyOwner {
         emit MarketAdded(perpetuals.length, perp);
         perpetuals.push(perp);
@@ -66,16 +68,22 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ///// TRADER FLOW OPERATIONS \\\\\
 
     /// @notice Deposit tokens into the vault
+    /// @param idx Index of the perpetual market
+    /// @param amount Amount to be used as collateral. Might not be 18 decimals
+    /// @param token Token to be used for the collateral
     function deposit(
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external {
+    ) public {
         require(vault.deposit(idx, msg.sender, amount, token) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
 
     /// @notice Withdraw tokens from the vault
+    /// @param idx Index of the perpetual market
+    /// @param amount Amount of collateral to withdraw. Might not be 18 decimals
+    /// @param token Token of the collateral
     function withdraw(
         uint256 idx,
         uint256 amount,
@@ -90,7 +98,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Open position, long or short
-    /// @param amount to be sold, in vQuote (if long) or vBase (if short)
+    /// @param idx Index of the perpetual market
+    /// @param amount to be sold, in vQuote (if long) or vBase (if short). 18 decimals
+    /// @param direction Whether the position is LONG or SHORT
+    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
     /// @dev No checks are done if bought amount exceeds allowance
     function openPosition(
@@ -142,7 +153,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Closes position from account holder
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
+    /// @param idx Index of the perpetual market
+    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position). 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
     function closePosition(
         uint256 idx,
         uint256 tentativeVQuoteAmount,
@@ -168,6 +181,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
     }
 
+    /// @notice Determines whether or not a position is valid for a given margin ratio
+    /// @param idx Index of the perpetual market
+    /// @param account Account of the position to get the margin ratio from. 18 decimals
+    /// @param ratio Proposed ratio to compare the position against
     function marginIsValid(
         uint256 idx,
         address account,
@@ -177,6 +194,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return marginRatio(idx, account) >= ratio;
     }
 
+    /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
+    /// @param idx Index of the perpetual market
+    /// @param account Account of the position to get the margin ratio from
     function marginRatio(uint256 idx, address account) public view returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
@@ -190,7 +210,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
     }
 
-    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position)
+    /// @notice Submit the address of a trader whose position is worth liquidating for a reward
+    /// @param idx Index of the perpetual market
+    /// @param liquidatee Address of the trader to liquidate
+    /// @param tentativeVQuoteAmount Amount of vQuote tokens to be sold for SHORT positions (anything works for LONG position). 18 decimals
     function liquidate(
         uint256 idx,
         address liquidatee,
@@ -222,8 +245,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
 
     /// @notice Provide liquidity to the pool
-    /// @param amount of token to be added to the pool (with token decimals)
-    /// @param  token to be added to the pool
+    /// @param idx Index of the perpetual market
+    /// @param amount Amount of token to be added to the pool. Might not have 18 decimals
+    /// @param token Token to be added to the pool
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
@@ -244,14 +268,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param amount of liquidity to be removed from the pool (with 18 decimals)
+    /// @param idx Index of the perpetual market
+    /// @param amount Amout of liquidity to be removed from the pool. 18 decimals
     function removeLiquidity(uint256 idx, uint256 amount) external {
         perpetuals[idx].removeLiquidity(msg.sender, amount);
         emit LiquidityRemoved(idx, msg.sender, amount);
     }
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param tentativeVQuoteAmount at which to buy the LP position (if it looks like a short, more vQuote than vBase)
+    /// @param idx Index of the perpetual market
+    /// @param tentativeVQuoteAmount Amount at which to buy the LP position (if it looks like a short, more vQuote than vBase). 18 decimals
     function settleAndWithdrawLiquidity(uint256 idx, uint256 tentativeVQuoteAmount) external {
         // profit = pnl + fundingPayments
         int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, tentativeVQuoteAmount);
@@ -266,58 +292,77 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
-    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) public view returns (uint256) {
+    /// @param idx Index of the perpetual market
+    /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
+    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view returns (uint256) {
         return perpetuals[idx].getExpectedVBaseAmount(vQuoteAmountToSpend);
     }
 
     /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `openPosition`
-    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) public view returns (uint256) {
+    /// @param idx Index of the perpetual market
+    /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
+    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view returns (uint256) {
         return perpetuals[idx].getExpectedVQuoteAmount(vBaseAmountToSpend);
     }
 
     /// @notice Calculate missed funding payments
     // slither-disable-next-line timestamp
+    /// @param idx Index of the perpetual market
+    /// @param account Trader to get the funding payments
     function getFundingPayments(uint256 idx, address account) public view returns (int256 upcomingFundingPayment) {
         return perpetuals[idx].getFundingPayments(account);
     }
 
+    /// @param idx Index of the perpetual market
+    /// @param account Trader to get the unrealized PnL from
     function getUnrealizedPnL(uint256 idx, address account) public view returns (int256) {
         return perpetuals[idx].getUnrealizedPnL(account);
     }
 
+    /// @notice Get the portfolio value of an account
+    /// @param idx Index of the perpetual market
+    /// @param account Address to get the portfolio value from
     function getReserveValue(uint256 idx, address account) public view returns (int256) {
         return vault.getReserveValue(idx, account);
     }
 
     /// @notice Return the curve price oracle
+    /// @param idx Index of the perpetual market
     function marketPriceOracle(uint256 idx) external view returns (uint256) {
         return perpetuals[idx].marketPriceOracle();
     }
 
     /// @notice Return the last traded price (used for TWAP)
+    /// @param idx Index of the perpetual market
     function marketPrice(uint256 idx) external view returns (uint256) {
         return perpetuals[idx].marketPrice();
     }
 
     /// @notice Return the current off-chain exchange rate for vBase/vQuote
+    /// @param idx Index of the perpetual market
     function indexPrice(uint256 idx) external view returns (int256) {
         return perpetuals[idx].indexPrice();
     }
 
+    /// @param idx Index of the perpetual market
     function getGlobalPosition(uint256 idx) external view returns (LibPerpetual.GlobalPosition memory) {
         return perpetuals[idx].getGlobalPosition();
     }
 
+    /// @param idx Index of the perpetual market
+    /// @param account Address to get the trading position from
     function getTraderPosition(uint256 idx, address account) public view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getTraderPosition(account);
     }
 
+    /// @param idx Index of the perpetual market
+    /// @param account Address to get the LP position from
     function getLpPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getLpPosition(account);
     }
 
-    function numMarkets() public view returns (uint256) {
+    function numMarkets() external view returns (uint256) {
         return perpetuals.length;
     }
 }
