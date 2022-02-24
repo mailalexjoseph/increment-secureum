@@ -20,13 +20,6 @@ const minutes = (number: number) => number * 60;
 const hours = (number: number) => minutes(number) * 60;
 const days = (number: number) => hours(number) * 24;
 
-// getters
-const getLatestTimestamp = async () => {
-  const blockNumber = await ethers.provider.getBlockNumber();
-  const block = await ethers.provider.getBlock(blockNumber);
-  return block.timestamp;
-};
-
 let nextBlockTimestamp = 2000000000;
 async function addTimeToNextBlockTimestamp(
   hre: HardhatRuntimeEnvironment,

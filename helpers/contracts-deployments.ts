@@ -6,7 +6,6 @@ import {
 } from '../helpers/types';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {cryptoSwapConfig} from '../markets/ethereum';
-import {ethers} from 'hardhat';
 import {utils, BigNumber} from 'ethers';
 import {ZERO_ADDRESS} from './constants';
 import {getEthereumNetworkFromHRE} from '../helpers/misc-utils';
@@ -77,50 +76,4 @@ export function getCryptoSwapConstructorArgsSeparate(
     reserve_tokens: [quoteToken, baseToken],
   };
   return cryptoSwapConstructorArgs;
-}
-
-export async function deployToTestNetwork(
-  hre: HardhatRuntimeEnvironment,
-  args: CurveCryptoSwap2ETHConstructorArguments
-) {
-  const {deployer} = await hre.getNamedAccounts();
-
-  // deploy testPool
-  // @dev: Have to deploy CurveTokenV5Test here since CurveTokenV5 requires knowledge of the curve pool address
-  //      (see: https://github.com/Increment-Finance/increment-protocol/blob/9142b5f1f413550a63c97e13aab12ae42d46a1d0/contracts-vyper/contracts/Factory.vy#L208)
-
-  // deploy curve token
-  await hre.deployments.deploy('CurveTokenV5', {
-    from: deployer,
-    log: true,
-  });
-  const token = await (
-    await ethers.getContract('CurveTokenV5', deployer)
-  ).wait();
-
-  // deploy curve pool
-
-  const _precisions = [0, 0]; // precision is [0,0] 18 decimals tokens: https://etherscan.io/address/0xF18056Bbd320E96A48e3Fbf8bC061322531aac99#code
-  const _token = token.address;
-
-  const cryptoSwapConstructorArgs = [
-    args.A,
-    args.gamma,
-    args.mid_fee,
-    args.out_fee,
-    args.allowed_extra_profit,
-    args.fee_gamma,
-    args.adjustment_step,
-    args.admin_fee,
-    args.ma_half_time,
-    args.initial_price,
-    _token,
-    args._coins,
-    _precisions,
-  ];
-  await hre.deployments.deploy('CurveCryptoSwap2ETH', {
-    from: deployer,
-    args: cryptoSwapConstructorArgs,
-    log: true,
-  });
 }

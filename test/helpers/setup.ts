@@ -29,6 +29,7 @@ import {
   Insurance,
   ClearingHouse,
 } from '../../typechain';
+
 import {BigNumber} from '../../helpers/types';
 import {
   CurveCryptoSwap2ETH,
@@ -63,7 +64,8 @@ export interface TestEnv {
 }
 
 /// @notice: get all deployed contracts
-export const getContracts = async (deployAccount: string) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const getContracts = async (deployAccount: string): Promise<any> => {
   const usdcAddress = getReserveAddress('USDC', env);
 
   const factory = await getCryptoSwapFactory(env);
@@ -105,6 +107,7 @@ async function _fundAccount(account: string): Promise<BigNumber> {
   await setUSDCBalance(env, usdc, account, fullAmount);
   return fullAmount;
 }
+
 /// @notice: fund user accounts
 export const funding = deployments.createFixture(async () => {
   const {deployer, bob, alice, user, trader, lp} = await getNamedAccounts();

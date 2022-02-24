@@ -6,22 +6,8 @@ import {deployMockContract, MockContract} from 'ethereum-waffle';
 import {asBigNumber} from '..//helpers/utils/calculations';
 
 import {BigNumber, BigNumberish} from 'ethers';
-import {
-  TwapOracle,
-  TwapOracle__factory,
-  ChainlinkOracle__factory,
-} from '../../typechain';
+import {TwapOracle, ChainlinkOracle__factory} from '../../typechain';
 import {CurveCryptoSwap2ETH__factory} from '../../contracts-vyper/typechain';
-
-import {rMul, rDiv} from '../helpers/utils/calculations';
-
-async function getLatestTimestamp(
-  hre: HardhatRuntimeEnvironment
-): Promise<number> {
-  const blockNumber = await hre.ethers.provider.getBlockNumber();
-  const block = await hre.ethers.provider.getBlock(blockNumber);
-  return block.timestamp;
-}
 
 let nextBlockTimestamp: BigNumber = ethers.BigNumber.from(2000000000);
 
@@ -34,16 +20,8 @@ async function addTimeToNextBlockTimestamp(
     method: 'evm_setNextBlockTimestamp',
     params: [nextBlockTimestamp.toNumber()],
   });
-  // await hre.network.provider.request({
-  //   method: 'evm_increaseTime',
-  //   params: [additionalTimestamp], // -1 to ensure we exclude the mining operation
-  // });
-  // const latestTimestamp = await getLatestTimestamp(hre);
-  // return latestTimestamp;
   return nextBlockTimestamp;
 }
-
-const DEFAULT_EUR_USD_PRICE = '1.131523';
 
 const INIT_PRICE = asBigNumber('1');
 

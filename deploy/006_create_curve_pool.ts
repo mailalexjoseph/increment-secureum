@@ -7,7 +7,7 @@ import {
 } from '../helpers/contracts-getters';
 import {ethers} from 'hardhat';
 
-import {getCryptoSwapConstructorArgsSeparate} from '../helpers/contracts-deployments';
+// import {getCryptoSwapConstructorArgsSeparate} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
