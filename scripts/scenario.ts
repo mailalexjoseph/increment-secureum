@@ -2,60 +2,21 @@ import {ethers, getNamedAccounts} from 'hardhat';
 import {BigNumber} from 'ethers';
 import env = require('hardhat');
 
-import {funding, getContracts, User} from '../test/helpers/setup';
+import {funding, getContracts} from '../test/helpers/setup';
 import {Side} from '../test/helpers/utils/types';
 import {setLatestChainlinkPrice} from '../test/helpers/utils/manipulateStorage';
 import {setupUsers} from '../helpers/misc-utils';
 import {getChainlinkOracle} from '../helpers/contracts-getters';
-import {TEST_get_exactOutputSwap} from '../test/helpers/CurveUtils';
 import {AggregatorV3Interface} from '../typechain';
 import {tokenToWad} from '../helpers/contracts-helpers';
+import {
+  openPosition,
+  closePosition,
+  provideLiquidity,
+  withdrawLiquidity,
+} from '../test/helpers/PerpetualUtils';
 
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
-
-async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
-  await user.clearingHouse.provideLiquidity(
-    0,
-    liquidityAmount,
-    user.usdc.address
-  );
-}
-
-async function openPosition(amount: BigNumber, user: User, direction: Side) {
-  await user.clearingHouse.deposit(0, amount.div(100), user.usdc.address);
-  await user.clearingHouse.openPosition(0, amount.div(100), direction, 0); // 10x leverage long
-}
-
-async function closePosition(user: User, trader: User) {
-  const traderPosition = await user.perpetual.getTraderPosition(user.address);
-
-  let sellAmount;
-  if (traderPosition.positionSize.gt(0)) {
-    sellAmount = traderPosition.positionSize;
-  } else {
-    sellAmount = (
-      await TEST_get_exactOutputSwap(
-        user.market,
-        traderPosition.positionSize.abs(),
-        ethers.constants.MaxUint256,
-        0,
-        1
-      )
-    ).amountIn;
-  }
-
-  await user.clearingHouse.closePosition(0, sellAmount, 0);
-
-  const userDeposits = await user.vault.getReserveValue(0, user.address);
-  await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);
-}
-
-async function withdrawLiquidity(user: User) {
-  const userLpPosition = await user.perpetual.getLpPosition(user.address);
-  const providedLiquidity = userLpPosition.liquidityBalance;
-
-  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
-}
 
 async function changeOraclePrice(
   oracle: AggregatorV3Interface,
@@ -75,35 +36,36 @@ const main = async function () {
   const users = await getNamedAccounts();
 
   const contracts = await getContracts(users.deployer);
-  const [deployer, bob, alice, trader, lp, user] = await setupUsers(
+  const [deployer, alice, trader, lp] = await setupUsers(
     Object.values(users),
     contracts
   );
 
   const liquidityAmountUSDC = await funding();
-
   const liquidityAmount = await tokenToWad(
     await alice.vault.getReserveTokenDecimals(),
     liquidityAmountUSDC
   );
 
-  await lp.usdc.approve(lp.vault.address, liquidityAmountUSDC);
-  await deployer.usdc.approve(deployer.vault.address, liquidityAmountUSDC);
-  await trader.usdc.approve(trader.vault.address, liquidityAmountUSDC);
-
-  await provideLiquidity(liquidityAmountUSDC, deployer);
+  await provideLiquidity(deployer, contracts.usdc.address, liquidityAmount);
 
   // Scenario
-  await provideLiquidity(liquidityAmountUSDC, lp);
+  await provideLiquidity(lp, contracts.usdc.address, liquidityAmount);
 
-  await openPosition(liquidityAmount.div(10), trader, Side.Long);
+  await openPosition(
+    trader,
+    contracts.usdc.address,
+    liquidityAmount.div(10),
+    liquidityAmount.div(10),
+    Side.Long
+  );
 
   // change price
   await changeOraclePrice(oracle, parsePrice('1.2'));
 
-  await closePosition(trader, trader);
+  await closePosition(trader, contracts.usdc.address);
 
-  await withdrawLiquidity(lp);
+  await withdrawLiquidity(lp, contracts.usdc.address);
 };
 
 main();

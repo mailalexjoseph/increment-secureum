@@ -1,109 +1,34 @@
 import {expect} from 'chai';
-
-import env = require('hardhat');
-import {setup, funding, User} from '../helpers/setup';
 import {ethers} from 'hardhat';
+import {setup, funding, User} from '../helpers/setup';
+
 import {BigNumber} from 'ethers';
 import {Side} from '../helpers/utils/types';
-import {getChainlinkOracle} from '../../helpers/contracts-getters';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 
-import {setLatestChainlinkPrice} from '../helpers/utils/manipulateStorage';
-import {AggregatorV3Interface} from '../../typechain';
-
-import {TEST_get_exactOutputSwap} from '../helpers/CurveUtils';
+import {
+  openPosition,
+  closePosition,
+  provideLiquidity,
+  withdrawLiquidity,
+} from '../helpers/PerpetualUtils';
+import {changeChainlinkOraclePrice} from '../helpers/ChainlinkUtils';
 
 // https://docs.chain.link/docs/ethereum-addresses/
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
 
-async function provideLiquidity(liquidityAmount: BigNumber, user: User) {
-  await user.clearingHouse.provideLiquidity(
-    0,
-    liquidityAmount,
-    user.usdc.address
-  );
-}
-
-async function openPosition(
-  amountUSDC: BigNumber,
-  user: User,
-  direction: Side
-) {
-  await user.clearingHouse.deposit(0, amountUSDC.div(100), user.usdc.address); // invest 1 % of the capital
-
-  const amount = await tokenToWad(
-    await user.vault.getReserveTokenDecimals(),
-    amountUSDC
-  );
-
-  await user.clearingHouse.openPosition(0, amount.div(100), direction, 0);
-}
-
-async function closePosition(user: User) {
-  const traderPosition = await user.perpetual.getTraderPosition(user.address);
-
-  let sellAmount;
-  if (traderPosition.positionSize.gt(0)) {
-    sellAmount = traderPosition.positionSize;
-  } else {
-    sellAmount = (
-      await TEST_get_exactOutputSwap(
-        user.market,
-        traderPosition.positionSize.abs(),
-        ethers.constants.MaxUint256,
-        0,
-        1
-      )
-    ).amountIn;
-  }
-
-  await user.clearingHouse.closePosition(0, sellAmount, 0);
-
-  const userDeposits = await user.vault.getReserveValue(0, user.address);
-  await user.clearingHouse.withdraw(0, userDeposits, user.usdc.address);
-}
-
-async function withdrawLiquidity(user: User) {
-  const userLpPosition = await user.perpetual.getLpPosition(user.address);
-  const providedLiquidity = userLpPosition.liquidityBalance;
-
-  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
-
-  // console.log('**********After withdrawing liquidity**********');
-  // await logMarketBalance(user);
-  // await logLpPosition(user);
-  // await logPerpCRVBalance(user);
-  // await logPerpetualBalance(user);
-  // await logVaultBalance(user);
-
-  // console.log('**********Close remaining position**********');
-
-  //   await logVaultBalance(user);
-  //   await logUserBalance(user, 'LP');
-}
-
-async function changeChainlinkOraclePrice(price: BigNumber) {
-  const oracle: AggregatorV3Interface = await ethers.getContractAt(
-    'AggregatorV3Interface',
-    await getChainlinkOracle(env, 'EUR_USD')
-  );
-  await setLatestChainlinkPrice(env, oracle, price);
-}
-
 describe('Increment App: Scenario', function () {
   let deployer: User, trader: User, lp: User;
 
+  let liquidityAmountUSDC: BigNumber;
   let liquidityAmount: BigNumber;
 
   beforeEach('Set up', async () => {
     ({lp, deployer, trader} = await setup());
-    liquidityAmount = await funding();
-    await lp.usdc.approve(lp.vault.address, liquidityAmount);
-    await trader.usdc.approve(trader.vault.address, liquidityAmount);
-
+    liquidityAmountUSDC = await funding();
+    liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
     /* important: provide some initial liquidity to the market -> w/o any liquidity left, the market will stop working */
-    await deployer.usdc.approve(deployer.vault.address, liquidityAmount);
-    await provideLiquidity(liquidityAmount, deployer);
+    await provideLiquidity(deployer, deployer.usdc, liquidityAmount);
   });
 
   async function checks() {
@@ -123,13 +48,19 @@ describe('Increment App: Scenario', function () {
   describe('One LP & one Trader', async function () {
     describe('1. Should remain solvent with no oracle price change', async function () {
       it('1.1. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -138,13 +69,19 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('1.2. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -158,13 +95,19 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -173,16 +116,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('2.2. LP provides liquidity, EUR/USD increases, trader opens long position, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -191,16 +140,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('2.3. LP provides liquidity, trader opens long position, EUR/USD increases, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -210,16 +165,22 @@ describe('Increment App: Scenario', function () {
       });
 
       it('2.4. LP provides liquidity, trader opens long position, trader closes position, EUR/USD increases, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -233,13 +194,19 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -248,16 +215,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('3.2. LP provides liquidity, EUR/USD increases, trader opens short position, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -266,16 +239,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('3.3. LP provides liquidity, trader opens short position, EUR/USD increases, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -285,16 +264,22 @@ describe('Increment App: Scenario', function () {
       });
 
       it('3.4. LP provides liquidity, trader opens short position, trader closes position, EUR/USD increases, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -308,13 +293,19 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -323,16 +314,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('4.2. LP provides liquidity, EUR/USD decreases, trader opens long position, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -341,16 +338,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('4.3. LP provides liquidity, trader opens long position, EUR/USD decreases, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -360,16 +363,22 @@ describe('Increment App: Scenario', function () {
       });
 
       it('4.4. LP provides liquidity, trader opens long position, trader closes position, EUR/USD decreases, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Long);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Long
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -383,13 +392,19 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -398,16 +413,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('5.2. LP provides liquidity, EUR/USD decreases, trader opens short position, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -416,16 +437,22 @@ describe('Increment App: Scenario', function () {
         // await logVaultBalance(lp);
       });
       it('5.3. LP provides liquidity, trader opens short position, EUR/USD decreases, trader closes position, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
         // // check results
         // await checks();
         // await logUserBalance(lp, 'lp');
@@ -434,16 +461,22 @@ describe('Increment App: Scenario', function () {
       });
 
       it('5.4. LP provides liquidity, trader opens short position, trader closes position, EUR/USD decreases, LP withdraws liquidity', async function () {
-        await provideLiquidity(liquidityAmount, lp);
+        await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
-        await openPosition(liquidityAmount, trader, Side.Short);
+        await openPosition(
+          trader,
+          trader.usdc,
+          liquidityAmount,
+          liquidityAmount,
+          Side.Short
+        );
 
-        await closePosition(trader);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await withdrawLiquidity(lp);
+        await withdrawLiquidity(lp, lp.usdc);
 
         // check results
         await checks();
@@ -491,8 +524,8 @@ describe('Increment App: Scenario', function () {
 //     name,
 //     'owns',
 //     ethers.utils.formatUnits(
-//       await user.usdc.balanceOf(user.address),
-//       await user.usdc.decimals()
+//       await trader.usdc.balanceOf(user.address),
+//       await trader.usdc.decimals()
 //     ),
 //     'usdc'
 //   );
@@ -509,8 +542,8 @@ describe('Increment App: Scenario', function () {
 //   console.log(
 //     'vault owns',
 //     ethers.utils.formatUnits(
-//       await user.usdc.balanceOf(user.vault.address),
-//       await user.usdc.decimals()
+//       await trader.usdc.balanceOf(user.vault.address),
+//       await trader.usdc.decimals()
 //     ),
 //     'usdc'
 //   );

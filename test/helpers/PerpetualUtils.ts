@@ -1,6 +1,12 @@
 import {BigNumber} from 'ethers';
 import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
+import {IERC20Metadata} from '../../typechain';
 import {User} from './setup';
+import {ethers} from 'hardhat';
+import {wadToToken} from '../../helpers/contracts-helpers';
+import {TEST_get_exactOutputSwap} from './CurveUtils';
+import {Side} from './utils/types';
+import {UserPositionStructOutput} from '../../typechain/ClearingHouse';
 
 export async function setUpPoolLiquidity(
   lp: User,
@@ -10,6 +16,116 @@ export async function setUpPoolLiquidity(
   await lp.clearingHouse.provideLiquidity(0, depositAmount, lp.usdc.address);
 }
 
+/* helper functions */
+async function _checkTokenBalance(
+  user: User,
+  token: IERC20Metadata,
+  usdcAmount: BigNumber
+): Promise<void> {
+  const usdcBalance = await token.balanceOf(user.address);
+  if (usdcAmount.gt(usdcBalance)) {
+    throw 'Not enough USDC';
+  }
+}
+
+async function _derive_tentativeQuoteAmount(
+  position: UserPositionStructOutput,
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
+  let tentativeQuoteAmount;
+  if (position.positionSize.gt(0)) {
+    tentativeQuoteAmount = BigNumber.from(0);
+  } else {
+    tentativeQuoteAmount = (
+      await TEST_get_exactOutputSwap(
+        market,
+        position.positionSize.abs(),
+        ethers.constants.MaxUint256,
+        0,
+        1
+      )
+    ).amountIn;
+  }
+  return tentativeQuoteAmount;
+}
+
+// open position with 18 decimals
+export async function openPosition(
+  user: User,
+  token: IERC20Metadata,
+  depositAmount: BigNumber,
+  positionAmount: BigNumber,
+  direction: Side
+): Promise<void> {
+  // get liquidity amount in USD
+  const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
+  await _checkTokenBalance(user, token, tokenAmount);
+
+  await token.approve(user.vault.address, depositAmount);
+  await user.clearingHouse.deposit(0, tokenAmount, token.address);
+
+  await user.clearingHouse.openPosition(0, positionAmount, direction, 0);
+}
+
+// complete close of position
+export async function closePosition(
+  user: User,
+  token: IERC20Metadata
+): Promise<void> {
+  const traderPosition = await user.perpetual.getTraderPosition(user.address);
+
+  const tentativeQuoteAmount = await _derive_tentativeQuoteAmount(
+    traderPosition,
+    user.market
+  );
+  await user.clearingHouse.closePosition(0, tentativeQuoteAmount, 0);
+
+  const userDeposits = await user.vault.getReserveValue(0, user.address);
+  await user.clearingHouse.withdraw(0, userDeposits, token.address);
+}
+
+// provide liquidity with 18 decimals
+export async function provideLiquidity(
+  user: User,
+  token: IERC20Metadata,
+  liquidityAmount: BigNumber
+): Promise<void> {
+  // get liquidity amount in USD
+  const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
+  await _checkTokenBalance(user, token, tokenAmount);
+
+  token.approve(user.vault.address, tokenAmount);
+  await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address);
+}
+
+// withdraw liquidity
+export async function withdrawLiquidity(
+  user: User,
+  token: IERC20Metadata
+): Promise<void> {
+  const userLpPosition = await user.perpetual.getLpPosition(user.address);
+  const providedLiquidity = userLpPosition.liquidityBalance;
+
+  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
+
+  const positionAfter = await user.perpetual.getLpPosition(user.address);
+
+  if (positionAfter.liquidityBalance.gt(0)) {
+    throw 'Liquidity not withdrawn';
+  }
+
+  const tentativeQuoteAmount = await _derive_tentativeQuoteAmount(
+    positionAfter,
+    user.market
+  );
+  await user.clearingHouse.settleAndWithdrawLiquidity(
+    0,
+    tentativeQuoteAmount,
+    token.address
+  );
+}
+
+// calculate
 export async function calcCloseShortPosition(
   market: CurveCryptoSwap2ETH,
   amountInMaximum: BigNumber,
@@ -28,7 +144,9 @@ export async function calcCloseShortPosition(
 }
 
 /*
-  Swap for exact with curve
+  Swap for exact with curve.
+  1) swap amountInMaximum for amountOutTmp
+  2) swap all remaining tokens (amountOutTmp - amountOut) for amountIn
   https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
 */
 export async function calcSwapForExact(

@@ -4,9 +4,11 @@ import {deployments} from 'hardhat';
 
 import {Contract} from 'ethers';
 import {ethers} from 'hardhat';
-import {ContractTransaction} from 'ethers';
+import {ContractTransaction, ContractReceipt} from 'ethers';
 
-export const waitForTx = async (tx: ContractTransaction) => await tx.wait(1);
+export const waitForTx = async (
+  tx: ContractTransaction
+): Promise<ContractReceipt> => await tx.wait(1);
 
 export async function setupUsers<T extends {[contractName: string]: Contract}>(
   addresses: string[],
@@ -108,4 +110,12 @@ export async function logDeployments(): Promise<void> {
     namedAccounts: await getNamedAccounts(),
     unnamedAccounts: await getUnnamedAccounts(),
   });*/
+}
+
+export async function getLatestTimestamp(
+  hre: HardhatRuntimeEnvironment
+): Promise<number> {
+  const blockNumber = await hre.ethers.provider.getBlockNumber();
+  const block = await hre.ethers.provider.getBlock(blockNumber);
+  return block.timestamp;
 }
