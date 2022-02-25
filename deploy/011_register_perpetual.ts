@@ -36,6 +36,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 };
 func.tags = ['UpdateReferencesToPerpetual'];
 func.id = 'update_vBase_vQuote_vault_to_reference_Perpetual';
-func.dependencies = ['AddChainlinkOracles', 'Perpetual'];
+func.dependencies = ['Perpetual'];
 
 export default func;

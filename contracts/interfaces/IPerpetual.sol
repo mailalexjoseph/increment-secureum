@@ -1,18 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0
 pragma solidity 0.8.4;
 
-// contract
-import {ICryptoSwap} from "./ICryptoSwap.sol";
-import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
-import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
-
 // interfaces
+import {ICryptoSwap} from "./ICryptoSwap.sol";
 import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
-import {IChainlinkOracle} from "./IChainlinkOracle.sol";
-import {IVirtualToken} from "./IVirtualToken.sol";
+import {IVBase} from "./IVBase.sol";
+import {IVQuote} from "./IVQuote.sol";
 import {IInsurance} from "./IInsurance.sol";
 import {IClearingHouse} from "./IClearingHouse.sol";
+
 // libraries
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
@@ -43,15 +40,9 @@ interface IPerpetual {
 
     function market() external view returns (ICryptoSwap);
 
-    function chainlinkOracle() external view returns (IChainlinkOracle);
+    function vBase() external view returns (IVBase);
 
-    function poolTWAPOracle() external view returns (PoolTWAPOracle);
-
-    function chainlinkTWAPOracle() external view returns (ChainlinkTWAPOracle);
-
-    function vBase() external view returns (IVirtualToken);
-
-    function vQuote() external view returns (IVirtualToken);
+    function vQuote() external view returns (IVQuote);
 
     function clearingHouse() external view returns (IClearingHouse);
 

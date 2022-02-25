@@ -2,38 +2,25 @@
 pragma solidity 0.8.4;
 
 // contracts
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
-import {IncreOwnable} from "./utils/IncreOwnable.sol";
-import {VirtualToken} from "./tokens/VirtualToken.sol";
-import {PoolTWAPOracle} from "./oracles/PoolTWAPOracle.sol";
-import {ChainlinkTWAPOracle} from "./oracles/ChainlinkTWAPOracle.sol";
-
-import {TwapOracle} from "./oracles/TwapOracle.sol";
 
 // interfaces
-import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
-import {ITwapOracle} from "./interfaces/ITwapOracle.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
-import {IVault} from "./interfaces/IVault.sol";
+import {ITwapOracle} from "./interfaces/ITwapOracle.sol";
+import {IVBase} from "./interfaces/IVBase.sol";
+import {IVQuote} from "./interfaces/IVQuote.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
-import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
-import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
-import {IInsurance} from "./interfaces/IInsurance.sol";
 import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
-import {ICurveToken} from "./interfaces/ICurveToken.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
-import {LibReserve} from "./lib/LibReserve.sol";
 
 import "hardhat/console.sol";
 
-contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
+contract Perpetual is IPerpetual, ITwapOracle, Context {
     using SafeCast for uint256;
     using SafeCast for int256;
 
@@ -44,12 +31,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
 
     // dependencies
-    ITwapOracle public twapOracle;
-    PoolTWAPOracle public override poolTWAPOracle; // TODO: delete
-    ChainlinkTWAPOracle public override chainlinkTWAPOracle; // TODO: delete
-    IChainlinkOracle public override chainlinkOracle;
-    IVirtualToken public override vBase;
-    IVirtualToken public override vQuote;
+    IVBase public override vBase;
+    IVQuote public override vQuote;
     IClearingHouse public override clearingHouse;
     ICryptoSwap public override market;
 
@@ -63,20 +46,12 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     mapping(address => LibPerpetual.UserPosition) internal lpPosition;
 
     constructor(
-        ITwapOracle _twapOracle,
-        IChainlinkOracle _chainlinkOracle,
-        PoolTWAPOracle _poolTWAPOracle,
-        ChainlinkTWAPOracle _chainlinkTWAPOracle,
-        IVirtualToken _vBase,
-        IVirtualToken _vQuote,
+        IVBase _vBase,
+        IVQuote _vQuote,
         ICryptoSwap _market,
         IClearingHouse _clearingHouse
     ) {
         // TODO: address zero checks
-        twapOracle = _twapOracle;
-        chainlinkOracle = _chainlinkOracle;
-        poolTWAPOracle = _poolTWAPOracle;
-        chainlinkTWAPOracle = _chainlinkTWAPOracle;
         vBase = _vBase;
         vQuote = _vQuote;
         market = _market;
@@ -85,6 +60,17 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // approve all future transfers between Perpetual and market (curve pool)
         require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL. TODO: PLZ CHANGE THIS TO DURING CALL");
         require(vQuote.approve(address(market), type(uint256).max), "NO APPROVAL");
+
+        // can't access immutable variables in the constructor
+        int256 lastChainlinkPrice = IVBase(_vBase).getIndexPrice();
+        int256 lastMarketPrice = ICryptoSwap(_market).last_prices().toInt256();
+
+        // initialize the oracle
+        oracleTwap = lastChainlinkPrice;
+        marketTwap = lastMarketPrice;
+
+        globalPosition.timeOfLastTrade = uint128(block.timestamp);
+        globalPosition.timeOfLastFunding = uint128(block.timestamp);
     }
 
     modifier onlyClearingHouse() {
@@ -218,7 +204,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function getUnrealizedPnL(address account) external view override returns (int256) {
         LibPerpetual.UserPosition memory trader = traderPosition[account];
-        int256 poolEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+        int256 poolEURUSDTWAP = getMarketTwap();
         int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
 
         // in the case of a LONG, trader.openNotional is negative but vQuoteVirtualProceeds is positive
@@ -348,8 +334,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
 
-        int256 marketTWAP = _marketTwap();
-        int256 indexTWAP = twapOracle.getOracleTwap();
+        int256 marketTWAP = getMarketTwap();
+        int256 indexTWAP = getOracleTwap();
 
         // console.log("marketTWAP: twapOracle");
         // console.logInt(marketTWAP);
@@ -432,19 +418,14 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // Don't update the state more than once per block
         // slither-disable-next-line timestamp
         if (currentTime > timeOfLastTrade) {
-            twapOracle.updateTwap();
-            chainlinkTWAPOracle.updateEURUSDTWAP();
-            poolTWAPOracle.updateEURUSDTWAP();
+            updateTwap();
             _updateFundingRate();
         }
     }
 
-    function _marketTwap() internal view returns (int256) {
-        return twapOracle.getMarketTwap();
-    }
-
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice profit is the sum of funding payments and the position PnL
+    // slither-disable-next-line timestamp // TODO: sounds incorrect
     function _closePosition(
         LibPerpetual.UserPosition storage user,
         LibPerpetual.GlobalPosition storage global,
@@ -456,7 +437,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             // check that `tentativeVQuoteAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (even though these swings would be cancelled out
             // by the fact that we sell any extra vBase bought)
-            int256 marketEURUSDTWAP = _marketTwap();
+            int256 marketEURUSDTWAP = getMarketTwap();
             // USD_amount = EUR_USD * EUR_amount
             int256 positivePositionSize = -user.positionSize;
             int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
@@ -565,8 +546,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    function indexPrice() external view override returns (int256) {
-        return chainlinkOracle.getIndexPrice();
+    function indexPrice() public view override returns (int256) {
+        return vBase.getIndexPrice();
     }
 
     function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
@@ -579,5 +560,69 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return lpPosition[account];
+    }
+
+    // from TwapOracle
+
+    // create new variable?
+    int256 public oracleCumulativeAmount;
+    int256 public oracleCumulativeAmountAtBeginningOfPeriod;
+    int256 public oracleTwap;
+
+    // create new variable?
+    int256 public marketCumulativeAmount;
+    // slither-disable-next-line similar-names
+    int256 public marketCumulativeAmountAtBeginningOfPeriod;
+    int256 public marketTwap;
+
+    function updateTwap() public override {
+        uint256 currentTime = block.timestamp;
+        int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
+
+        /*
+            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
+        */
+
+        // update cumulative chainlink price feed
+        int256 latestChainlinkPrice = indexPrice();
+        oracleCumulativeAmount = oracleCumulativeAmount + latestChainlinkPrice * timeElapsed;
+
+        // update cumulative market price feed
+        int256 latestMarketPrice = marketPrice().toInt256();
+        marketCumulativeAmount = marketCumulativeAmount + latestMarketPrice * timeElapsed;
+
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastFunding;
+
+        // slither-disable-next-line timestamp
+        if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
+            /*
+                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
+            */
+
+            // calculate chainlink twap
+            oracleTwap =
+                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // calculate market twap
+            marketTwap =
+                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // reset cumulative amount and timestamp
+            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
+            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
+            globalPosition.timeOfLastFunding = uint128(block.timestamp);
+
+            emit TwapUpdated(block.timestamp, oracleTwap, marketTwap);
+        }
+    }
+
+    function getOracleTwap() public view override returns (int256) {
+        return oracleTwap;
+    }
+
+    function getMarketTwap() public view override returns (int256) {
+        return marketTwap;
     }
 }

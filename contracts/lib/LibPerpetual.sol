@@ -22,6 +22,7 @@ library LibPerpetual {
 
     struct GlobalPosition {
         uint128 timeOfLastTrade;
+        uint128 timeOfLastFunding;
         int256 cumFundingRate;
     }
 }

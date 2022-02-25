@@ -10,7 +10,6 @@ import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
 import {IInsurance} from "./interfaces/IInsurance.sol";
-import {ILiquidation} from "./interfaces/ILiquidation.sol";
 import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";

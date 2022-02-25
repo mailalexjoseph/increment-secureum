@@ -21,8 +21,6 @@ import {setUSDCBalance} from './utils/manipulateStorage';
 import {
   ERC20,
   ChainlinkOracle,
-  ChainlinkTWAPOracle,
-  PoolTWAPOracle,
   TestPerpetual,
   Vault,
   VirtualToken,
@@ -48,8 +46,6 @@ export type User = {address: string} & {
   insurance: Insurance;
   factory: Factory;
   chainlinkOracle: ChainlinkOracle;
-  chainlinkTWAPOracle: ChainlinkTWAPOracle;
-  poolTWAPOracle: PoolTWAPOracle;
   curveToken: CurveTokenV5;
 };
 
@@ -93,12 +89,6 @@ export const getContracts = async (deployAccount: string): Promise<any> => {
     ),
     chainlinkOracle: <ChainlinkOracle>(
       await ethers.getContract('ChainlinkOracle', deployAccount)
-    ),
-    chainlinkTWAPOracle: <ChainlinkTWAPOracle>(
-      await ethers.getContract('ChainlinkTWAPOracle', deployAccount)
-    ),
-    poolTWAPOracle: <PoolTWAPOracle>(
-      await ethers.getContract('PoolTWAPOracle', deployAccount)
     ),
   };
 };

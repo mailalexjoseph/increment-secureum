@@ -1,20 +1,18 @@
 import {expect} from 'chai';
-import {BigNumber, Signer} from 'ethers';
+import {BigNumber, BigNumberish, Signer} from 'ethers';
 import env, {ethers} from 'hardhat';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {deployMockContract, MockContract} from 'ethereum-waffle';
 
+import {asBigNumber, rMul, rDiv} from '../helpers/utils/calculations';
+
 // dependency abis
-import ChainlinkOracle from '../../artifacts/contracts/oracles/ChainlinkOracle.sol/ChainlinkOracle.json';
-import PoolTWAPOracle from '../../artifacts/contracts/oracles/PoolTWAPOracle.sol/PoolTWAPOracle.json';
-import ChainlinkTWAPOracle from '../../artifacts/contracts/oracles/ChainlinkTWAPOracle.sol/ChainlinkTWAPOracle.json';
-import VirtualToken from '../../artifacts/contracts/tokens/VirtualToken.sol/VirtualToken.json';
+import VBase from '../../artifacts/contracts/tokens/VBase.sol/VBase.json';
+import VQuote from '../../artifacts/contracts/tokens/VQuote.sol/VQuote.json';
 import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
-import TwapOracle from '../../artifacts/contracts/oracles/TwapOracle.sol/TwapOracle.json';
 import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
 
 import {TestPerpetual} from '../../typechain';
-import {asBigNumber, rMul, rDiv} from '../helpers/utils/calculations';
 
 // time-utils
 const minutes = (number: number) => number * 60;
@@ -25,7 +23,7 @@ let nextBlockTimestamp = 2000000000;
 async function addTimeToNextBlockTimestamp(
   hre: HardhatRuntimeEnvironment,
   additionalTimestamp: number
-): Promise<number> {
+): Promise<BigNumber> {
   nextBlockTimestamp += additionalTimestamp;
 
   await hre.network.provider.request({
@@ -33,7 +31,7 @@ async function addTimeToNextBlockTimestamp(
     params: [nextBlockTimestamp],
   });
 
-  return nextBlockTimestamp;
+  return BigNumber.from(nextBlockTimestamp);
 }
 
 // math econ functions
@@ -50,21 +48,17 @@ const calcWeightedTradePremiumOverLastPeriod = (
 const calcFundingRate = (
   sensitivity: BigNumber,
   weightedTradePremiumOverLastPeriod: BigNumber,
-  timePassed: number
+  timePassed: BigNumber | BigNumberish
 ) =>
   rMul(sensitivity, weightedTradePremiumOverLastPeriod)
-    .mul(BigNumber.from(timePassed))
+    .mul(timePassed)
     .div(BigNumber.from(days(1)));
 
 type User = {perpetual: TestPerpetual};
 
 describe('Funding rate', async function () {
   // mock dependencies
-  let twapMock: MockContract;
-  let chainlinkOracleMock: MockContract;
-  let chainlinkTWAPOracleMock: MockContract;
   let marketMock: MockContract;
-  let poolTWAPOracleMock: MockContract;
   let vaultMock: MockContract;
   let vQuoteMock: MockContract;
   let vBaseMock: MockContract;
@@ -84,34 +78,26 @@ describe('Funding rate', async function () {
     [deployer] = await ethers.getSigners();
 
     // build dependencies as mocks
-    twapMock = await deployMockContract(deployer, TwapOracle.abi);
-    chainlinkOracleMock = await deployMockContract(
-      deployer,
-      ChainlinkOracle.abi
-    );
-    chainlinkTWAPOracleMock = await deployMockContract(
-      deployer,
-      ChainlinkTWAPOracle.abi
-    );
     marketMock = await deployMockContract(deployer, CurveCryptoSwap2ETH.abi);
-    poolTWAPOracleMock = await deployMockContract(deployer, PoolTWAPOracle.abi);
     vaultMock = await deployMockContract(deployer, Vault.abi);
-    vQuoteMock = await deployMockContract(deployer, VirtualToken.abi);
-    vBaseMock = await deployMockContract(deployer, VirtualToken.abi);
+    vQuoteMock = await deployMockContract(deployer, VQuote.abi);
+    vBaseMock = await deployMockContract(deployer, VBase.abi);
 
     // needed in the constructor of Perpetual
     await vQuoteMock.mock.approve.returns(true);
     await vBaseMock.mock.approve.returns(true);
+
+    marketPrice = asBigNumber('1');
+    indexPrice = asBigNumber('1.1');
+
+    await marketMock.mock.last_prices.returns(marketPrice);
+    await vBaseMock.mock.getIndexPrice.returns(indexPrice);
 
     const TestPerpetualContract = await ethers.getContractFactory(
       'TestPerpetual'
     );
     const perpetual = <TestPerpetual>(
       await TestPerpetualContract.deploy(
-        twapMock.address,
-        chainlinkOracleMock.address,
-        poolTWAPOracleMock.address,
-        chainlinkTWAPOracleMock.address,
         vBaseMock.address,
         vQuoteMock.address,
         marketMock.address,
@@ -123,32 +109,36 @@ describe('Funding rate', async function () {
   }
 
   before(async () => {
+    // init timeStamp
+    await addTimeToNextBlockTimestamp(env, 0);
+
+    user = await _deploy_perpetual();
+
+    // take snapshot
     snapshotId = await env.network.provider.send('evm_snapshot', []);
   });
 
-  beforeEach(async () => {
-    user = await _deploy_perpetual();
-  });
-
-  after(async () => {
+  afterEach(async () => {
     await env.network.provider.send('evm_revert', [snapshotId]);
+    snapshotId = await env.network.provider.send('evm_snapshot', []);
   });
 
   it('Expected initialized state', async () => {
     const position = await user.perpetual.getGlobalPosition();
 
-    expect(position.timeOfLastTrade).to.be.equal(0);
+    // expect(position.timeOfLastTrade).to.be.equal(0);
     expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
   });
 
   it('Update funding rate correctly in subsequent calls', async () => {
     marketPrice = asBigNumber('1');
     indexPrice = asBigNumber('1.1');
-    await twapMock.mock.getMarketTwap.returns(marketPrice);
-    await twapMock.mock.getOracleTwap.returns(indexPrice);
+    await user.perpetual.__TestPerpetual_setTWAP(marketPrice, indexPrice);
 
+    // START_TIME is getting set in constructor
     // by default global.timeOfLastTrade = 0
-    const START_TIME = 0;
+    const START_TIME = (await user.perpetual.getGlobalPosition())
+      .timeOfLastTrade;
 
     /************* FIRST TRADE ***************/
     // initial parameters for first call
@@ -163,13 +153,13 @@ describe('Funding rate', async function () {
     const eCurrentTraderPremiumFirstTransac: BigNumber =
       calcCurrentTraderPremium(marketPrice, indexPrice);
 
-    const eWeightedTradePremiumOverLastPeriodFirstTransac: BigNumber =
+    const eTimePassedInFirstTransaction = timeFirstTransaction.sub(START_TIME);
+
+    const eWeightedTradePremiumOverLastPeriodFirstTransac =
       calcWeightedTradePremiumOverLastPeriod(
-        ethers.BigNumber.from(timeFirstTransaction.toString()),
+        eTimePassedInFirstTransaction,
         eCurrentTraderPremiumFirstTransac
       );
-
-    const eTimePassedInFirstTransaction = timeFirstTransaction - START_TIME;
 
     const eFundingRateFirstTransac = calcFundingRate(
       SENSITIVITY,
@@ -189,13 +179,15 @@ describe('Funding rate', async function () {
     await user.perpetual.__TestPerpetual_updateFunding();
 
     // expected values after second trade
-    const eCurrentTraderPremiumSecondTransac: BigNumber =
-      calcCurrentTraderPremium(marketPrice, indexPrice);
+    const eCurrentTraderPremiumSecondTransac = calcCurrentTraderPremium(
+      marketPrice,
+      indexPrice
+    );
 
     const eTimePassedSinceLastTrade =
-      timeSecondTransaction - timeFirstTransaction;
+      timeSecondTransaction.sub(timeFirstTransaction);
 
-    const eWeightedTradePremiumOverLastPeriodSecondTransac: BigNumber =
+    const eWeightedTradePremiumOverLastPeriodSecondTransac =
       calcWeightedTradePremiumOverLastPeriod(
         ethers.BigNumber.from(eTimePassedSinceLastTrade.toString()),
         eCurrentTraderPremiumSecondTransac

@@ -48,12 +48,12 @@ describe('Increment Protocol: Deployment', function () {
   it('Should initialize Perpetual with its dependencies', async function () {
     const {deployer} = await setup();
 
-    expect(await deployer.perpetual.chainlinkOracle()).to.equal(
-      deployer.chainlinkOracle.address
-    );
     expect(await deployer.perpetual.market()).to.equal(deployer.market.address);
     expect(await deployer.perpetual.vBase()).to.equal(deployer.vBase.address);
     expect(await deployer.perpetual.vQuote()).to.equal(deployer.vQuote.address);
+    expect(await deployer.perpetual.clearingHouse()).to.equal(
+      deployer.clearingHouse.address
+    );
   });
   it('Should initialize vBase and vQuote with Perpetual as their owner', async function () {
     const {deployer} = await setup();

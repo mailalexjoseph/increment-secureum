@@ -17,54 +17,26 @@ import {IPerpetual} from "../interfaces/IPerpetual.sol";
 contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     using SafeCast for uint256;
 
-    uint8 constant OUT_DECIMALS = 18;
+    uint8 constant PRECISION = 18;
 
     constructor() {}
 
-    // key by currency symbol, eg ETH
-    AggregatorV3Interface public aggregator;
-    address[] public priceFeedKeys;
+    AggregatorV3Interface public chainlinkAggregator;
 
     /****************************** Funding Rate ******************************/
 
-    function getIndexPrice() external view override returns (int256) {
-        return chainlinkPrice(aggregator);
-    }
-
-    function getAssetPrice(address asset) external view override returns (int256) {
-        // AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
-        // require(address(chainlinkInterface) != address(0));
-        return chainlinkPrice(aggregator);
-    }
-
-    function chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
-        uint8 chainlinkDecimals = chainlinkInterface.decimals();
-        (, int256 price, , uint256 timeStamp, ) = chainlinkInterface.latestRoundData();
+    function getAssetPrice() external view override returns (int256) {
+        uint8 chainlinkDecimals = chainlinkAggregator.decimals();
+        (, int256 price, , uint256 timeStamp, ) = chainlinkAggregator.latestRoundData();
         // If the round is not complete yet, timestamp is 0
         require(timeStamp > 0, "Round not complete");
         require(price > 0, "Integer conversion failed");
-        int256 scaledPrice = (price * int256(10**(OUT_DECIMALS - chainlinkDecimals)));
+        int256 scaledPrice = (price * int256(10**(PRECISION - chainlinkDecimals)));
         return scaledPrice;
     }
 
-    function addAggregator(address asset, AggregatorV3Interface _aggregator) external override onlyOwner {
-        aggregator = _aggregator;
-    }
-
-    function removeAggregator(address asset) external override onlyOwner {
-        require(asset != address(0));
-
-        uint256 length = priceFeedKeys.length;
-        for (uint256 i = 0; i < length; i++) {
-            if (priceFeedKeys[i] == asset) {
-                // if the removal item is the last one, just `pop`
-                if (i != length - 1) {
-                    priceFeedKeys[i] = priceFeedKeys[length - 1];
-                }
-                // slither-disable-next-line costly-loop
-                priceFeedKeys.pop();
-                break;
-            }
-        }
+    function addAggregator(AggregatorV3Interface aggregator) external override onlyOwner {
+        require(aggregator.decimals() <= PRECISION, "Decimals too large");
+        chainlinkAggregator = aggregator;
     }
 }

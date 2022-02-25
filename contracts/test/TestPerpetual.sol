@@ -3,25 +3,14 @@ pragma solidity 0.8.4;
 
 // contracts
 import {Perpetual} from "../Perpetual.sol";
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
-import {IncreOwnable} from "../utils/IncreOwnable.sol";
-import {VirtualToken} from "../tokens/VirtualToken.sol";
-import {PoolTWAPOracle} from "../oracles/PoolTWAPOracle.sol";
-import {ChainlinkTWAPOracle} from "../oracles/ChainlinkTWAPOracle.sol";
 
 // interfaces
 import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
-import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
-import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
+import {IVBase} from "../interfaces/IVBase.sol";
+import {IVQuote} from "../interfaces/IVQuote.sol";
 import {IClearingHouse} from "../interfaces/IClearingHouse.sol";
-import {ITwapOracle} from "../interfaces/ITwapOracle.sol";
 
 // libraries
-import {LibMath} from "../lib/LibMath.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 import "hardhat/console.sol";
@@ -32,31 +21,17 @@ import "hardhat/console.sol";
  */
 contract TestPerpetual is Perpetual {
     constructor(
-        ITwapOracle _twapOracle,
-        IChainlinkOracle _chainlinkOracle,
-        PoolTWAPOracle _poolTWAPOracle,
-        ChainlinkTWAPOracle _chainlinkTWAPOracle,
-        IVirtualToken _vBase,
-        IVirtualToken _vQuote,
+        IVBase _vBase,
+        IVQuote _vQuote,
         ICryptoSwap _curvePool,
         IClearingHouse _clearingHouse
-    )
-        Perpetual(
-            _twapOracle,
-            _chainlinkOracle,
-            _poolTWAPOracle,
-            _chainlinkTWAPOracle,
-            _vBase,
-            _vQuote,
-            _curvePool,
-            _clearingHouse
-        )
-    {}
+    ) Perpetual(_vBase, _vQuote, _curvePool, _clearingHouse) {}
 
     // simplified setter
     function __TestPerpetual_setGlobalPosition(uint128 timeOfLastTrade, int256 cumFundingRate) external {
         globalPosition = LibPerpetual.GlobalPosition({
             timeOfLastTrade: timeOfLastTrade,
+            timeOfLastFunding: globalPosition.timeOfLastFunding,
             cumFundingRate: cumFundingRate
         });
     }
@@ -94,5 +69,10 @@ contract TestPerpetual is Perpetual {
 
     function __TestPerpetual_updateFunding() external {
         _updateFundingRate();
+    }
+
+    function __TestPerpetual_setTWAP(int256 _marketTwap, int256 _oracleTwap) external {
+        marketTwap = _marketTwap;
+        oracleTwap = _oracleTwap;
     }
 }
