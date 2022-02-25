@@ -10,6 +10,7 @@ import PoolTWAPOracle from '../../artifacts/contracts/oracles/PoolTWAPOracle.sol
 import ChainlinkTWAPOracle from '../../artifacts/contracts/oracles/ChainlinkTWAPOracle.sol/ChainlinkTWAPOracle.json';
 import VirtualToken from '../../artifacts/contracts/tokens/VirtualToken.sol/VirtualToken.json';
 import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
+import TwapOracle from '../../artifacts/contracts/oracles/TwapOracle.sol/TwapOracle.json';
 import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
 
 import {TestPerpetual} from '../../typechain';
@@ -59,6 +60,7 @@ type User = {perpetual: TestPerpetual};
 
 describe('Funding rate', async function () {
   // mock dependencies
+  let twapMock: MockContract;
   let chainlinkOracleMock: MockContract;
   let chainlinkTWAPOracleMock: MockContract;
   let marketMock: MockContract;
@@ -82,6 +84,7 @@ describe('Funding rate', async function () {
     [deployer] = await ethers.getSigners();
 
     // build dependencies as mocks
+    twapMock = await deployMockContract(deployer, TwapOracle.abi);
     chainlinkOracleMock = await deployMockContract(
       deployer,
       ChainlinkOracle.abi
@@ -105,6 +108,7 @@ describe('Funding rate', async function () {
     );
     const perpetual = <TestPerpetual>(
       await TestPerpetualContract.deploy(
+        twapMock.address,
         chainlinkOracleMock.address,
         poolTWAPOracleMock.address,
         chainlinkTWAPOracleMock.address,
@@ -140,8 +144,8 @@ describe('Funding rate', async function () {
   it('Update funding rate correctly in subsequent calls', async () => {
     marketPrice = asBigNumber('1');
     indexPrice = asBigNumber('1.1');
-    await poolTWAPOracleMock.mock.getEURUSDTWAP.returns(marketPrice);
-    await chainlinkTWAPOracleMock.mock.getEURUSDTWAP.returns(indexPrice);
+    await twapMock.mock.getMarketTwap.returns(marketPrice);
+    await twapMock.mock.getOracleTwap.returns(indexPrice);
 
     // by default global.timeOfLastTrade = 0
     const START_TIME = 0;

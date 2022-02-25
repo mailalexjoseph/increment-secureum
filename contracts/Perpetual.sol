@@ -12,7 +12,11 @@ import {VirtualToken} from "./tokens/VirtualToken.sol";
 import {PoolTWAPOracle} from "./oracles/PoolTWAPOracle.sol";
 import {ChainlinkTWAPOracle} from "./oracles/ChainlinkTWAPOracle.sol";
 
+import {TwapOracle} from "./oracles/TwapOracle.sol";
+
 // interfaces
+import {IVirtualToken} from "./interfaces/IVirtualToken.sol";
+import {ITwapOracle} from "./interfaces/ITwapOracle.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
@@ -34,15 +38,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
     using SafeCast for int256;
 
     // parameterization
-
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
     int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
 
     // dependencies
-    PoolTWAPOracle public override poolTWAPOracle;
-    ChainlinkTWAPOracle public override chainlinkTWAPOracle;
+    ITwapOracle public twapOracle;
+    PoolTWAPOracle public override poolTWAPOracle; // TODO: delete
+    ChainlinkTWAPOracle public override chainlinkTWAPOracle; // TODO: delete
     IChainlinkOracle public override chainlinkOracle;
     IVirtualToken public override vBase;
     IVirtualToken public override vQuote;
@@ -51,13 +55,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
 
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
-    mapping(address => LibPerpetual.UserPosition) internal traderPosition;
-    mapping(address => LibPerpetual.UserPosition) internal lpPosition;
     uint256 internal totalLiquidityProvided;
-
     uint256 internal vBaseDust;
 
+    // user state
+    mapping(address => LibPerpetual.UserPosition) internal traderPosition;
+    mapping(address => LibPerpetual.UserPosition) internal lpPosition;
+
     constructor(
+        ITwapOracle _twapOracle,
         IChainlinkOracle _chainlinkOracle,
         PoolTWAPOracle _poolTWAPOracle,
         ChainlinkTWAPOracle _chainlinkTWAPOracle,
@@ -66,6 +72,8 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         ICryptoSwap _market,
         IClearingHouse _clearingHouse
     ) {
+        // TODO: address zero checks
+        twapOracle = _twapOracle;
         chainlinkOracle = _chainlinkOracle;
         poolTWAPOracle = _poolTWAPOracle;
         chainlinkTWAPOracle = _chainlinkTWAPOracle;
@@ -340,8 +348,20 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
 
-        int256 marketTWAP = poolTWAPOracle.getEURUSDTWAP();
-        int256 indexTWAP = chainlinkTWAPOracle.getEURUSDTWAP();
+        int256 marketTWAP = _marketTwap();
+        int256 indexTWAP = twapOracle.getOracleTwap();
+
+        // console.log("marketTWAP: twapOracle");
+        // console.logInt(marketTWAP);
+
+        // console.log("indexTWAP: twapOracle");
+        // console.logInt(indexTWAP);
+
+        // console.log("marketTWAP: poolTWAPOracle");
+        // console.logInt(poolTWAPOracle.getEURUSDTWAP());
+
+        // console.log("indexTWAP: chainlinkTWAPOracle");
+        // console.logInt(chainlinkTWAPOracle.getEURUSDTWAP());
 
         int256 currentTraderPremium = LibMath.wadDiv(marketTWAP - indexTWAP, indexTWAP);
         int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
@@ -412,10 +432,15 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
         // Don't update the state more than once per block
         // slither-disable-next-line timestamp
         if (currentTime > timeOfLastTrade) {
+            twapOracle.updateTwap();
             chainlinkTWAPOracle.updateEURUSDTWAP();
             poolTWAPOracle.updateEURUSDTWAP();
             _updateFundingRate();
         }
+    }
+
+    function _marketTwap() internal view returns (int256) {
+        return twapOracle.getMarketTwap();
     }
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
@@ -431,7 +456,7 @@ contract Perpetual is IPerpetual, Context, IncreOwnable, Pausable {
             // check that `tentativeVQuoteAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (even though these swings would be cancelled out
             // by the fact that we sell any extra vBase bought)
-            int256 marketEURUSDTWAP = poolTWAPOracle.getEURUSDTWAP();
+            int256 marketEURUSDTWAP = _marketTwap();
             // USD_amount = EUR_USD * EUR_amount
             int256 positivePositionSize = -user.positionSize;
             int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);

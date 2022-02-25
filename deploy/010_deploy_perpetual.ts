@@ -10,6 +10,7 @@ import {
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
+  const twapOracle = await ethers.getContract('TwapOracle', deployer);
   const chainlinkOracle = await ethers.getContract('ChainlinkOracle', deployer);
   const poolTWAPOracle = await ethers.getContract('PoolTWAPOracle', deployer);
   const chainlinkTWAPOracle = await ethers.getContract(
@@ -30,6 +31,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
 
   const perpetualArgs = [
+    twapOracle.address,
     chainlinkOracle.address,
     poolTWAPOracle.address,
     chainlinkTWAPOracle.address,

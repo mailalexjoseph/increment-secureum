@@ -4,12 +4,17 @@ pragma solidity 0.8.4;
 // interfaces
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
+import {ITwapOracle} from "../interfaces/ITwapOracle.sol";
 
 // libraries
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {LibMath} from "../lib//LibMath.sol";
 
 import "hardhat/console.sol";
+
+interface IVBase {
+    function getIndexPrice() external view returns (int256);
+}
 
 /*
  * TwapOracle is used to compute and return a time-weighted average of the currencies
@@ -18,33 +23,36 @@ import "hardhat/console.sol";
  * This twap oracle is inspired by this twap article of Uniswap: https://docs.uniswap.org/protocol/V2/concepts/core-concepts/oracles
  * Implementation follows the logic of the Uniswap twap oracle: https://github.com/Uniswap/v2-periphery/blob/master/contracts/examples/ExampleOracleSimple.sol
  */
-contract TwapOracle {
+contract TwapOracle is ITwapOracle {
     using SafeCast for uint256;
     using SafeCast for int256;
 
     uint256 public constant PERIOD = 15 minutes;
 
+    // could put in global state
     uint256 public blockTimestampLast;
     uint256 public blockTimestampAtBeginningOfPeriod;
 
+    // create new variable?
     int256 public oracleCumulativeAmount;
     int256 public oracleCumulativeAmountAtBeginningOfPeriod;
     int256 public oracleTwap;
 
+    // create new variable?
     int256 public marketCumulativeAmount;
     // slither-disable-next-line similar-names
     int256 public marketCumulativeAmountAtBeginningOfPeriod;
     int256 public marketTwap;
 
-    IChainlinkOracle public immutable chainlinkOracle;
+    IVBase public immutable chainlinkOracle;
     ICryptoSwap public immutable cryptoSwap;
 
-    constructor(IChainlinkOracle _chainlinkOracle, ICryptoSwap _cryptoSwap) {
+    constructor(IVBase _chainlinkOracle, ICryptoSwap _cryptoSwap) {
         chainlinkOracle = _chainlinkOracle;
         cryptoSwap = _cryptoSwap;
 
         // can't access immutable variables in the constructor
-        int256 lastChainlinkPrice = IChainlinkOracle(_chainlinkOracle).getIndexPrice();
+        int256 lastChainlinkPrice = IVBase(_chainlinkOracle).getIndexPrice();
         int256 lastMarketPrice = ICryptoSwap(_cryptoSwap).last_prices().toInt256();
 
         // initialize the oracle
@@ -55,9 +63,7 @@ contract TwapOracle {
         blockTimestampAtBeginningOfPeriod = block.timestamp;
     }
 
-    event TwapUpdated(uint256 timeStamp, int256 newOracleTwap, int256 newMarketTwap);
-
-    function updateTwap() external {
+    function updateTwap() external override {
         uint256 currentTime = block.timestamp;
         int256 timeElapsed = (currentTime - blockTimestampLast).toInt256();
 
@@ -101,11 +107,11 @@ contract TwapOracle {
         }
     }
 
-    function getOracleTwap() external view returns (int256) {
+    function getOracleTwap() external view override returns (int256) {
         return oracleTwap;
     }
 
-    function getMarketTwap() external view returns (int256) {
+    function getMarketTwap() external view override returns (int256) {
         return marketTwap;
     }
 }

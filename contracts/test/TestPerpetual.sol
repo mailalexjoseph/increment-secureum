@@ -18,6 +18,7 @@ import {ICryptoSwap} from "../interfaces/ICryptoSwap.sol";
 import {IChainlinkOracle} from "../interfaces/IChainlinkOracle.sol";
 import {IVirtualToken} from "../interfaces/IVirtualToken.sol";
 import {IClearingHouse} from "../interfaces/IClearingHouse.sol";
+import {ITwapOracle} from "../interfaces/ITwapOracle.sol";
 
 // libraries
 import {LibMath} from "../lib/LibMath.sol";
@@ -31,6 +32,7 @@ import "hardhat/console.sol";
  */
 contract TestPerpetual is Perpetual {
     constructor(
+        ITwapOracle _twapOracle,
         IChainlinkOracle _chainlinkOracle,
         PoolTWAPOracle _poolTWAPOracle,
         ChainlinkTWAPOracle _chainlinkTWAPOracle,
@@ -38,7 +40,18 @@ contract TestPerpetual is Perpetual {
         IVirtualToken _vQuote,
         ICryptoSwap _curvePool,
         IClearingHouse _clearingHouse
-    ) Perpetual(_chainlinkOracle, _poolTWAPOracle, _chainlinkTWAPOracle, _vBase, _vQuote, _curvePool, _clearingHouse) {}
+    )
+        Perpetual(
+            _twapOracle,
+            _chainlinkOracle,
+            _poolTWAPOracle,
+            _chainlinkTWAPOracle,
+            _vBase,
+            _vQuote,
+            _curvePool,
+            _clearingHouse
+        )
+    {}
 
     // simplified setter
     function __TestPerpetual_setGlobalPosition(uint128 timeOfLastTrade, int256 cumFundingRate) external {

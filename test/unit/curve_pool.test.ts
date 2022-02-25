@@ -29,6 +29,7 @@ import {
   CurveCryptoSwapTest__factory,
   CurveTokenV5Test__factory,
 } from '../../contracts-vyper/typechain';
+import {getChainlinkOracle} from '../../helpers/contracts-getters';
 
 type User = {address: string} & {
   vBase: VBase;
@@ -60,7 +61,11 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   const [DEPLOYER] = await ethers.getSigners();
   // deploy vBase & vQuote
   const VBaseFactory = new VBase__factory(DEPLOYER);
-  const vBase = await VBaseFactory.deploy('Long EUR/USD', 'vBase');
+  const vBase = await VBaseFactory.deploy(
+    'Long EUR/USD',
+    'vBase',
+    getChainlinkOracle(env, 'EUR_USD')
+  );
 
   const VQuoteFactory = new VQuote__factory(DEPLOYER);
   const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vQuote');

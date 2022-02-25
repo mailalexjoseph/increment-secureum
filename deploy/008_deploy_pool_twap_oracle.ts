@@ -22,6 +22,14 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
+  const vBase = await hre.ethers.getContract('VBase');
+
+  await hre.deployments.deploy('TwapOracle', {
+    from: deployer,
+    args: [vBase.address, cryptoswap.address],
+    log: true,
+  });
+
   console.log('We have deployed the pool TWAP oracle');
 };
 

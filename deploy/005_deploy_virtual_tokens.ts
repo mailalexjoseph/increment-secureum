@@ -1,5 +1,6 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
+import {getChainlinkOracle} from '../helpers/contracts-getters';
 
 /// @dev Unlike in the code where it makes sense to keep the abstract `vBase` and `vQuote`,
 /// the deployment script needs to contain the exact names.
@@ -10,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   await hre.deployments.deploy('VBase', {
     from: deployer,
-    args: ['vEUR base token', 'vEUR'],
+    args: ['vEUR base token', 'vEUR', getChainlinkOracle(hre, 'EUR_USD')],
     log: true,
   });
   console.log('We have deployed vEUR');

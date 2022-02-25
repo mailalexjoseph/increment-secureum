@@ -22,21 +22,19 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
     constructor() {}
 
     // key by currency symbol, eg ETH
-    mapping(address => AggregatorV3Interface) public priceFeedMap;
+    AggregatorV3Interface public aggregator;
     address[] public priceFeedKeys;
 
     /****************************** Funding Rate ******************************/
 
     function getIndexPrice() external view override returns (int256) {
-        AggregatorV3Interface chainlinkInterface = priceFeedMap[msg.sender];
-        require(address(chainlinkInterface) != address(0));
-        return chainlinkPrice(chainlinkInterface);
+        return chainlinkPrice(aggregator);
     }
 
     function getAssetPrice(address asset) external view override returns (int256) {
-        AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
-        require(address(chainlinkInterface) != address(0));
-        return chainlinkPrice(chainlinkInterface);
+        // AggregatorV3Interface chainlinkInterface = priceFeedMap[asset];
+        // require(address(chainlinkInterface) != address(0));
+        return chainlinkPrice(aggregator);
     }
 
     function chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
@@ -49,17 +47,12 @@ contract ChainlinkOracle is IChainlinkOracle, IncreOwnable {
         return scaledPrice;
     }
 
-    function addAggregator(address asset, address aggregator) external override onlyOwner {
-        require(asset != address(0));
-        if (address(priceFeedMap[asset]) == address(0)) {
-            priceFeedKeys.push(asset);
-        }
-        priceFeedMap[asset] = AggregatorV3Interface(aggregator);
+    function addAggregator(address asset, AggregatorV3Interface _aggregator) external override onlyOwner {
+        aggregator = _aggregator;
     }
 
     function removeAggregator(address asset) external override onlyOwner {
         require(asset != address(0));
-        delete priceFeedMap[asset];
 
         uint256 length = priceFeedKeys.length;
         for (uint256 i = 0; i < length; i++) {
