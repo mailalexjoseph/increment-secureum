@@ -20,8 +20,8 @@ contract VBase is IVBase, VirtualToken {
         string memory _symbol,
         AggregatorV3Interface _aggregator
     ) VirtualToken(_name, _symbol) {
+        require(AggregatorV3Interface(aggregator).decimals() <= PRECISION);
         aggregator = _aggregator;
-        require(aggregator.decimals() <= PRECISION);
     }
 
     function getIndexPrice() external view override returns (int256) {
