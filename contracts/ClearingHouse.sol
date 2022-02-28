@@ -38,8 +38,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     IInsurance public insurance;
     IPerpetual[] public perpetuals;
 
-    event MarketAdded(uint256 numPerpetuals, IPerpetual indexed perpetual);
-
     // global state
 
     constructor(IVault _vault, IInsurance _insurance) {
@@ -54,8 +52,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Add one perpetual market to the list of markets
     /// @param perp Market to add to the list of supported market
     function allowListPerpetual(IPerpetual perp) external onlyOwner {
-        emit MarketAdded(perpetuals.length, perp);
         perpetuals.push(perp);
+        emit MarketAdded(perp, perpetuals.length);
+    }
+
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    function unpause() external onlyOwner {
+        _unpause();
     }
 
     ///// TRADER FLOW OPERATIONS \\\\\
@@ -87,7 +93,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) public {
+    ) public whenNotPaused {
         require(vault.deposit(idx, msg.sender, amount, token) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
@@ -100,7 +106,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external {
+    ) external whenNotPaused {
         // slither-disable-next-line incorrect-equality
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
@@ -121,7 +127,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) public returns (int256, int256) {
+    ) public whenNotPaused returns (int256, int256) {
         /*
             if amount > 0
 
@@ -172,7 +178,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 tentativeVQuoteAmount,
         uint256 minAmount
-    ) external {
+    ) external whenNotPaused {
         LibPerpetual.UserPosition memory trader = getTraderPosition(idx, msg.sender);
         LibPerpetual.Side direction = trader.positionSize > 0 ? LibPerpetual.Side.Long : LibPerpetual.Side.Short;
 
@@ -230,7 +236,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         address liquidatee,
         uint256 tentativeVQuoteAmount
-    ) external {
+    ) external whenNotPaused {
         address liquidator = msg.sender;
 
         uint256 positiveOpenNotional = uint256(LibMath.abs(perpetuals[idx].getTraderPosition(liquidatee).openNotional));
@@ -264,7 +270,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external returns (uint256, uint256) {
+    ) external whenNotPaused returns (uint256, uint256) {
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
         // slither-disable-next-line timestamp // TODO: sounds incorrect
@@ -282,7 +288,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
     /// @param idx Index of the perpetual market
     /// @param amount Amout of liquidity to be removed from the pool. 18 decimals
-    function removeLiquidity(uint256 idx, uint256 amount) external {
+    function removeLiquidity(uint256 idx, uint256 amount) external whenNotPaused {
         perpetuals[idx].removeLiquidity(msg.sender, amount);
         emit LiquidityRemoved(idx, msg.sender, amount);
     }
@@ -293,7 +299,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 tentativeVQuoteAmount,
         IERC20 token
-    ) external {
+    ) external whenNotPaused {
         // profit = pnl + fundingPayments
         int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, tentativeVQuoteAmount);
         vault.settleProfit(idx, msg.sender, profit);
@@ -377,7 +383,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return perpetuals[idx].getLpPosition(account);
     }
 
-    function numMarkets() external view returns (uint256) {
+    function getNumMarkets() external view returns (uint256) {
         return perpetuals.length;
     }
 }

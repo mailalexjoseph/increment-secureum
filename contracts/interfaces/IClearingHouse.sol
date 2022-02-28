@@ -8,6 +8,7 @@ import {IPerpetual} from "./IPerpetual.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IClearingHouse {
+    event MarketAdded(IPerpetual indexed perpetual, uint256 numPerpetuals);
     event Deposit(uint256 idx, address indexed user, address indexed asset, uint256 amount);
     event Withdraw(uint256 idx, address indexed user, address indexed asset, uint256 amount);
     event Settlement(uint256 idx, address indexed user, int256 amount);
