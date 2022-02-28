@@ -11,7 +11,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // const EUR_USD_ORACLE1 = await chainlinkOracle.priceFeedMap(perpetual.address);
   // if (!(EUR_USD_ORACLE1 === getChainlinkOracle(hre, 'EUR_USD'))) {
   //   await (
-  await chainlinkOracle.addAggregator(getChainlinkOracle(hre, 'EUR_USD'));
+  await chainlinkOracle.addAggregator(getChainlinkOracle(hre, 'USDC'));
   //   ).wait();
   // }
 
@@ -22,6 +22,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ['AddChainlinkOracles'];
 func.id = 'add_chainlinkOracles';
-func.dependencies = ['Perpetual'];
+func.dependencies = ['Vault'];
 
 export default func;
