@@ -13,14 +13,14 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 contract VBase is IVBase, VirtualToken {
     uint8 constant PRECISION = 18;
 
-    AggregatorV3Interface aggregator;
+    AggregatorV3Interface immutable aggregator;
 
     constructor(
         string memory _name,
         string memory _symbol,
         AggregatorV3Interface _aggregator
     ) VirtualToken(_name, _symbol) {
-        require(AggregatorV3Interface(aggregator).decimals() <= PRECISION);
+        require(AggregatorV3Interface(address(_aggregator)).decimals() <= PRECISION);
         aggregator = _aggregator;
     }
 
