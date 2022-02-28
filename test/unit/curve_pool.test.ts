@@ -23,7 +23,7 @@ import {getCryptoSwapConstructorArgsSeparate} from '../../helpers/contracts-depl
 import {setupUser} from '../../helpers/misc-utils';
 import {tEthereumAddress, BigNumber} from '../../helpers/types';
 
-import {VBase__factory, VQuote__factory} from '../../typechain';
+import {VirtualToken__factory} from '../../typechain';
 import {
   CurveCryptoSwap2ETH__factory,
   CurveCryptoSwapTest__factory,
@@ -60,14 +60,10 @@ const setup = deployments.createFixture(async (): Promise<TestEnv> => {
 
   const [DEPLOYER] = await ethers.getSigners();
   // deploy vBase & vQuote
-  const VBaseFactory = new VBase__factory(DEPLOYER);
-  const vBase = await VBaseFactory.deploy(
-    'Long EUR/USD',
-    'vBase',
-    getChainlinkOracle(env, 'EUR_USD')
-  );
+  const VBaseFactory = new VirtualToken__factory(DEPLOYER);
+  const vBase = await VBaseFactory.deploy('Long EUR/USD', 'vBase');
 
-  const VQuoteFactory = new VQuote__factory(DEPLOYER);
+  const VQuoteFactory = new VirtualToken__factory(DEPLOYER);
   const vQuote = await VQuoteFactory.deploy('Short EUR/USD', 'vQuote');
 
   // deploy curve token
