@@ -75,6 +75,7 @@
     "export": "node ./_scripts.js export",
     "fork:execute": "node ./_scripts.js fork:run",
     "fork:deploy": "node ./_scripts.js fork:deploy",
+    "prefork:dev": "rm -rf deployments/mainnet/* deployments/localhost/*",
     "fork:dev": "node ./_scripts.js fork:dev",
     "fork:node": "node ./_scripts.js fork:node",
     "fork:test": "node ./_scripts.js fork:test",

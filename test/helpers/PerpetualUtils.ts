@@ -94,7 +94,7 @@ export async function provideLiquidity(
   const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
   await _checkTokenBalance(user, token, tokenAmount);
 
-  token.approve(user.vault.address, tokenAmount);
+  await token.approve(user.vault.address, tokenAmount);
   await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address);
 }
 

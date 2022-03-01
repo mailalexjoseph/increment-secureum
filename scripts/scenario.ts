@@ -47,14 +47,14 @@ const main = async function () {
     liquidityAmountUSDC
   );
 
-  await provideLiquidity(deployer, contracts.usdc.address, liquidityAmount);
+  await provideLiquidity(deployer, deployer.usdc, liquidityAmount);
 
   // Scenario
-  await provideLiquidity(lp, contracts.usdc.address, liquidityAmount);
+  await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
   await openPosition(
     trader,
-    contracts.usdc.address,
+    trader.usdc,
     liquidityAmount.div(10),
     liquidityAmount.div(10),
     Side.Long
@@ -63,9 +63,9 @@ const main = async function () {
   // change price
   await changeOraclePrice(oracle, parsePrice('1.2'));
 
-  await closePosition(trader, contracts.usdc.address);
+  await closePosition(trader, trader.usdc);
 
-  await withdrawLiquidity(lp, contracts.usdc.address);
+  await withdrawLiquidity(lp, lp.usdc);
 };
 
 main();
