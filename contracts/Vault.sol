@@ -10,7 +10,6 @@ import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
 import {IInsurance} from "./interfaces/IInsurance.sol";
-import {IChainlinkOracle} from "./interfaces/IChainlinkOracle.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IERC20Decimals} from "./interfaces/IERC20Decimals.sol";
 import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
@@ -32,7 +31,6 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 internal immutable reserveTokenDecimals;
 
     // state
-    IChainlinkOracle public immutable override chainlinkOracle;
     IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
     IClearingHouse public override clearingHouse;
@@ -43,12 +41,7 @@ contract Vault is IVault, Context, IncreOwnable {
 
     //      trader     =>      market  => balances
 
-    constructor(
-        IChainlinkOracle _chainlinkOracle,
-        IERC20 _reserveToken,
-        IInsurance _insurance
-    ) {
-        require(address(_chainlinkOracle) != address(0), "ChainlinkOracle can not be zero address");
+    constructor(IERC20 _reserveToken, IInsurance _insurance) {
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
             IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS,
@@ -57,7 +50,6 @@ contract Vault is IVault, Context, IncreOwnable {
         require(address(_insurance) != address(0), "Insurance can not be zero address");
 
         // set contract addresses
-        chainlinkOracle = _chainlinkOracle;
         reserveToken = _reserveToken;
         insurance = _insurance;
 

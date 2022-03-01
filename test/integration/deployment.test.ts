@@ -16,9 +16,6 @@ describe('Increment Protocol: Deployment', function () {
       expect(await deployer.vault.reserveToken()).to.be.equal(
         deployer.usdc.address
       );
-      expect(await deployer.vault.chainlinkOracle()).to.be.equal(
-        deployer.chainlinkOracle.address
-      );
       expect(await deployer.vault.getTotalReserveToken()).to.be.equal(0);
     });
   });

@@ -8,7 +8,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
   const vaultConstructorArgs = [
-    (await ethers.getContract('ChainlinkOracle', deployer)).address,
     getReserveAddress('USDC', hre),
     (await ethers.getContract('Insurance', deployer)).address,
   ];
@@ -31,6 +30,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ['Vault'];
 func.id = 'deploy_vault_contract';
-func.dependencies = ['ChainlinkOracle'];
+func.dependencies = ['Insurance'];
 
 export default func;

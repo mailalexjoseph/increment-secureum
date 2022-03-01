@@ -17,8 +17,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   console.log('We have deployed the vault');
 };
 
-func.tags = ['Vault'];
-func.id = 'deploy_vault_contract';
-func.dependencies = ['ChainlinkOracle'];
+func.tags = ['Insurance'];
+func.id = 'deploy_insurance_contract';
 
 export default func;

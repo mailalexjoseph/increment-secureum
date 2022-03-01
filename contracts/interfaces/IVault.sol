@@ -3,7 +3,6 @@ pragma solidity 0.8.4;
 
 // interfaces
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IChainlinkOracle} from "./IChainlinkOracle.sol";
 import {IInsurance} from "./IInsurance.sol";
 import {IClearingHouse} from "./IClearingHouse.sol";
 
@@ -14,8 +13,6 @@ interface IVault {
     event BadDebtGenerated(uint256 idx, address beneficiary, uint256 amount);
 
     // dependencies
-    function chainlinkOracle() external view returns (IChainlinkOracle);
-
     function reserveToken() external view returns (IERC20);
 
     function insurance() external view returns (IInsurance);

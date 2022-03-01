@@ -29,7 +29,6 @@ import {
   CurveCryptoSwapTest__factory,
   CurveTokenV5Test__factory,
 } from '../../contracts-vyper/typechain';
-import {getChainlinkOracle} from '../../helpers/contracts-getters';
 
 type User = {address: string} & {
   vBase: VBase;

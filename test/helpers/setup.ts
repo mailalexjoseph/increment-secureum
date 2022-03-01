@@ -20,7 +20,6 @@ import {setUSDCBalance} from './utils/manipulateStorage';
 // types
 import {
   ERC20,
-  ChainlinkOracle,
   TestPerpetual,
   Vault,
   VirtualToken,
@@ -45,7 +44,6 @@ export type User = {address: string} & {
   clearingHouse: ClearingHouse;
   insurance: Insurance;
   factory: Factory;
-  chainlinkOracle: ChainlinkOracle;
   curveToken: CurveTokenV5;
 };
 
@@ -87,9 +85,6 @@ export const getContracts = async (deployAccount: string): Promise<any> => {
     clearingHouse: <ClearingHouse>(
       await ethers.getContract('ClearingHouse', deployAccount)
     ),
-    chainlinkOracle: <ChainlinkOracle>(
-      await ethers.getContract('ChainlinkOracle', deployAccount)
-    ),
   };
 };
 
@@ -118,7 +113,7 @@ export const funding = deployments.createFixture(async () => {
 /// @notice: Main deployment function
 export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // get contracts
-  await deployments.fixture('UpdateReferencesToPerpetual');
+  await deployments.fixture('Perpetual');
 
   await logDeployments();
   const {deployer, bob, alice, user, trader, traderTwo, lp, lpTwo} =
