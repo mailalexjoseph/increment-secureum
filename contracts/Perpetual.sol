@@ -41,6 +41,15 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     uint256 internal totalLiquidityProvided;
     uint256 internal vBaseDust;
 
+    int256 public oracleCumulativeAmount;
+    int256 public oracleCumulativeAmountAtBeginningOfPeriod;
+    int256 public oracleTwap;
+
+    int256 public marketCumulativeAmount;
+    // slither-disable-next-line similar-names
+    int256 public marketCumulativeAmountAtBeginningOfPeriod;
+    int256 public marketTwap;
+
     // user state
     mapping(address => LibPerpetual.UserPosition) internal traderPosition;
     mapping(address => LibPerpetual.UserPosition) internal lpPosition;
@@ -423,6 +432,49 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
+    function updateTwap() public override {
+        uint256 currentTime = block.timestamp;
+        int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
+
+        /*
+            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
+        */
+
+        // update cumulative chainlink price feed
+        int256 latestChainlinkPrice = indexPrice();
+        oracleCumulativeAmount = oracleCumulativeAmount + latestChainlinkPrice * timeElapsed;
+
+        // update cumulative market price feed
+        int256 latestMarketPrice = marketPrice().toInt256();
+        marketCumulativeAmount = marketCumulativeAmount + latestMarketPrice * timeElapsed;
+
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastFunding;
+
+        // slither-disable-next-line timestamp
+        if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
+            /*
+                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
+            */
+
+            // calculate chainlink twap
+            oracleTwap =
+                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // calculate market twap
+            marketTwap =
+                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // reset cumulative amount and timestamp
+            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
+            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
+            globalPosition.timeOfLastFunding = uint128(block.timestamp);
+
+            emit TwapUpdated(block.timestamp, oracleTwap, marketTwap);
+        }
+    }
+
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice profit is the sum of funding payments and the position PnL
     // slither-disable-next-line timestamp // TODO: sounds incorrect
@@ -560,62 +612,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return lpPosition[account];
-    }
-
-    // from TwapOracle
-
-    // create new variable?
-    int256 public oracleCumulativeAmount;
-    int256 public oracleCumulativeAmountAtBeginningOfPeriod;
-    int256 public oracleTwap;
-
-    // create new variable?
-    int256 public marketCumulativeAmount;
-    // slither-disable-next-line similar-names
-    int256 public marketCumulativeAmountAtBeginningOfPeriod;
-    int256 public marketTwap;
-
-    function updateTwap() public override {
-        uint256 currentTime = block.timestamp;
-        int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
-
-        /*
-            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
-        */
-
-        // update cumulative chainlink price feed
-        int256 latestChainlinkPrice = indexPrice();
-        oracleCumulativeAmount = oracleCumulativeAmount + latestChainlinkPrice * timeElapsed;
-
-        // update cumulative market price feed
-        int256 latestMarketPrice = marketPrice().toInt256();
-        marketCumulativeAmount = marketCumulativeAmount + latestMarketPrice * timeElapsed;
-
-        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastFunding;
-
-        // slither-disable-next-line timestamp
-        if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
-            /*
-                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
-            */
-
-            // calculate chainlink twap
-            oracleTwap =
-                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
-                timeElapsedSinceBeginningOfPeriod.toInt256();
-
-            // calculate market twap
-            marketTwap =
-                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
-                timeElapsedSinceBeginningOfPeriod.toInt256();
-
-            // reset cumulative amount and timestamp
-            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
-            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
-            globalPosition.timeOfLastFunding = uint128(block.timestamp);
-
-            emit TwapUpdated(block.timestamp, oracleTwap, marketTwap);
-        }
     }
 
     function getOracleTwap() public view override returns (int256) {
