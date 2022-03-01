@@ -41,6 +41,9 @@ contract Vault is IVault, Context, IncreOwnable {
 
     //      trader     =>      market  => balances
 
+    // risk
+    uint256 public maxTVL;
+
     constructor(IERC20 _reserveToken, IInsurance _insurance) {
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
@@ -63,7 +66,7 @@ contract Vault is IVault, Context, IncreOwnable {
         return balances[idx][user];
     }
 
-    /************************* functions *************************/
+    /************************* governance *************************/
 
     modifier onlyClearingHouse() {
         require(msg.sender == address(clearingHouse), "NO CLEARINGHOUSE");
@@ -74,6 +77,11 @@ contract Vault is IVault, Context, IncreOwnable {
     function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
         require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
         clearingHouse = newClearingHouse;
+    }
+
+    function setMaxTVL(uint256 newMaxTVL) external onlyOwner {
+        require(newMaxTVL > 0, "MaxTvl must be greater than 0");
+        maxTVL = newMaxTVL;
     }
 
     /**
@@ -97,6 +105,8 @@ contract Vault is IVault, Context, IncreOwnable {
         // increment balance
         balances[idx][user] += convertedWadAmount.toInt256();
         totalReserveToken += convertedWadAmount;
+
+        require(totalReserveToken <= maxTVL, "MAX_TVL");
 
         // deposit reserveTokens to contract
         IERC20(depositToken).safeTransferFrom(user, address(this), amount);
