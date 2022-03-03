@@ -2,14 +2,18 @@ import {expect} from 'chai';
 import {utils, BigNumber} from 'ethers';
 
 import {setup, funding, User} from '../helpers/setup';
-import {convertToCurrencyUnits} from '../../helpers/contracts-helpers';
+import {
+  convertToCurrencyUnits,
+  wadToToken,
+} from '../../helpers/contracts-helpers';
+import {asBigNumber} from '../helpers/utils/calculations';
 
 describe('Increment App: Reserve', function () {
-  let user: User;
+  let user: User, deployer: User;
   let depositAmount: BigNumber;
 
   beforeEach('Set up', async () => {
-    ({user} = await setup());
+    ({user, deployer} = await setup());
     depositAmount = await funding();
     await user.usdc.approve(user.vault.address, depositAmount);
   });
@@ -100,5 +104,16 @@ describe('Increment App: Reserve', function () {
     await expect(
       user.vault.settleProfit(0, user.address, 0)
     ).to.be.revertedWith('NO CLEARINGHOUSE');
+  });
+
+  it('User can not deposit once limit is reached', async function () {
+    // set new limit
+    const newMaxTVL = asBigNumber('100');
+    await deployer.vault.setMaxTVL(newMaxTVL);
+
+    const maxDeposit = await wadToToken(await user.usdc.decimals(), newMaxTVL);
+    await expect(
+      user.clearingHouse.deposit(0, maxDeposit.add(1), user.usdc.address)
+    ).to.be.revertedWith('MAX_TVL');
   });
 });

@@ -37,12 +37,10 @@ contract Vault is IVault, Context, IncreOwnable {
 
     uint256 internal totalReserveToken;
     uint256 internal badDebt;
-    mapping(uint256 => mapping(address => int256)) private balances;
+    uint256 internal maxTVL;
 
     //      trader     =>      market  => balances
-
-    // risk
-    uint256 public maxTVL;
+    mapping(uint256 => mapping(address => int256)) private balances;
 
     constructor(IERC20 _reserveToken, IInsurance _insurance) {
         require(address(_reserveToken) != address(0), "Token can not be zero address");
@@ -77,11 +75,13 @@ contract Vault is IVault, Context, IncreOwnable {
     function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
         require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
         clearingHouse = newClearingHouse;
+        emit ClearingHouseChanged(newClearingHouse);
     }
 
     function setMaxTVL(uint256 newMaxTVL) external onlyOwner {
-        require(newMaxTVL > 0, "MaxTvl must be greater than 0");
+        require(newMaxTVL > 0, "MaxTVL must be greater than 0");
         maxTVL = newMaxTVL;
+        emit MaxTVLChanged(newMaxTVL);
     }
 
     /**
@@ -199,5 +199,9 @@ contract Vault is IVault, Context, IncreOwnable {
 
     function getTotalReserveToken() external view override returns (uint256) {
         return badDebt;
+    }
+
+    function getMaxTVL() external view override returns (uint256) {
+        return maxTVL;
     }
 }

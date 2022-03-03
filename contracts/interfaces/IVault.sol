@@ -12,6 +12,10 @@ interface IVault {
     // Event
     event BadDebtGenerated(uint256 idx, address beneficiary, uint256 amount);
 
+    event ClearingHouseChanged(IClearingHouse newClearingHouse);
+
+    event MaxTVLChanged(uint256 newMaxTVL);
+
     // dependencies
     function reserveToken() external view returns (IERC20);
 
@@ -52,6 +56,8 @@ interface IVault {
     function getTotalReserveToken() external view returns (uint256);
 
     function getBadDebt() external view returns (uint256);
+
+    function getMaxTVL() external view returns (uint256);
 
     function getReserveValue(uint256 idx, address account) external view returns (int256);
 

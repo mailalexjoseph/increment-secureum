@@ -23,6 +23,10 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await vault.setClearingHouse(clearingHouse.address)).wait();
   }
 
+  if ((await vault.getMaxTVL()).eq(0)) {
+    await (await vault.setMaxTVL(ethers.constants.MaxUint256)).wait();
+  }
+
   console.log('We have deployed the ClearingHouse');
 };
 

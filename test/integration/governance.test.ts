@@ -1,7 +1,6 @@
 import {expect} from 'chai';
-import {tokenToWad} from '../../helpers/contracts-helpers';
-import {setup, funding, User} from '../helpers/setup';
-import {BigNumber} from 'ethers';
+import {setup, User} from '../helpers/setup';
+import {asBigNumber} from '../helpers/utils/calculations';
 
 const newPerpAddress = '0x494E435245000000000000000000000000000000';
 
@@ -13,7 +12,7 @@ describe('Increment Protocol: Governance', function () {
     ({user, deployer} = await setup());
   });
 
-  describe('Allowlist markets', function () {
+  describe('IncreOwnable', function () {
     it('Can transfer ownership directly ', async function () {
       await expect(deployer.clearingHouse.transferOwner(user.address, true))
         .to.emit(user.clearingHouse, 'TransferOwner')
@@ -120,6 +119,20 @@ describe('Increment Protocol: Governance', function () {
       await expect(
         user.clearingHouse.liquidate(0, user.address, 1)
       ).to.be.revertedWith('Pausable: paused');
+    });
+  });
+  describe('Usage limits', function () {
+    it('Can not set maxTVL to 0', async function () {
+      await expect(deployer.vault.setMaxTVL(0)).to.be.revertedWith(
+        'MaxTVL must be greater than 0'
+      );
+    });
+
+    it('Can set maxTVL ', async function () {
+      const newMaxTVL = asBigNumber('100');
+      await expect(deployer.vault.setMaxTVL(newMaxTVL))
+        .to.emit(user.vault, 'MaxTVLChanged')
+        .withArgs(newMaxTVL);
     });
   });
 });
