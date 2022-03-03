@@ -22,11 +22,13 @@ describe('Increment App: Scenario', function () {
 
   let liquidityAmountUSDC: BigNumber;
   let liquidityAmount: BigNumber;
+  let tradeAmount: BigNumber;
 
   beforeEach('Set up', async () => {
     ({lp, deployer, trader} = await setup());
     liquidityAmountUSDC = await funding();
     liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+    tradeAmount = liquidityAmount.div(20); // trade 5% of liquidity
     /* important: provide some initial liquidity to the market -> w/o any liquidity left, the market will stop working */
     await provideLiquidity(deployer, deployer.usdc, liquidityAmount);
   });
@@ -53,8 +55,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -74,8 +76,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -100,8 +102,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -124,8 +126,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -145,8 +147,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -170,8 +172,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -199,8 +201,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -223,8 +225,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -244,8 +246,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -269,8 +271,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -298,8 +300,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -322,8 +324,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -343,8 +345,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -368,8 +370,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Long
         );
 
@@ -397,8 +399,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -421,8 +423,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -442,8 +444,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
@@ -466,8 +468,8 @@ describe('Increment App: Scenario', function () {
         await openPosition(
           trader,
           trader.usdc,
-          liquidityAmount,
-          liquidityAmount,
+          tradeAmount,
+          tradeAmount,
           Side.Short
         );
 
