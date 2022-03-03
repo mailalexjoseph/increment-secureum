@@ -2,6 +2,7 @@
 pragma solidity 0.8.4;
 
 // contracts
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,6 +26,7 @@ import "hardhat/console.sol";
 contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     using SafeCast for uint256;
     using SafeCast for int256;
+    using SafeERC20 for IERC20;
 
     // parameterization
     int256 public constant FEE = 3e16; // 3%
@@ -62,6 +64,26 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    function removeDust(
+        uint256 idx,
+        uint256 proposedAmount,
+        uint256 minAmount,
+        IERC20 token
+    ) external onlyOwner {
+        (, , int256 profit) = perpetuals[idx].reducePosition(msg.sender, proposedAmount, minAmount);
+
+        // apply changes to collateral
+        vault.settleProfit(idx, address(this), profit);
+
+        removeTokens(idx, token);
+    }
+
+    function removeTokens(uint256 idx, IERC20 token) public {
+        require(vault.withdrawAll(idx, address(this), token) > 0);
+
+        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
     }
 
     ///// TRADER FLOW OPERATIONS \\\\\
@@ -157,9 +179,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             minAmount
         );
 
-        // pay insurance fee on extra, added openNotional amount (in vQuote)
+        // pay insurance fee: TODO: can never withdraw this amount!
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
-        vault.settleProfit(idx, address(insurance), insuranceFee);
+        vault.settleProfit(idx, address(this), insuranceFee);
 
         int256 traderVaultDiff = fundingRate - insuranceFee;
         vault.settleProfit(idx, msg.sender, traderVaultDiff);

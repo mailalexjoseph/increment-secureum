@@ -1,5 +1,8 @@
 import {expect} from 'chai';
-import {setup, User} from '../helpers/setup';
+import {clear} from 'console';
+import {tokenToWad} from '../../helpers/contracts-helpers';
+import {provideLiquidity} from '../helpers/PerpetualUtils';
+import {funding, setup, User} from '../helpers/setup';
 import {asBigNumber} from '../helpers/utils/calculations';
 
 const newPerpAddress = '0x494E435245000000000000000000000000000000';
@@ -7,9 +10,10 @@ const newPerpAddress = '0x494E435245000000000000000000000000000000';
 describe('Increment Protocol: Governance', function () {
   let deployer: User;
   let user: User;
+  let lp: User;
 
   beforeEach('Set up', async () => {
-    ({user, deployer} = await setup());
+    ({user, deployer, lp} = await setup());
   });
 
   describe('IncreOwnable', function () {
@@ -138,6 +142,37 @@ describe('Increment Protocol: Governance', function () {
       await expect(deployer.vault.setMaxTVL(newMaxTVL))
         .to.emit(user.vault, 'MaxTVLChanged')
         .withArgs(newMaxTVL);
+    });
+  });
+
+  describe('Dust', function () {
+    it('Owner can withdraw dust', async function () {
+      // provide initial liquidity
+      const liquidityAmountUSDC = await funding();
+      const liquidityAmount = await tokenToWad(
+        await lp.usdc.decimals(),
+        liquidityAmountUSDC
+      );
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+
+      // generate some dust
+      const dustAmount = liquidityAmount.div(20);
+      await user.perpetual.__TestPerpetual_setTraderPosition(
+        user.clearingHouse.address,
+        0,
+        dustAmount,
+        (
+          await lp.perpetual.getGlobalPosition()
+        ).cumFundingRate
+      );
+      expect(await user.perpetual.getBaseDust()).to.eq(dustAmount);
+
+      // withdraw dust
+      await deployer.clearingHouse.removeDust(0, 0, 0, deployer.usdc.address);
+
+      expect(await deployer.usdc.balanceOf(deployer.address)).to.gt(
+        liquidityAmountUSDC
+      );
     });
   });
 });

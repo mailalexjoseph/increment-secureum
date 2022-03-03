@@ -126,8 +126,8 @@ describe('Increment App: Insurance', function () {
       traderReserveDeposited.sub(insurancePayed)
     );
 
-    expect(await trader.vault.getBalance(0, trader.insurance.address)).to.be.eq(
-      insurancePayed
-    );
+    expect(
+      await trader.vault.getBalance(0, trader.clearingHouse.address)
+    ).to.be.eq(insurancePayed);
   });
 });

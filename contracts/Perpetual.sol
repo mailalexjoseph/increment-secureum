@@ -40,7 +40,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
     uint256 internal totalLiquidityProvided;
-    uint256 internal vBaseDust;
 
     int256 public oracleCumulativeAmount;
     int256 public oracleCumulativeAmountAtBeginningOfPeriod;
@@ -585,7 +584,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     /// TODO: find a way to withdraw the dust
     function getBaseDust() external view returns (uint256) {
-        return vBaseDust;
+        return traderPosition[address(clearingHouse)].positionSize.toUint256();
     }
 
     /// @notice Returns vBaseAmount and vQuoteProceeds to reflect how much the position has been reduced
@@ -614,7 +613,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
                 } else {
                     // dust vBase balance can not be sold
                     emit DustGenerated(baseRemaining);
-                    vBaseDust += baseRemaining;
+                    _donate(baseRemaining);
                 }
             }
 
@@ -622,6 +621,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             // baseRemaining will be 0 if proposedAmount not more than what's needed to fully buy back short position
             vBaseAmount = (vBaseProceeds - baseRemaining).toInt256();
         }
+    }
+
+    function _donate(uint256 baseAmount) internal {
+        traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
     }
 
     function _shareTraded(uint256 sellAmount, uint256 sellIndex) internal view returns (uint256) {
