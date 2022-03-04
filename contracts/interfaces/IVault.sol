@@ -14,6 +14,8 @@ interface IVault {
 
     event ClearingHouseChanged(IClearingHouse newClearingHouse);
 
+    event InsuranceChanged(IInsurance newInsurance);
+
     event MaxTVLChanged(uint256 newMaxTVL);
 
     // dependencies

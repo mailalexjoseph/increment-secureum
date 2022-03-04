@@ -168,11 +168,11 @@ describe('Increment Protocol: Governance', function () {
       expect(await user.perpetual.getBaseDust()).to.eq(dustAmount);
 
       // withdraw dust
-      await deployer.clearingHouse.removeDust(0, 0, 0, deployer.usdc.address);
+      await deployer.clearingHouse.sellDust(0, 0, 0);
 
-      expect(await deployer.usdc.balanceOf(deployer.address)).to.gt(
-        liquidityAmountUSDC
-      );
+      expect(
+        await deployer.vault.getBalance(0, deployer.clearingHouse.address)
+      ).to.gt(0);
     });
   });
 });

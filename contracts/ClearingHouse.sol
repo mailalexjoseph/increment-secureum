@@ -34,6 +34,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE + 25e15; // initial margin is 2.5% + 3% + 2.5% = 8%
     uint256 public constant LIQUIDATION_REWARD = 60e15; // 6%
     int256 public constant INSURANCE_FEE = 1e15; // 0.1%
+    uint256 internal constant INSURANCE_RATIO = 1e17; // 10%
 
     // dependencies
     IVault public vault;
@@ -66,24 +67,33 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         _unpause();
     }
 
-    function removeDust(
+    function sellDust(
         uint256 idx,
         uint256 proposedAmount,
-        uint256 minAmount,
-        IERC20 token
+        uint256 minAmount
     ) external onlyOwner {
         (, , int256 profit) = perpetuals[idx].reducePosition(msg.sender, proposedAmount, minAmount);
 
         // apply changes to collateral
         vault.settleProfit(idx, address(this), profit);
-
-        removeTokens(idx, token);
     }
 
-    function removeTokens(uint256 idx, IERC20 token) public {
-        require(vault.withdrawAll(idx, address(this), token) > 0);
+    function removeInsurance(
+        uint256 idx,
+        uint256 amount,
+        IERC20 token
+    ) external onlyOwner {
+        require(vault.withdraw(idx, address(this), amount, token) > 0);
 
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
+
+        uint256 lockedInsurance;
+        for (uint256 i = 0; i < perpetuals.length; i++) {
+            // slither-disable-next-line calls-loop
+            lockedInsurance += vault.getBalance(i, address(this)).toUint256();
+        }
+        uint256 tvl = vault.getTotalReserveToken();
+        require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
     }
 
     ///// TRADER FLOW OPERATIONS \\\\\

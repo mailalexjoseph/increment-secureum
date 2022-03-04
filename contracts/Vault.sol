@@ -31,37 +31,29 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 internal immutable reserveTokenDecimals;
 
     // state
-    IInsurance public immutable override insurance;
     IERC20 public immutable override reserveToken;
     IClearingHouse public override clearingHouse;
+    IInsurance public override insurance;
 
-    uint256 internal totalReserveToken;
     uint256 internal badDebt;
     uint256 internal maxTVL;
 
     //      trader     =>      market  => balances
     mapping(uint256 => mapping(address => int256)) private balances;
+    uint256 internal totalReserveToken;
 
-    constructor(IERC20 _reserveToken, IInsurance _insurance) {
+    constructor(IERC20 _reserveToken) {
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
             IERC20Decimals(address(_reserveToken)).decimals() <= MAX_DECIMALS,
             "Has to have not more than 18 decimals"
         );
-        require(address(_insurance) != address(0), "Insurance can not be zero address");
 
         // set contract addresses
         reserveToken = _reserveToken;
-        insurance = _insurance;
 
         // set other parameters
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
-    }
-
-    /************************* getter *************************/
-
-    function getBalance(uint256 idx, address user) external view override returns (int256) {
-        return balances[idx][user];
     }
 
     /************************* governance *************************/
@@ -76,6 +68,12 @@ contract Vault is IVault, Context, IncreOwnable {
         require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
         clearingHouse = newClearingHouse;
         emit ClearingHouseChanged(newClearingHouse);
+    }
+
+    function setInsurance(IInsurance newInsurance) external onlyOwner {
+        require(address(newInsurance) != address(0), "Insurance can not be zero address");
+        insurance = newInsurance;
+        emit InsuranceChanged(newInsurance);
     }
 
     function setMaxTVL(uint256 newMaxTVL) external onlyOwner {
@@ -169,6 +167,12 @@ contract Vault is IVault, Context, IncreOwnable {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
         balances[idx][user] += settlement;
+    }
+
+    /************************* getter *************************/
+
+    function getBalance(uint256 idx, address user) external view override returns (int256) {
+        return balances[idx][user];
     }
 
     /**
