@@ -39,7 +39,8 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const perpetual = await ethers.getContract(perpetualVersionToUse, deployer);
 
   console.log('We have deployed Perpetual');
-  // register perpetual contract
+
+  // register vEUR/vUSD in clearingHouse, register perpetual in clearingHouse
 
   if ((await vEUR.owner()) !== perpetual.address) {
     await (await vEUR.transferOwner(perpetual.address, true)).wait();

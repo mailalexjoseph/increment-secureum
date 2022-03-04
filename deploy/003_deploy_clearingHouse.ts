@@ -16,15 +16,12 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     log: true,
   });
 
+  // register clearingHouse in vault
   const vault = await ethers.getContract('Vault', deployer);
   const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
 
   if ((await vault.clearingHouse()) !== clearingHouse.address) {
     await (await vault.setClearingHouse(clearingHouse.address)).wait();
-  }
-
-  if ((await vault.getMaxTVL()).eq(0)) {
-    await (await vault.setMaxTVL(ethers.constants.MaxUint256)).wait();
   }
 
   console.log('We have deployed the ClearingHouse');

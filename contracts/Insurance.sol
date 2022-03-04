@@ -16,18 +16,11 @@ contract Insurance is IInsurance, IncreOwnable {
     IERC20 public token;
     IVault public vault;
 
-    event DebtSettled(address indexed user, uint256 amount);
-    event LiquidityWithdrawn(uint256 amount);
-    event VaultChanged(IVault vault);
-
-    constructor(IERC20 _token) {
+    constructor(IERC20 _token, IVault _vault) {
+        require(address(_token) != address(0), "Token zero address");
+        require(address(_vault) != address(0), "Vault zero address");
         token = _token;
-    }
-
-    function setVault(IVault vault_) external onlyOwner {
-        require(address(vault_) != address(0));
-        vault = vault_;
-        emit VaultChanged(vault_);
+        vault = _vault;
     }
 
     modifier onlyVault() {
