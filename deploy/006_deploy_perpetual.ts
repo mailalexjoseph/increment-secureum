@@ -7,21 +7,25 @@ import {
   getCryptoSwapFactory,
 } from '../helpers/contracts-getters';
 
+import {ClearingHouse, Perpetual} from '../typechain';
+
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
   const vEUR = await ethers.getContract('VBase', deployer);
   const vUSD = await ethers.getContract('VQuote', deployer);
 
-  // let cryptoswap;
-  // if (hre.network.name == 'kovan') {
-  //   cryptoswap = await ethers.getContract('CurveCryptoSwapTest', deployer);
-  // } else {
-  const factory = await getCryptoSwapFactory(hre);
-  const cryptoswap = await getCryptoSwap(factory);
-  // }
+  let cryptoswap;
+  if (hre.network.name == 'kovan') {
+    cryptoswap = await ethers.getContract('CurveCryptoSwapTest', deployer);
+  } else {
+    const factory = await getCryptoSwapFactory(hre);
+    cryptoswap = await getCryptoSwap(factory);
+  }
 
-  const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
+  const clearingHouse = <ClearingHouse>(
+    await ethers.getContract('ClearingHouse', deployer)
+  );
 
   const perpetualArgs = [
     vEUR.address,
@@ -36,7 +40,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     args: perpetualArgs,
     log: true,
   });
-  const perpetual = await ethers.getContract(perpetualVersionToUse, deployer);
+  const perpetual = <Perpetual>(
+    await ethers.getContract(perpetualVersionToUse, deployer)
+  );
 
   console.log('We have deployed Perpetual');
 
@@ -50,7 +56,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await vUSD.transferOwner(perpetual.address, true)).wait();
   }
 
-  await clearingHouse.allowListPerpetual(perpetual.address);
+  if ((await clearingHouse.getNumMarkets()).eq(0)) {
+    await (await clearingHouse.allowListPerpetual(perpetual.address)).wait();
+  }
 
   console.log('We have registered the Perpetual');
 };

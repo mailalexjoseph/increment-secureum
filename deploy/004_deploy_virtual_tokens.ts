@@ -7,8 +7,6 @@ import {getChainlinkOracle} from '../helpers/contracts-getters';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  console.log(`Current network is ${hre.network.name.toString()}`);
-
   await hre.deployments.deploy('VBase', {
     from: deployer,
     args: ['vEUR base token', 'vEUR', getChainlinkOracle(hre, 'EUR_USD')],

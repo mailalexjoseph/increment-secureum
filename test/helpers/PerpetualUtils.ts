@@ -7,7 +7,6 @@ import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
 import {Side} from './utils/types';
 import {UserPositionStructOutput} from '../../typechain/ClearingHouse';
-import {join} from 'path/posix';
 
 export async function setUpPoolLiquidity(
   lp: User,
@@ -97,10 +96,14 @@ export async function extendPositionWithCollateral(
   const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
   await _checkTokenBalance(user, token, tokenAmount);
 
-  await token.approve(user.vault.address, depositAmount);
-  await user.clearingHouse.deposit(0, tokenAmount, token.address);
+  await (await token.approve(user.vault.address, depositAmount)).wait();
+  await (
+    await user.clearingHouse.deposit(0, tokenAmount, token.address)
+  ).wait();
 
-  await user.clearingHouse.extendPosition(0, positionAmount, direction, 0);
+  await (
+    await user.clearingHouse.extendPosition(0, positionAmount, direction, 0)
+  ).wait();
 }
 
 // reduce or close a position
@@ -118,10 +121,12 @@ export async function reducePosition(
     proposedAmount = await deriveProposedAmount(traderPosition, user.market);
   }
 
-  await user.clearingHouse.reducePosition(0, proposedAmount, 0);
+  await (await user.clearingHouse.reducePosition(0, proposedAmount, 0)).wait();
 
   const userDeposits = await user.vault.getReserveValue(0, user.address);
-  await user.clearingHouse.withdraw(0, userDeposits, token.address);
+  await (
+    await user.clearingHouse.withdraw(0, userDeposits, token.address)
+  ).wait();
 }
 
 // provide liquidity with 18 decimals
@@ -134,8 +139,10 @@ export async function provideLiquidity(
   const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
   await _checkTokenBalance(user, token, tokenAmount);
 
-  await token.approve(user.vault.address, tokenAmount);
-  await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address);
+  await (await token.approve(user.vault.address, tokenAmount)).wait();
+  await (
+    await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address)
+  ).wait();
 }
 
 // withdraw liquidity
