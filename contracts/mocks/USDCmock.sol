@@ -4,17 +4,21 @@ pragma solidity 0.8.4;
 // contracts
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
-contract MintableERC20 is ERC20 {
+import {IncreOwnable} from "../utils/IncreOwnable.sol";
+
+contract USDCmock is ERC20, IncreOwnable {
     uint8 public _decimals;
 
     constructor(
-        uint256 initialSupply,
         string memory shortName,
         string memory longName,
         uint8 decimals_
     ) ERC20(shortName, longName) {
-        _mint(msg.sender, initialSupply);
         _decimals = decimals_;
+    }
+
+    function mint(address _to, uint256 _amount) public onlyOwner {
+        _mint(_to, _amount);
     }
 
     function decimals() public view virtual override returns (uint8) {
