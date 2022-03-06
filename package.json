@@ -65,7 +65,7 @@
     "test:unit": "yarn compile && cross-env mocha --bail --recursive 'test/unit/*.test.ts'",
     "test:debug": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet HARDHAT_COMPILE=true hardhat test",
     "gas": "cross-env REPORT_GAS=true hardhat test",
-    "coverage": "cross-env HARDHAT_DEPLOY_FIXTURE=true HARDHAT_FORK=mainnet hardhat coverage",
+    "coverage": "cross-env HARDHAT_FORK=mainnet hardhat coverage",
     "verify": "yarn run compile && yarn run format && yarn run lint && yarn run test",
     "slither": "./slither.sh",
     "dev": "hardhat node --watch --export contractsInfo.json",
