@@ -356,6 +356,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             market.remove_liquidity(liquidityAmountToRemove, [uint256(0), uint256(0)]);
 
+            require(vQuote.balanceOf(address(market)) > 0, "You broke the market");
+            require(vBase.balanceOf(address(market)) > 0, "You broke the market");
+
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
 
