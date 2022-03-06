@@ -44,6 +44,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     // global state
 
     constructor(IVault _vault, IInsurance _insurance) {
+        require(address(_vault) != address(0), "Vault address cannot be 0");
+        require(address(_insurance) != address(0), "Insurance address cannot be 0");
         vault = _vault;
         insurance = _insurance;
     }
