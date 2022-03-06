@@ -123,6 +123,13 @@ export async function reducePosition(
 
   await (await user.clearingHouse.reducePosition(0, proposedAmount, 0)).wait();
 
+  await withdrawCollateral(user, token);
+}
+
+export async function withdrawCollateral(
+  user: User,
+  token: IERC20Metadata
+): Promise<void> {
   const userDeposits = await user.vault.getReserveValue(0, user.address);
   await (
     await user.clearingHouse.withdraw(0, userDeposits, token.address)

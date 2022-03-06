@@ -9,6 +9,7 @@ import {
   closePosition,
   provideLiquidity,
   withdrawLiquidity,
+  withdrawCollateral,
 } from '../test/helpers/PerpetualUtils';
 import env = require('hardhat');
 
@@ -54,32 +55,47 @@ const getContractsKovan = async (deployAccount: string): Promise<any> => {
   };
 };
 
-async function closeExistingPosition(deployer: User) {
+async function closeExistingPosition(user: User) {
   // We force traders / lps to close their position before opening a new one
-  const traderPosition = await deployer.perpetual.getTraderPosition(
-    deployer.address
+  const traderPosition = await user.clearingHouse.getTraderPosition(
+    0,
+    user.address
   );
   if (
     !traderPosition.positionSize.isZero() ||
     !traderPosition.openNotional.isZero()
   ) {
     console.log('Closing existing position');
-    await closePosition(deployer, deployer.usdc);
+    await closePosition(user, user.usdc);
+  }
+  const reserveValue = await user.clearingHouse.getReserveValue(
+    0,
+    user.address
+  );
+  if (!reserveValue.isZero()) {
+    console.log('Withdraw remaining collateral');
+    await withdrawCollateral(user, user.usdc);
   }
 }
 
-async function withdrawExistingLiquidity(deployer: User) {
+async function withdrawExistingLiquidity(user: User) {
   // We force traders / lps to close their position before opening a new one
-  const liquidityPosition = await deployer.perpetual.getLpPosition(
-    deployer.address
-  );
+  const liquidityPosition = await user.perpetual.getLpPosition(user.address);
   if (
     !liquidityPosition.positionSize.isZero() ||
     !liquidityPosition.openNotional.isZero() ||
     !liquidityPosition.liquidityBalance.isZero()
   ) {
     console.log('Withdraw available liquidity');
-    await withdrawLiquidity(deployer, deployer.usdc);
+    await withdrawLiquidity(user, user.usdc);
+  }
+  const reserveValue = await user.clearingHouse.getReserveValue(
+    0,
+    user.address
+  );
+  if (!reserveValue.isZero()) {
+    console.log('Withdraw remaining collateral');
+    await withdrawCollateral(user, user.usdc);
   }
 }
 
@@ -109,23 +125,33 @@ const main = async function () {
   // Scenario
 
   /* initial liquidity */
-  const currentLiquidity = await deployer.curveToken.totalSupply();
-  if (currentLiquidity.isZero()) {
+  if ((await deployer.curveToken.totalSupply()).isZero()) {
     console.log('Provide initial liquidity');
     await provideLiquidity(user, user.usdc, asBigNumber('5000'));
   }
 
-  // cleanup
-  await closeExistingPosition(deployer);
+  // provide liquidity: TODO fix bugs
+  // await withdrawExistingLiquidity(deployer);
+  // await provideLiquidity(deployer, deployer.usdc, liquidityAmount);
 
-  // open position
-  console.log('Open Position');
+  // open long position
+  await closeExistingPosition(deployer);
   await openPosition(
     deployer,
     deployer.usdc,
     liquidityAmount.div(100),
     liquidityAmount.div(100),
     Side.Long
+  );
+
+  // open short position
+  await closeExistingPosition(user);
+  await openPosition(
+    user,
+    user.usdc,
+    liquidityAmount.div(200),
+    liquidityAmount.div(50),
+    Side.Short
   );
 };
 
