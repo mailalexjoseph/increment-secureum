@@ -335,6 +335,7 @@ describe('Increment App: Liquidity', function () {
         await lpTwo.clearingHouse.settleAndWithdrawLiquidity(
           0,
           tentativeQuoteAmount,
+          0,
           lpTwo.usdc.address
         );
 

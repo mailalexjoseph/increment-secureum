@@ -113,7 +113,12 @@ describe('Increment Protocol: Governance', function () {
         'Pausable: paused'
       );
       await expect(
-        user.clearingHouse.settleAndWithdrawLiquidity(0, 1, user.usdc.address)
+        user.clearingHouse.settleAndWithdrawLiquidity(
+          0,
+          1,
+          0,
+          user.usdc.address
+        )
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(

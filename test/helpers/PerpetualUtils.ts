@@ -128,6 +128,7 @@ export async function withdrawLiquidity(
   await user.clearingHouse.settleAndWithdrawLiquidity(
     0,
     tentativeQuoteAmount,
+    0,
     token.address
   );
 }

@@ -74,7 +74,11 @@ interface IPerpetual {
 
     function removeLiquidity(address account, uint256 amount) external;
 
-    function settleAndWithdrawLiquidity(address account, uint256 proposedAmount) external returns (int256);
+    function settleAndWithdrawLiquidity(
+        address account,
+        uint256 proposedAmount,
+        uint256 minAmount
+    ) external returns (int256);
 
     // price getter
     function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);

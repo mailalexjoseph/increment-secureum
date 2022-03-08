@@ -40,7 +40,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
     uint256 internal totalLiquidityProvided;
-    uint256 internal vQuoteDust;
     uint256 internal vBaseDust;
 
     int256 public oracleCumulativeAmount;
@@ -323,8 +322,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // TODO: should we just hardcode amount here?
         LibPerpetual.UserPosition storage lp = lpPosition[account];
 
+        /*
+        Question: Can we loosen this?
+        Answer: No, since LPs could otherwise open an active position without the facing the risk of liquidations.
+        Rework the LP role to make liquidations possible */
+
         // slither-disable-next-line incorrect-equality
-        require(amount <= lp.liquidityBalance, "Not enough liquidity provided"); //TODO: can we loosen this?
+        require(amount <= lp.liquidityBalance, "Not enough liquidity provided");
 
         // lower balances
         lp.liquidityBalance -= amount;
@@ -359,21 +363,26 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @notice A LP wishing to cash out from his position entirely should first call `removeLiquidity` then `settleAndWithdrawLiquidity`
     /// @notice Separated from `removeLiquidity` because `proposedAmount` (for SHORT like positions) can't guessed at the moment when user calls `removeLiquidity`
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
-    function settleAndWithdrawLiquidity(address account, uint256 proposedAmount)
-        external
-        override
-        onlyClearingHouse
-        returns (int256 profit)
-    {
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    function settleAndWithdrawLiquidity(
+        address account,
+        uint256 proposedAmount,
+        uint256 minAmount
+    ) external override onlyClearingHouse returns (int256) {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
         updateGenericProtocolState();
 
         // profit = pnl + fundingPayments
-        (, , profit) = _reducePosition(lp, global, proposedAmount, 0);
+        (int256 vBaseAmount, , int256 profit) = _reducePosition(lp, global, proposedAmount, minAmount);
+
+        // LPs have to close down their positions before they can withdraw
+        require((lp.positionSize + vBaseAmount) == 0, "Full position has to be closed here");
 
         delete lpPosition[account];
+
+        return profit;
     }
 
     ///// COMMON OPERATIONS \\\\\
@@ -488,29 +497,11 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    /// @notice Tiny amounts shouldn't be traded, but given to the protocol, to avoid revert of the cryptoSwap pool
-    function _evaluateMinThreshold(bool isLong, uint256 proposedAmount) internal returns (bool) {
-        if (proposedAmount < 1e8) {
-            if (isLong) {
-                vQuoteDust += proposedAmount;
-            } else {
-                vBaseDust += proposedAmount;
-            }
-            emit DustGenerated(proposedAmount);
-
-            return false;
-        }
-
-        return true;
-    }
-
     function _checkProposedAmount(
         bool isLong,
         int256 positionSize,
         uint256 proposedAmount
     ) internal view returns (bool) {
-        int256 marketEURUSDTWAP = marketTwap;
-
         if (isLong) {
             // proposedAmount is a vBase denominated amount
             return proposedAmount <= positionSize.toUint256();
@@ -521,7 +512,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             // USD_amount = EUR_USD * EUR_amount
             int256 positivePositionSize = -positionSize;
-            int256 reasonableVQuoteAmount = LibMath.wadMul(marketEURUSDTWAP, positivePositionSize);
+            int256 reasonableVQuoteAmount = LibMath.wadMul(marketTwap, positivePositionSize);
 
             int256 deviation = LibMath.wadDiv(
                 LibMath.abs(proposedAmount.toInt256() - reasonableVQuoteAmount),
@@ -529,6 +520,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             );
 
             // Allow for a 50% deviation from the market vQuote TWAP price to close this position
+            // slither-disable-next-line timestamp (TODO: false positive)
             return deviation < 5e17;
         }
     }
@@ -551,10 +543,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         )
     {
         bool isLong = user.positionSize > 0 ? true : false;
-
-        // if (!_evaluateMinThreshold(isLong, proposedAmount)) {
-        //     return;
-        // }
 
         require(
             _checkProposedAmount(isLong, user.positionSize, proposedAmount),
@@ -649,7 +637,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     }
 
     function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
-        // slither-disable-next-line unused-retur
+        // slither-disable-next-line unused-return
         vBase.mint(baseAmount);
         uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
         vQuote.burn(vQuoteReceived);

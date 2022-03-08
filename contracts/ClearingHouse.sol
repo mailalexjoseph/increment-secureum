@@ -287,7 +287,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
     /// @param idx Index of the perpetual market
-    /// @param amount Amout of liquidity to be removed from the pool. 18 decimals
+    /// @param amount Amount of liquidity to be removed from the pool. 18 decimals
     function removeLiquidity(uint256 idx, uint256 amount) external whenNotPaused {
         perpetuals[idx].removeLiquidity(msg.sender, amount);
         emit LiquidityRemoved(idx, msg.sender, amount);
@@ -297,13 +297,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice `proposedAmount` should big enough so that the entire LP position is closed
     /// @param idx Index of the perpetual market
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function settleAndWithdrawLiquidity(
         uint256 idx,
         uint256 proposedAmount,
+        uint256 minAmount,
         IERC20 token
     ) external whenNotPaused {
         // profit = pnl + fundingPayments
-        int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, proposedAmount);
+        int256 profit = perpetuals[idx].settleAndWithdrawLiquidity(msg.sender, proposedAmount, minAmount);
         vault.settleProfit(idx, msg.sender, profit);
 
         // remove the liquidity provider from the list
