@@ -332,7 +332,7 @@ describe('Increment: open/close long/short trading positions', () => {
     }
     const eFundingPayment = rMul(
       eUpcomingFundingRate,
-      traderPositionAfterFirstTrade.openNotional.abs()
+      traderPositionAfterFirstTrade.positionSize.abs()
     );
 
     const addedOpenNotional = traderPositionAfterSecondTrade.openNotional

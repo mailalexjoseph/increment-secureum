@@ -150,12 +150,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         updateGenericProtocolState();
 
-        // apply funding rate on existing openNotional
+        // apply funding rate on existing positionSize
         int256 fundingRate = _getFundingPayments(
             isLong,
             trader.cumFundingRate,
             global.cumFundingRate,
-            LibMath.abs(trader.openNotional)
+            LibMath.abs(trader.positionSize)
         );
 
         // open position
