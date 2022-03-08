@@ -202,7 +202,7 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     function getTotalReserveToken() external view override returns (uint256) {
-        return badDebt;
+        return totalReserveToken;
     }
 
     function getMaxTVL() external view override returns (uint256) {
