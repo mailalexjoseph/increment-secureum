@@ -1,16 +1,16 @@
 import {ethers, getNamedAccounts} from 'hardhat';
 
-import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
-import {Side} from '../../test/helpers/utils/types';
-import {setupUsers} from '../../helpers/misc-utils';
-import {tokenToWad} from '../../helpers/contracts-helpers';
+import {convertToCurrencyDecimals} from '../helpers/contracts-helpers';
+import {Side} from '../test/helpers/utils/types';
+import {setupUsers} from '../helpers/misc-utils';
+import {tokenToWad} from '../helpers/contracts-helpers';
 import {
-  openPosition,
+  extendPositionWithCollateral,
   closePosition,
   provideLiquidity,
   withdrawLiquidity,
   withdrawCollateral,
-} from '../../test/helpers/PerpetualUtils';
+} from '../test/helpers/PerpetualUtils';
 import env = require('hardhat');
 
 import {
@@ -18,17 +18,20 @@ import {
   Vault,
   Perpetual,
   Insurance,
-  ERC20,
+  USDCmock,
+  IERC20,
   ClearingHouse,
-} from '../../typechain';
+  ClearingHouseViewer,
+} from '../typechain';
 
 import {
   CurveCryptoSwapTest,
   CurveTokenV5Test,
-} from '../../contracts-vyper/typechain';
+} from '../contracts-vyper/typechain';
 
-import {User} from '../../test/helpers/setup';
-import {asBigNumber} from '../../test/helpers/utils/calculations';
+import {User} from '../test/helpers/setup';
+import {asBigNumber} from '../test/helpers/utils/calculations';
+import {BigNumber, tEthereumAddress} from '../helpers/types';
 
 const getContractsKovan = async (deployAccount: string): Promise<any> => {
   return {
@@ -43,12 +46,31 @@ const getContractsKovan = async (deployAccount: string): Promise<any> => {
     vault: <Vault>await ethers.getContract('Vault', deployAccount),
     perpetual: <Perpetual>await ethers.getContract('Perpetual', deployAccount),
     insurance: <Insurance>await ethers.getContract('Insurance', deployAccount),
-    usdc: <ERC20>await ethers.getContract('USDCmock', deployAccount),
+    usdc: <IERC20>await ethers.getContract('USDCmock', deployAccount),
     clearingHouse: <ClearingHouse>(
       await ethers.getContract('ClearingHouse', deployAccount)
     ),
+    clearingHouseViewer: <ClearingHouseViewer>(
+      await ethers.getContract('ClearingHouseViewer', deployAccount)
+    ),
   };
 };
+
+async function fundAccounts(
+  user: User,
+  amount: BigNumber,
+  accounts: tEthereumAddress[]
+) {
+  console.log('Fund accounts');
+  const usdcMock = await (<USDCmock>user.usdc);
+  if ((await usdcMock.owner()) !== user.address) {
+    throw 'User can not mint tokens';
+  }
+
+  for (const account of accounts) {
+    await (await usdcMock.mint(account, amount)).wait();
+  }
+}
 
 async function closeExistingPosition(user: User) {
   // We force traders / lps to close their position before opening a new one
@@ -107,6 +129,14 @@ const main = async function () {
   const contracts = await getContractsKovan(users.deployer);
   const [deployer, user] = await setupUsers(Object.values(users), contracts);
 
+  const usdcMock = await (<USDCmock>deployer.usdc);
+  if ((await usdcMock.owner()) === deployer.address) {
+    await fundAccounts(deployer, asBigNumber('1000'), [
+      deployer.address,
+      user.address,
+    ]);
+  }
+
   // liquidity amount
   const liquidityAmountUSDC = await convertToCurrencyDecimals(
     contracts.usdc,
@@ -131,7 +161,7 @@ const main = async function () {
 
   // open long position
   await closeExistingPosition(deployer);
-  await openPosition(
+  await extendPositionWithCollateral(
     deployer,
     deployer.usdc,
     liquidityAmount.div(100),
@@ -141,7 +171,7 @@ const main = async function () {
 
   // open short position
   await closeExistingPosition(user);
-  await openPosition(
+  await extendPositionWithCollateral(
     user,
     user.usdc,
     liquidityAmount.div(200),
@@ -150,4 +180,9 @@ const main = async function () {
   );
 };
 
-main();
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

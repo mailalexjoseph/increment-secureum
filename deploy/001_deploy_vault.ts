@@ -10,15 +10,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   // deploy reserve token when kovan
   let vaultConstructorArgs;
   if (hre.network.name === 'kovan') {
-    vaultConstructorArgs = [
-      (await ethers.getContract('USDCmock')).address,
-      (await ethers.getContract('Insurance', deployer)).address,
-    ];
+    vaultConstructorArgs = [(await ethers.getContract('USDCmock')).address];
   } else {
-    vaultConstructorArgs = [
-      getReserveAddress('USDC', hre),
-      (await ethers.getContract('Insurance', deployer)).address,
-    ];
+    vaultConstructorArgs = [getReserveAddress('USDC', hre)];
   }
 
   await hre.deployments.deploy('Vault', {
