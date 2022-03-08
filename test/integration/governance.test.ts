@@ -168,7 +168,7 @@ describe('Increment Protocol: Governance', function () {
       expect(await user.perpetual.getBaseDust()).to.eq(dustAmount);
 
       // withdraw dust
-      await deployer.clearingHouse.sellDust(0, 0, 0);
+      await deployer.clearingHouse.sellDust(0, dustAmount, 0);
 
       expect(
         await deployer.vault.getBalance(0, deployer.clearingHouse.address)

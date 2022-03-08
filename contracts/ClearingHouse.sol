@@ -72,7 +72,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 proposedAmount,
         uint256 minAmount
     ) external onlyOwner {
-        (, , int256 profit) = perpetuals[idx].reducePosition(msg.sender, proposedAmount, minAmount);
+        (, , int256 profit) = perpetuals[idx].reducePosition(address(this), proposedAmount, minAmount);
 
         // apply changes to collateral
         vault.settleProfit(idx, address(this), profit);

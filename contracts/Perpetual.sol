@@ -237,7 +237,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         LibPerpetual.UserPosition storage trader = traderPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
-        require(trader.openNotional != 0, "No position currently opened in this market");
+        require(trader.openNotional != 0 || trader.positionSize != 0, "No position currently opened in this market");
 
         updateGenericProtocolState();
 
