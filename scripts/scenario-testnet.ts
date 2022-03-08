@@ -1,19 +1,18 @@
 import {ethers, getNamedAccounts} from 'hardhat';
 
-import {convertToCurrencyDecimals} from '../helpers/contracts-helpers';
-import {Side} from '../test/helpers/utils/types';
-import {setupUsers} from '../helpers/misc-utils';
-import {tokenToWad} from '../helpers/contracts-helpers';
+import {convertToCurrencyDecimals} from '../../helpers/contracts-helpers';
+import {Side} from '../../test/helpers/utils/types';
+import {setupUsers} from '../../helpers/misc-utils';
+import {tokenToWad} from '../../helpers/contracts-helpers';
 import {
   openPosition,
   closePosition,
   provideLiquidity,
   withdrawLiquidity,
   withdrawCollateral,
-} from '../test/helpers/PerpetualUtils';
+} from '../../test/helpers/PerpetualUtils';
 import env = require('hardhat');
 
-import {getReserveAddress} from '../helpers/contracts-getters';
 import {
   VirtualToken,
   Vault,
@@ -21,19 +20,17 @@ import {
   Insurance,
   ERC20,
   ClearingHouse,
-} from '../typechain';
+} from '../../typechain';
 
 import {
   CurveCryptoSwapTest,
   CurveTokenV5Test,
-} from '../contracts-vyper/typechain';
+} from '../../contracts-vyper/typechain';
 
-import {User} from '../test/helpers/setup';
-import {asBigNumber} from '../test/helpers/utils/calculations';
+import {User} from '../../test/helpers/setup';
+import {asBigNumber} from '../../test/helpers/utils/calculations';
 
 const getContractsKovan = async (deployAccount: string): Promise<any> => {
-  const usdcAddress = getReserveAddress('USDC', env);
-
   return {
     market: <CurveCryptoSwapTest>(
       await ethers.getContract('CurveCryptoSwapTest', deployAccount)
@@ -46,9 +43,7 @@ const getContractsKovan = async (deployAccount: string): Promise<any> => {
     vault: <Vault>await ethers.getContract('Vault', deployAccount),
     perpetual: <Perpetual>await ethers.getContract('Perpetual', deployAccount),
     insurance: <Insurance>await ethers.getContract('Insurance', deployAccount),
-    usdc: <ERC20>(
-      await ethers.getContractAt('ERC20', usdcAddress, deployAccount)
-    ),
+    usdc: <ERC20>await ethers.getContract('USDCmock', deployAccount),
     clearingHouse: <ClearingHouse>(
       await ethers.getContract('ClearingHouse', deployAccount)
     ),

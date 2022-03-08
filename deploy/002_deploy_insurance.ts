@@ -7,10 +7,13 @@ import {getReserveAddress} from '../helpers/contracts-getters';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const insuranceConstructorArgs = [
-    getReserveAddress('USDC', hre),
-    (await ethers.getContract('Vault', deployer)).address,
-  ];
+  // deploy reserve token when kovan
+  let insuranceConstructorArgs;
+  if (hre.network.name === 'kovan') {
+    insuranceConstructorArgs = [(await ethers.getContract('USDCmock')).address];
+  } else {
+    insuranceConstructorArgs = [getReserveAddress('USDC', hre)];
+  }
 
   await hre.deployments.deploy('Insurance', {
     from: deployer,
@@ -30,6 +33,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
 func.tags = ['Insurance'];
 func.id = 'deploy_insurance_contract';
-func.dependencies = ['Vault'];
+func.dependencies = ['Token'];
 
 export default func;

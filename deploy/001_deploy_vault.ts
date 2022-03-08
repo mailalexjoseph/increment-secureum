@@ -7,7 +7,19 @@ import {getReserveAddress} from '../helpers/contracts-getters';
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const vaultConstructorArgs = [getReserveAddress('USDC', hre)];
+  // deploy reserve token when kovan
+  let vaultConstructorArgs;
+  if (hre.network.name === 'kovan') {
+    vaultConstructorArgs = [
+      (await ethers.getContract('USDCmock')).address,
+      (await ethers.getContract('Insurance', deployer)).address,
+    ];
+  } else {
+    vaultConstructorArgs = [
+      getReserveAddress('USDC', hre),
+      (await ethers.getContract('Insurance', deployer)).address,
+    ];
+  }
 
   await hre.deployments.deploy('Vault', {
     from: deployer,
