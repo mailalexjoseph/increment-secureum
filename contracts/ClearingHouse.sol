@@ -87,12 +87,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
 
-        uint256 lockedInsurance;
-        for (uint256 i = 0; i < perpetuals.length; i++) {
-            // slither-disable-next-line calls-loop
-            lockedInsurance += vault.getBalance(i, address(this)).toUint256();
-        }
+        uint256 lockedInsurance = vault.getBalance(0, address(this)).toUint256();
         uint256 tvl = vault.getTotalReserveToken();
+
         require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
     }
 
@@ -191,7 +188,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         // pay insurance fee: TODO: can never withdraw this amount!
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
-        vault.settleProfit(idx, address(this), insuranceFee);
+        vault.settleProfit(0, address(this), insuranceFee); // always deposit insurance fees into the 0 vault
 
         int256 traderVaultDiff = fundingRate - insuranceFee;
         vault.settleProfit(idx, msg.sender, traderVaultDiff);
