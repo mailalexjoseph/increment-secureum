@@ -24,6 +24,13 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     await (await vault.setClearingHouse(clearingHouse.address)).wait();
   }
 
+  // deploy clearingHouseViewer
+  await hre.deployments.deploy('ClearingHouseViewer', {
+    from: deployer,
+    args: [clearingHouse.address],
+    log: true,
+  });
+
   console.log('We have deployed the ClearingHouse');
 };
 

@@ -5,13 +5,13 @@ pragma solidity 0.8.4;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Context} from "@openzeppelin/contracts/utils/Context.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
 import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
@@ -37,9 +37,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     uint256 internal constant INSURANCE_RATIO = 1e17; // 10%
 
     // dependencies
-    IVault public vault;
-    IInsurance public insurance;
-    IPerpetual[] public perpetuals;
+    IVault public override vault;
+    IInsurance public override insurance;
+    IPerpetual[] public override perpetuals;
 
     // global state
 
@@ -56,16 +56,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Add one perpetual market to the list of markets
     /// @param perp Market to add to the list of supported market
-    function allowListPerpetual(IPerpetual perp) external onlyOwner {
+    function allowListPerpetual(IPerpetual perp) external override onlyOwner {
         perpetuals.push(perp);
         emit MarketAdded(perp, perpetuals.length);
     }
 
-    function pause() external onlyOwner {
+    function pause() external override onlyOwner {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external override onlyOwner {
         _unpause();
     }
 
@@ -73,7 +73,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 proposedAmount,
         uint256 minAmount
-    ) external onlyOwner {
+    ) external override onlyOwner {
         (, , int256 profit) = perpetuals[idx].reducePosition(address(this), proposedAmount, minAmount);
 
         // apply changes to collateral
@@ -84,7 +84,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external onlyOwner {
+    ) external override onlyOwner {
         require(vault.withdraw(idx, address(this), amount, token) > 0);
 
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
@@ -111,7 +111,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 positionAmount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) external returns (int256, int256) {
+    ) external override returns (int256, int256) {
         deposit(idx, collateralAmount, token);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
@@ -124,7 +124,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) public whenNotPaused {
+    ) public override whenNotPaused {
         require(vault.deposit(idx, msg.sender, amount, token) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
@@ -137,7 +137,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external whenNotPaused {
+    ) external override whenNotPaused {
         // slither-disable-next-line incorrect-equality
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
@@ -158,7 +158,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) public whenNotPaused returns (int256, int256) {
+    ) public override whenNotPaused returns (int256, int256) {
         /*
             if direction = Long
 
@@ -210,7 +210,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 proposedAmount,
         uint256 minAmount
-    ) external whenNotPaused {
+    ) external override whenNotPaused {
         require(proposedAmount > 0, "The proposed amount can't be null");
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
@@ -233,7 +233,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         address account,
         int256 ratio
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         // slither-disable-next-line timestamp
         return marginRatio(idx, account) >= ratio;
     }
@@ -241,7 +241,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
-    function marginRatio(uint256 idx, address account) public view returns (int256) {
+    function marginRatio(uint256 idx, address account) public view override returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
 
@@ -262,7 +262,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         address liquidatee,
         uint256 proposedAmount
-    ) external whenNotPaused {
+    ) external override whenNotPaused {
         address liquidator = msg.sender;
 
         uint256 positiveOpenNotional = uint256(LibMath.abs(perpetuals[idx].getTraderPosition(liquidatee).openNotional));
@@ -301,7 +301,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external whenNotPaused returns (uint256, uint256) {
+    ) external override whenNotPaused returns (uint256, uint256) {
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
         // slither-disable-next-line timestamp // TODO: sounds incorrect
@@ -357,7 +357,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
     /// @param idx Index of the perpetual market
     /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
-    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view returns (uint256) {
+    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view override returns (uint256) {
         return perpetuals[idx].getExpectedVBaseAmount(vQuoteAmountToSpend);
     }
 
@@ -365,7 +365,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
     /// @param idx Index of the perpetual market
     /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
-    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view returns (uint256) {
+    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view override returns (uint256) {
         return perpetuals[idx].getExpectedVQuoteAmount(vBaseAmountToSpend);
     }
 
@@ -373,59 +373,74 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     // slither-disable-next-line timestamp
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the funding payments
-    function getFundingPayments(uint256 idx, address account) public view returns (int256 upcomingFundingPayment) {
+    function getFundingPayments(uint256 idx, address account)
+        public
+        view
+        override
+        returns (int256 upcomingFundingPayment)
+    {
         return perpetuals[idx].getFundingPayments(account);
     }
 
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the unrealized PnL from
-    function getUnrealizedPnL(uint256 idx, address account) public view returns (int256) {
+    function getUnrealizedPnL(uint256 idx, address account) public view override returns (int256) {
         return perpetuals[idx].getUnrealizedPnL(account);
     }
 
     /// @notice Get the portfolio value of an account
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
-    function getReserveValue(uint256 idx, address account) public view returns (int256) {
+    function getReserveValue(uint256 idx, address account) public view override returns (int256) {
         return vault.getReserveValue(idx, account);
     }
 
     /// @notice Return the curve price oracle
     /// @param idx Index of the perpetual market
-    function marketPriceOracle(uint256 idx) external view returns (uint256) {
+    function marketPriceOracle(uint256 idx) external view override returns (uint256) {
         return perpetuals[idx].marketPriceOracle();
     }
 
     /// @notice Return the last traded price (used for TWAP)
     /// @param idx Index of the perpetual market
-    function marketPrice(uint256 idx) external view returns (uint256) {
+    function marketPrice(uint256 idx) external view override returns (uint256) {
         return perpetuals[idx].marketPrice();
     }
 
     /// @notice Return the current off-chain exchange rate for vBase/vQuote
     /// @param idx Index of the perpetual market
-    function indexPrice(uint256 idx) external view returns (int256) {
+    function indexPrice(uint256 idx) external view override returns (int256) {
         return perpetuals[idx].indexPrice();
     }
 
     /// @param idx Index of the perpetual market
-    function getGlobalPosition(uint256 idx) external view returns (LibPerpetual.GlobalPosition memory) {
+    function getGlobalPosition(uint256 idx) external view override returns (LibPerpetual.GlobalPosition memory) {
         return perpetuals[idx].getGlobalPosition();
     }
 
     /// @param idx Index of the perpetual market
     /// @param account Address to get the trading position from
-    function getTraderPosition(uint256 idx, address account) public view returns (LibPerpetual.UserPosition memory) {
+    function getTraderPosition(uint256 idx, address account)
+        public
+        view
+        override
+        returns (LibPerpetual.UserPosition memory)
+    {
         return perpetuals[idx].getTraderPosition(account);
     }
 
     /// @param idx Index of the perpetual market
     /// @param account Address to get the LP position from
-    function getLpPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory) {
+    function getLpPosition(uint256 idx, address account)
+        external
+        view
+        override
+        returns (LibPerpetual.UserPosition memory)
+    {
         return perpetuals[idx].getLpPosition(account);
     }
 
-    function getNumMarkets() external view returns (uint256) {
+    function getNumMarkets() external view override returns (uint256) {
         return perpetuals.length;
     }
 }
