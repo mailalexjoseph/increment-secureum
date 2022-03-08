@@ -8,7 +8,7 @@ import {tokenToWad} from '../../helpers/contracts-helpers';
 
 import {
   extendPositionWithCollateral,
-  reducePosition,
+  closePosition,
   provideLiquidity,
   withdrawLiquidity,
 } from '../helpers/PerpetualUtils';
@@ -60,7 +60,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -81,7 +81,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -107,7 +107,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -131,7 +131,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -155,7 +155,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -177,7 +177,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
@@ -206,7 +206,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -230,7 +230,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -254,7 +254,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -276,7 +276,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
@@ -305,7 +305,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -329,7 +329,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -353,7 +353,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -375,7 +375,7 @@ describe('Increment App: Scenario', function () {
           Side.Long
         );
 
-        await reducePosition(trader, Side.Long, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
@@ -404,7 +404,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -428,7 +428,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
 
@@ -452,7 +452,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         await withdrawLiquidity(lp, lp.usdc);
         // // check results
@@ -473,7 +473,7 @@ describe('Increment App: Scenario', function () {
           Side.Short
         );
 
-        await reducePosition(trader, Side.Short, trader.usdc);
+        await closePosition(trader, trader.usdc);
 
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));

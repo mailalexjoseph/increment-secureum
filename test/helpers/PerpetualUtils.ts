@@ -106,14 +106,14 @@ export async function extendPositionWithCollateral(
   ).wait();
 }
 
-// reduce or close a position
-export async function reducePosition(
+// close a position
+export async function closePosition(
   user: User,
-  direction: Side,
   token: IERC20Metadata
 ): Promise<void> {
   const traderPosition = await user.perpetual.getTraderPosition(user.address);
 
+  const direction = traderPosition.positionSize.gt(0) ? Side.Long : Side.Short;
   let proposedAmount;
   if (direction === Side.Long) {
     proposedAmount = traderPosition.positionSize;
