@@ -303,7 +303,7 @@ describe('Increment App: Liquidity', function () {
         expect(positionAfter.openNotional).to.be.equal(-dust.quote);
       });
 
-      it.skip('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
+      it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
         // deposit
         await lp.clearingHouse.provideLiquidity(
           0,
@@ -324,21 +324,17 @@ describe('Increment App: Liquidity', function () {
           await lpTwo.perpetual.getLpPosition(lpTwo.address)
         ).liquidityBalance;
 
-        console.log(`providedLiquidity: ${providedLiquidity.toString()}`);
-
         await expect(lpTwo.clearingHouse.removeLiquidity(0, providedLiquidity))
           .to.emit(lpTwo.clearingHouse, 'LiquidityRemoved')
           .withArgs(0, lpTwo.address, providedLiquidity);
 
-        console.log(
-          `await lpTwo.perpetual.getLpPosition(lpTwo.address): ${(
-            await lpTwo.perpetual.getLpPosition(lpTwo.address)
-          ).toString()}`
+        const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
+          await lpTwo.perpetual.getLpPosition(lpTwo.address),
+          trader.market
         );
-
         await lpTwo.clearingHouse.settleAndWithdrawLiquidity(
           0,
-          0,
+          tentativeQuoteAmount,
           lpTwo.usdc.address
         );
 
