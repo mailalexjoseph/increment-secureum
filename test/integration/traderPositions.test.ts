@@ -61,7 +61,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should fail if the pool has no liquidity in it', async () => {
     await expect(
-      alice.clearingHouse.createPositionWithCollateral(
+      alice.clearingHouse.extendPositionWithCollateral(
         0,
         depositAmountUSDC,
         alice.usdc.address,
@@ -197,7 +197,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should work if trader opens position after having closed one', async () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.createPositionWithCollateral(
+    await alice.clearingHouse.extendPositionWithCollateral(
       0,
       depositAmountUSDC,
       alice.usdc.address,
@@ -242,7 +242,7 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(traderPositionBeforeFirstTrade.liquidityBalance).to.eq(0);
 
     // position is 10% of the collateral
-    await alice.clearingHouse.createPositionWithCollateral(
+    await alice.clearingHouse.extendPositionWithCollateral(
       0,
       depositAmountUSDC,
       alice.usdc.address,
@@ -399,7 +399,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(lpTwo, depositAmountUSDC.mul(200));
 
     // position is within the margin ratio
-    await alice.clearingHouse.createPositionWithCollateral(
+    await alice.clearingHouse.extendPositionWithCollateral(
       0,
       depositAmountUSDC,
       alice.usdc.address,
@@ -429,7 +429,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 
     // create LONG position
-    await alice.clearingHouse.createPositionWithCollateral(
+    await alice.clearingHouse.extendPositionWithCollateral(
       0,
       depositAmountUSDC,
       alice.usdc.address,
@@ -641,7 +641,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // position is 10% of the collateral
     const alicePosition = depositAmount.div(10);
-    await alice.clearingHouse.createPositionWithCollateral(
+    await alice.clearingHouse.extendPositionWithCollateral(
       0,
       depositAmountUSDC,
       alice.usdc.address,
