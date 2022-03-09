@@ -96,13 +96,19 @@ export async function extendPositionWithCollateral(
   const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
   await _checkTokenBalance(user, token, tokenAmount);
 
-  await (await token.approve(user.vault.address, depositAmount)).wait();
-  await (
-    await user.clearingHouse.deposit(0, tokenAmount, token.address)
-  ).wait();
+  console.log('Approve token');
+  await (await user.usdc.approve(user.vault.address, tokenAmount)).wait();
 
+  console.log('Open position');
   await (
-    await user.clearingHouse.extendPosition(0, positionAmount, direction, 0)
+    await user.clearingHouse.createPositionWithCollateral(
+      0,
+      tokenAmount,
+      token.address,
+      positionAmount,
+      direction,
+      0
+    )
   ).wait();
 }
 
@@ -153,7 +159,7 @@ export async function provideLiquidity(
 }
 
 // withdraw liquidity
-export async function withdrawLiquidity(
+export async function withdrawLiquidityAndSettle(
   user: User,
   token: IERC20Metadata
 ): Promise<void> {
@@ -165,7 +171,6 @@ export async function withdrawLiquidity(
     user.market
   );
 
-  // TODO: fix this
   await user.clearingHouse.removeLiquidity(
     0,
     userLpPosition.liquidityBalance,
@@ -173,7 +178,6 @@ export async function withdrawLiquidity(
     0,
     token.address
   );
-
   const positionAfter = await user.perpetual.getLpPosition(user.address);
 
   if (positionAfter.liquidityBalance.gt(0)) {

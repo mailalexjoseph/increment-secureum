@@ -1,6 +1,5 @@
 import {ethers, getNamedAccounts} from 'hardhat';
 
-import {convertToCurrencyDecimals} from '../helpers/contracts-helpers';
 import {Side} from '../test/helpers/utils/types';
 import {setupUsers} from '../helpers/misc-utils';
 import {tokenToWad} from '../helpers/contracts-helpers';
@@ -8,7 +7,8 @@ import {
   extendPositionWithCollateral,
   closePosition,
   provideLiquidity,
-  withdrawLiquidity,
+  withdrawLiquidityAndSettle,
+  settleAndWithDrawLiquidity,
   withdrawCollateral,
 } from '../test/helpers/PerpetualUtils';
 import env = require('hardhat');
@@ -58,17 +58,17 @@ const getContractsKovan = async (deployAccount: string): Promise<any> => {
 
 async function fundAccounts(
   user: User,
-  amount: BigNumber,
+  amount: BigNumber, // 18 decimals precision
   accounts: tEthereumAddress[]
 ) {
-  console.log('Fund accounts');
   const usdcMock = await (<USDCmock>user.usdc);
   if ((await usdcMock.owner()) !== user.address) {
     throw 'User can not mint tokens';
   }
+  const tokenAmount = await tokenToWad(await user.usdc.decimals(), amount);
 
   for (const account of accounts) {
-    await (await usdcMock.mint(account, amount)).wait();
+    await (await usdcMock.mint(account, tokenAmount)).wait();
   }
 }
 
@@ -90,7 +90,10 @@ async function closeExistingPosition(user: User) {
     user.address
   );
   if (!reserveValue.isZero()) {
-    console.log('Withdraw remaining collateral');
+    console.log(
+      'Withdraw remaining collateral of ' +
+        ethers.utils.formatEther(reserveValue)
+    );
     await withdrawCollateral(user, user.usdc);
   }
 }
@@ -98,84 +101,67 @@ async function closeExistingPosition(user: User) {
 async function withdrawExistingLiquidity(user: User) {
   // We force traders / lps to close their position before opening a new one
   const liquidityPosition = await user.perpetual.getLpPosition(user.address);
-  if (
-    !liquidityPosition.positionSize.isZero() ||
-    !liquidityPosition.openNotional.isZero() ||
-    !liquidityPosition.liquidityBalance.isZero()
-  ) {
+  if (!liquidityPosition.liquidityBalance.isZero()) {
     console.log('Withdraw available liquidity');
-    await withdrawLiquidity(user, user.usdc);
-  }
-  const reserveValue = await user.clearingHouse.getReserveValue(
-    0,
-    user.address
-  );
-  if (!reserveValue.isZero()) {
-    console.log('Withdraw remaining collateral');
-    await withdrawCollateral(user, user.usdc);
+    await withdrawLiquidityAndSettle(user, user.usdc);
+  } else if (
+    !liquidityPosition.positionSize.isZero() ||
+    !liquidityPosition.openNotional.isZero()
+  ) {
+    console.log('Settle and Withdraw available liquidity');
+    await settleAndWithDrawLiquidity(user, user.usdc);
+  } else {
+    console.log('No liquidity to withdraw');
   }
 }
 
 const main = async function () {
-  console.log(`Current network is ${env.network.name.toString()}`);
-
   if (env.network.name !== 'kovan') {
-    throw new Error('Run script on network kovan');
+    throw new Error(
+      'Run script on network kovan (via appending --network kovan)'
+    );
   }
 
   // Setup
   const users = await getNamedAccounts();
-
   const contracts = await getContractsKovan(users.deployer);
   const [deployer, user] = await setupUsers(Object.values(users), contracts);
 
-  const usdcMock = await (<USDCmock>deployer.usdc);
-  if ((await usdcMock.owner()) === deployer.address) {
-    await fundAccounts(deployer, asBigNumber('1000'), [
-      deployer.address,
-      user.address,
-    ]);
-  }
-
-  // liquidity amount
-  const liquidityAmountUSDC = await convertToCurrencyDecimals(
-    contracts.usdc,
-    '100'
-  );
-  const liquidityAmount = await tokenToWad(
-    await deployer.usdc.decimals(),
-    liquidityAmountUSDC
-  );
-
   // Scenario
+  const tradeSize = asBigNumber('100');
 
-  /* initial liquidity */
+  /* provide initial liquidity */
   if ((await deployer.curveToken.totalSupply()).isZero()) {
+    console.log('Fund accounts');
+    const usdcMock = await (<USDCmock>deployer.usdc);
+    if ((await usdcMock.owner()) === deployer.address) {
+      await fundAccounts(deployer, asBigNumber('100000'), [
+        deployer.address,
+        user.address,
+      ]);
+    }
+
     console.log('Provide initial liquidity');
-    await provideLiquidity(user, user.usdc, asBigNumber('5000'));
+    await provideLiquidity(deployer, deployer.usdc, asBigNumber('100000'));
   }
 
-  // provide liquidity: TODO fix bugs
-  // await withdrawExistingLiquidity(deployer);
-  // await provideLiquidity(deployer, deployer.usdc, liquidityAmount);
-
-  // open long position
-  await closeExistingPosition(deployer);
-  await extendPositionWithCollateral(
-    deployer,
-    deployer.usdc,
-    liquidityAmount.div(100),
-    liquidityAmount.div(100),
-    Side.Long
-  );
-
-  // open short position
+  /* open short position */
   await closeExistingPosition(user);
   await extendPositionWithCollateral(
     user,
     user.usdc,
-    liquidityAmount.div(200),
-    liquidityAmount.div(50),
+    tradeSize,
+    tradeSize.mul(10),
+    Side.Short
+  );
+
+  /* open long position */
+  await closeExistingPosition(user);
+  await extendPositionWithCollateral(
+    user,
+    user.usdc,
+    tradeSize,
+    tradeSize.mul(10),
     Side.Short
   );
 };
