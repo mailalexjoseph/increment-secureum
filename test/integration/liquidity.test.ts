@@ -292,47 +292,6 @@ describe('Increment App: Liquidity', function () {
         );
       });
 
-      // Unrealistic because pool/market should never be empty
-      it.skip('Should remove correct amount of liquidity from pool', async function () {
-        // deposit
-        await lp.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lp.usdc.address
-        );
-        const lpBalanceAfter = await lp.usdc.balanceOf(lp.address);
-        expect(lpBalanceAfter).to.be.equal(0);
-
-        // withdraw
-        const positionBefore = await lp.perpetual.getLpPosition(lp.address);
-
-        const dust = await TEST_dust_remove_liquidity(
-          // dust balances remaining in contract
-          lp.market,
-          positionBefore.liquidityBalance,
-          [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
-        );
-
-        await expect(
-          lp.clearingHouse.removeLiquidity(
-            0,
-            positionBefore.liquidityBalance,
-            0,
-            0,
-            lp.usdc.address
-          )
-        )
-          .to.emit(lp.clearingHouse, 'LiquidityRemoved')
-          .withArgs(0, lp.address, positionBefore.liquidityBalance);
-
-        const positionAfter = await lp.perpetual.getLpPosition(lp.address);
-
-        expect(positionAfter.liquidityBalance).to.be.equal(0);
-        expect(positionAfter.cumFundingRate).to.be.equal(0);
-        expect(positionAfter.positionSize).to.be.equal(-dust.base);
-        expect(positionAfter.openNotional).to.be.equal(-dust.quote);
-      });
-
       it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
         // deposit
         await lp.clearingHouse.provideLiquidity(
@@ -433,6 +392,47 @@ describe('Increment App: Liquidity', function () {
 
         expect(await lp.perpetual.getBaseDust()).to.be.eq(eBaseDust);
       });
+
+      // Unrealistic because pool/market should never be empty
+      // it.skip('Should remove correct amount of liquidity from pool', async function () {
+      //   // deposit
+      //   await lp.clearingHouse.provideLiquidity(
+      //     0,
+      //     liquidityAmountUSDC,
+      //     lp.usdc.address
+      //   );
+      //   const lpBalanceAfter = await lp.usdc.balanceOf(lp.address);
+      //   expect(lpBalanceAfter).to.be.equal(0);
+
+      //   // withdraw
+      //   const positionBefore = await lp.perpetual.getLpPosition(lp.address);
+
+      //   const dust = await TEST_dust_remove_liquidity(
+      //     // dust balances remaining in contract
+      //     lp.market,
+      //     positionBefore.liquidityBalance,
+      //     [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+      //   );
+
+      //   await expect(
+      //     lp.clearingHouse.removeLiquidity(
+      //       0,
+      //       positionBefore.liquidityBalance,
+      //       0,
+      //       0,
+      //       lp.usdc.address
+      //     )
+      //   )
+      //     .to.emit(lp.clearingHouse, 'LiquidityRemoved')
+      //     .withArgs(0, lp.address, positionBefore.liquidityBalance);
+
+      //   const positionAfter = await lp.perpetual.getLpPosition(lp.address);
+
+      //   expect(positionAfter.liquidityBalance).to.be.equal(0);
+      //   expect(positionAfter.cumFundingRate).to.be.equal(0);
+      //   expect(positionAfter.positionSize).to.be.equal(-dust.base);
+      //   expect(positionAfter.openNotional).to.be.equal(-dust.quote);
+      // });
     });
   });
 });
