@@ -28,15 +28,15 @@ async function _checkTokenBalance(
   }
 }
 
-export async function derive_tentativeQuoteAmount(
+// Returns a proposed amount precise enough to close a LONG or SHORT position
+export async function deriveProposedAmount(
   position: UserPositionStructOutput,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
-  let tentativeQuoteAmount;
   if (position.positionSize.gte(0)) {
-    tentativeQuoteAmount = BigNumber.from(0);
+    return position.positionSize;
   } else {
-    tentativeQuoteAmount = (
+    return (
       await TEST_get_exactOutputSwap(
         market,
         position.positionSize.abs(),
@@ -46,35 +46,35 @@ export async function derive_tentativeQuoteAmount(
       )
     ).amountIn;
   }
-  return tentativeQuoteAmount;
 }
 
+// Returns a proposed amount precise enough to close LP position
+// whether it looks like a LONG or a SHORT
 export async function liquidityProviderProposedAmount(
   position: UserPositionStructOutput,
-  withdrawnLiquidityTokens: BigNumber,
+  lpTokenToWithdraw: BigNumber,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
   // total supply of lp tokens
-  const totalSuppliedLiquidity = await (<ERC20>(
+  const lpTotalSupply = await (<ERC20>(
     await ethers.getContractAt('ERC20', await market.token())
   )).totalSupply();
 
-  //
   const withdrawnQuoteTokens = (await market.balances(0))
-    .mul(withdrawnLiquidityTokens)
-    .div(totalSuppliedLiquidity);
+    .mul(lpTokenToWithdraw)
+    .div(lpTotalSupply);
   const withdrawnBaseTokens = (await market.balances(1))
-    .mul(withdrawnLiquidityTokens)
-    .div(totalSuppliedLiquidity);
+    .mul(lpTokenToWithdraw)
+    .div(lpTotalSupply);
 
   const positionAfterWithdrawal = <UserPositionStructOutput>{
     positionSize: position.positionSize.add(withdrawnBaseTokens),
     openNotional: position.openNotional.add(withdrawnQuoteTokens),
-    liquidityBalance: position.liquidityBalance.sub(withdrawnLiquidityTokens),
+    liquidityBalance: position.liquidityBalance.sub(lpTokenToWithdraw),
     cumFundingRate: position.cumFundingRate,
   };
 
-  return await derive_tentativeQuoteAmount(positionAfterWithdrawal, market);
+  return await deriveProposedAmount(positionAfterWithdrawal, market);
 }
 
 // open position with 18 decimals
@@ -107,10 +107,7 @@ export async function reducePosition(
   if (direction === Side.Long) {
     proposedAmount = traderPosition.positionSize;
   } else {
-    proposedAmount = await derive_tentativeQuoteAmount(
-      traderPosition,
-      user.market
-    );
+    proposedAmount = await deriveProposedAmount(traderPosition, user.market);
   }
 
   await user.clearingHouse.reducePosition(0, proposedAmount, 0);

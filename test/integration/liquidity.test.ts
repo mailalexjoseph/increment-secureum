@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 import {BigNumber} from 'ethers';
-import env = require('hardhat');
+import env, {ethers} from 'hardhat';
 
 // helpers
 import {setup, funding, User} from '../helpers/setup';
@@ -19,7 +19,7 @@ import {Side} from '../helpers/utils/types';
 import {
   extendPositionWithCollateral,
   provideLiquidity,
-  derive_tentativeQuoteAmount,
+  deriveProposedAmount,
   liquidityProviderProposedAmount,
 } from '../helpers/PerpetualUtils';
 
@@ -186,7 +186,7 @@ describe.only('Increment App: Liquidity', function () {
             0,
             lp.usdc.address
           )
-        ).to.be.revertedWith('Not enough liquidity provided');
+        ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
       });
 
       it('Should allow not to withdraw more liquidity than provided', async function () {
@@ -209,7 +209,7 @@ describe.only('Increment App: Liquidity', function () {
             0,
             lp.usdc.address
           )
-        ).to.be.revertedWith('Not enough liquidity provided');
+        ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
       });
 
       it('Should revert withdrawal if not enough liquidity in the pool', async function () {
@@ -248,7 +248,7 @@ describe.only('Increment App: Liquidity', function () {
         ).to.be.revertedWith('');
       });
 
-      it.only('Should allow to remove liquidity from pool, emit event', async function () {
+      it('Should allow to remove liquidity from pool, emit event', async function () {
         // deposit
         await lp.clearingHouse.provideLiquidity(
           0,
@@ -292,7 +292,8 @@ describe.only('Increment App: Liquidity', function () {
         );
       });
 
-      it('Should remove correct amount of liquidity from pool', async function () {
+      // Unrealistic because pool/market should never be empty
+      it.skip('Should remove correct amount of liquidity from pool', async function () {
         // deposit
         await lp.clearingHouse.provideLiquidity(
           0,
@@ -353,7 +354,7 @@ describe.only('Increment App: Liquidity', function () {
           await lpTwo.perpetual.getLpPosition(lpTwo.address)
         ).liquidityBalance;
 
-        const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
+        const tentativeQuoteAmount = await deriveProposedAmount(
           await lpTwo.perpetual.getLpPosition(lpTwo.address),
           trader.market
         );
@@ -428,7 +429,7 @@ describe.only('Increment App: Liquidity', function () {
           trader.address
         );
 
-        const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
+        const tentativeQuoteAmount = await deriveProposedAmount(
           traderPosition,
           trader.market
         );

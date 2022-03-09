@@ -316,22 +316,22 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return (wadAmount, baseAmount);
     }
 
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
+    /// @notice Remove liquidity from the pool
     /// @param idx Index of the perpetual market
-    /// @param removedLiquidity Amount of liquidity to be removed from the pool. 18 decimals
+    /// @param liquidityAmountToRemove Amount of liquidity (in LP tokens) to be removed from the pool. 18 decimals
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
-    /// @param token Token to be added to the pool
+    /// @param token Token in which to perform the funds withdrawal
     function removeLiquidity(
         uint256 idx,
-        uint256 removedLiquidity,
+        uint256 liquidityAmountToRemove,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
     ) external whenNotPaused {
         (int256 vQuoteProceeds, int256 vBaseAmount, int256 profit) = perpetuals[idx].removeLiquidity(
             msg.sender,
-            removedLiquidity,
+            liquidityAmountToRemove,
             proposedAmount,
             minAmount
         );
@@ -342,7 +342,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // slither-disable-next-line unused-return // can be zero amount
         vault.withdrawAll(idx, msg.sender, token);
 
-        emit LiquidityRemoved(idx, msg.sender, removedLiquidity, vQuoteProceeds, vBaseAmount, profit, address(token));
+        emit LiquidityRemoved(
+            idx,
+            msg.sender,
+            liquidityAmountToRemove,
+            vQuoteProceeds,
+            vBaseAmount,
+            profit,
+            address(token)
+        );
     }
 
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)

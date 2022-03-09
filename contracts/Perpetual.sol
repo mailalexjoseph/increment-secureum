@@ -315,13 +315,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return baseAmount;
     }
 
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param removedLiquidity of liquidity to be removed from the pool (with 18 decimals)
+    /// @notice Remove liquidity from the pool
+    /// @param liquidityAmountToRemove Amount of liquidity to be removed from the pool. 18 decimals
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function removeLiquidity(
         address account,
-        uint256 removedLiquidity,
+        uint256 liquidityAmountToRemove,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -334,22 +334,17 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             int256
         )
     {
-        // TODO: should we just hardcode removedLiquidity here?
         LibPerpetual.UserPosition storage lp = lpPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
 
         updateGenericProtocolState();
-        /*
-        Question: Can we loosen this?
-        Answer: No, since LPs could otherwise open an active position without the facing the risk of liquidations.
-        Rework the LP role to make liquidations possible */
 
         // slither-disable-next-line incorrect-equality
-        require(removedLiquidity <= lp.liquidityBalance, "Not enough liquidity provided");
+        require(liquidityAmountToRemove <= lp.liquidityBalance, "Cannot remove more liquidity than LP provided");
 
         // lower balances
-        lp.liquidityBalance -= removedLiquidity;
-        totalLiquidityProvided -= removedLiquidity;
+        lp.liquidityBalance -= liquidityAmountToRemove;
+        totalLiquidityProvided -= liquidityAmountToRemove;
 
         // remove liquidity from curve pool
         uint256 baseAmount;
@@ -359,7 +354,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
-            market.remove_liquidity(removedLiquidity, [uint256(0), uint256(0)]);
+            market.remove_liquidity(liquidityAmountToRemove, [uint256(0), uint256(0)]);
 
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));

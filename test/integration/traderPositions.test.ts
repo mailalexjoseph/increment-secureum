@@ -5,7 +5,7 @@ import env, {ethers} from 'hardhat';
 import {rMul, rDiv} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
 import {
-  derive_tentativeQuoteAmount,
+  deriveProposedAmount,
   setUpPoolLiquidity,
 } from '../helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
@@ -363,7 +363,7 @@ describe('Increment: open/close long/short trading positions', () => {
           traderPositionAfterSecondTrade.openNotional.div(4)
         );
       // const vQuoteAmountToBuyBackVBasePosition =
-      //   await derive_tentativeQuoteAmount(
+      //   await deriveProposedAmount(
       //     traderPositionAfterSecondTrade,
       //     alice.market
       //   );

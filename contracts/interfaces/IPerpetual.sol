@@ -74,7 +74,7 @@ interface IPerpetual {
 
     function removeLiquidity(
         address account,
-        uint256 removedLiquidity,
+        uint256 liquidityAmountToRemove,
         uint256 proposedAmount,
         uint256 minAmount
     )
