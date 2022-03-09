@@ -23,7 +23,7 @@ import {
   liquidityProviderProposedAmount,
 } from '../helpers/PerpetualUtils';
 
-describe.only('Increment App: Liquidity', function () {
+describe('Increment App: Liquidity', function () {
   let lp: User, lpTwo: User, trader: User;
   let liquidityAmountUSDC: BigNumber;
 
@@ -333,7 +333,7 @@ describe.only('Increment App: Liquidity', function () {
         expect(positionAfter.openNotional).to.be.equal(-dust.quote);
       });
 
-      it.skip('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
+      it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
         // deposit
         await lp.clearingHouse.provideLiquidity(
           0,
@@ -350,31 +350,23 @@ describe.only('Increment App: Liquidity', function () {
         );
 
         // withdraw
-        const providedLiquidity = (
-          await lpTwo.perpetual.getLpPosition(lpTwo.address)
-        ).liquidityBalance;
+        const lpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
 
-        const tentativeQuoteAmount = await deriveProposedAmount(
-          await lpTwo.perpetual.getLpPosition(lpTwo.address),
+        const proposedAmount = await liquidityProviderProposedAmount(
+          lpPosition,
+          lpPosition.liquidityBalance,
           trader.market
         );
 
-        await expect(
-          lpTwo.clearingHouse.removeLiquidity(
-            0,
-            providedLiquidity,
-            0,
-            0,
-            lp.usdc.address
-          )
-        )
-          .to.emit(lpTwo.clearingHouse, 'LiquidityRemoved')
-          .withArgs(0, lpTwo.address, providedLiquidity);
-
-        const positionAfter = await lpTwo.perpetual.getLpPosition(
-          lpTwo.address
+        await lp.clearingHouse.removeLiquidity(
+          0,
+          lpPosition.liquidityBalance,
+          proposedAmount,
+          0,
+          lp.usdc.address
         );
 
+        const positionAfter = await lp.perpetual.getLpPosition(lp.address);
         // everything should be set to 0
         expect(positionAfter.liquidityBalance).to.be.equal(0);
         expect(positionAfter.cumFundingRate).to.be.equal(0);

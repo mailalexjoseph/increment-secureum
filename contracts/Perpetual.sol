@@ -383,7 +383,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         lp.positionSize += vBaseAmount;
 
         // if position has been closed entirely, delete it from the state
-        if (lp.positionSize == 0 && lp.openNotional == 0 && lp.liquidityBalance == 0) {
+        // slither-disable-next-line incorrect-equality
+        if (lp.positionSize == 0 && lp.liquidityBalance == 0) {
             delete lpPosition[account];
         }
 

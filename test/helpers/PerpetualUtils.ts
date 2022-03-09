@@ -7,6 +7,7 @@ import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
 import {Side} from './utils/types';
 import {UserPositionStructOutput} from '../../typechain/ClearingHouse';
+import {join} from 'path/posix';
 
 export async function setUpPoolLiquidity(
   lp: User,
@@ -60,12 +61,19 @@ export async function liquidityProviderProposedAmount(
     await ethers.getContractAt('ERC20', await market.token())
   )).totalSupply();
 
+  // withdrawable amount: balance * share of lp tokens (lpTokensOwned / lpTotalSupply) - 1 (favors existing LPs)
+  /*
+  for reference:
+  https://github.com/Increment-Finance/increment-protocol/blob/c405099de6fddd6b0eeae56be674c00ee4015fc5/contracts-vyper/contracts/CurveCryptoSwap2ETH.vy#L1013
+  */
   const withdrawnQuoteTokens = (await market.balances(0))
     .mul(lpTokenToWithdraw)
-    .div(lpTotalSupply);
+    .div(lpTotalSupply)
+    .sub(1);
   const withdrawnBaseTokens = (await market.balances(1))
     .mul(lpTokenToWithdraw)
-    .div(lpTotalSupply);
+    .div(lpTotalSupply)
+    .sub(1);
 
   const positionAfterWithdrawal = <UserPositionStructOutput>{
     positionSize: position.positionSize.add(withdrawnBaseTokens),
@@ -136,15 +144,20 @@ export async function withdrawLiquidity(
   token: IERC20Metadata
 ): Promise<void> {
   const userLpPosition = await user.perpetual.getLpPosition(user.address);
-  const providedLiquidity = userLpPosition.liquidityBalance;
+
+  const proposedAmount = await liquidityProviderProposedAmount(
+    userLpPosition,
+    userLpPosition.liquidityBalance,
+    user.market
+  );
 
   // TODO: fix this
   await user.clearingHouse.removeLiquidity(
     0,
-    providedLiquidity,
+    userLpPosition.liquidityBalance,
+    proposedAmount,
     0,
-    0,
-    user.usdc.address
+    token.address
   );
 
   const positionAfter = await user.perpetual.getLpPosition(user.address);
