@@ -32,6 +32,9 @@ jobs:
       - name: Installing dependencies
         run: yarn install --frozen-lockfile
 
+      - name: Compile
+        run: yarn compile --force
+
       - name: Running unit tests
         run: yarn test:unit
 
