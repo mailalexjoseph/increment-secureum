@@ -316,22 +316,40 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     }
 
     /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @param amount of liquidity to be removed from the pool (with 18 decimals)
-    function removeLiquidity(address account, uint256 amount) external override onlyClearingHouse {
-        // TODO: should we just hardcode amount here?
+    /// @param removedLiquidity of liquidity to be removed from the pool (with 18 decimals)
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    function removeLiquidity(
+        address account,
+        uint256 removedLiquidity,
+        uint256 proposedAmount,
+        uint256 minAmount
+    )
+        external
+        override
+        onlyClearingHouse
+        returns (
+            int256,
+            int256,
+            int256
+        )
+    {
+        // TODO: should we just hardcode removedLiquidity here?
         LibPerpetual.UserPosition storage lp = lpPosition[account];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
 
+        updateGenericProtocolState();
         /*
         Question: Can we loosen this?
         Answer: No, since LPs could otherwise open an active position without the facing the risk of liquidations.
         Rework the LP role to make liquidations possible */
 
         // slither-disable-next-line incorrect-equality
-        require(amount <= lp.liquidityBalance, "Not enough liquidity provided");
+        require(removedLiquidity <= lp.liquidityBalance, "Not enough liquidity provided");
 
         // lower balances
-        lp.liquidityBalance -= amount;
-        totalLiquidityProvided -= amount;
+        lp.liquidityBalance -= removedLiquidity;
+        totalLiquidityProvided -= removedLiquidity;
 
         // remove liquidity from curve pool
         uint256 baseAmount;
@@ -341,7 +359,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
-            market.remove_liquidity(amount, [uint256(0), uint256(0)]);
+            market.remove_liquidity(removedLiquidity, [uint256(0), uint256(0)]);
 
             uint256 vQuoteBalanceAfter = vQuote.balanceOf(address(this));
             uint256 vBaseBalanceAfter = vBase.balanceOf(address(this));
@@ -356,32 +374,25 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // add the amounts received from the pool
         lp.openNotional += quoteAmount.toInt256();
         lp.positionSize += baseAmount.toInt256();
-    }
-
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount).
-    /// @notice A LP wishing to cash out from his position entirely should first call `removeLiquidity` then `settleAndWithdrawLiquidity`
-    /// @notice Separated from `removeLiquidity` because `proposedAmount` (for SHORT like positions) can't guessed at the moment when user calls `removeLiquidity`
-    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
-    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
-    function settleAndWithdrawLiquidity(
-        address account,
-        uint256 proposedAmount,
-        uint256 minAmount
-    ) external override onlyClearingHouse returns (int256) {
-        LibPerpetual.UserPosition storage lp = lpPosition[account];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-
-        updateGenericProtocolState();
 
         // profit = pnl + fundingPayments
-        (int256 vBaseAmount, , int256 profit) = _reducePosition(lp, global, proposedAmount, minAmount);
+        (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
+            lp,
+            global,
+            proposedAmount,
+            minAmount
+        );
 
-        // LPs have to close down their positions before they can withdraw
-        require((lp.positionSize + vBaseAmount) == 0, "Full position has to be closed here");
+        // adjust lp position
+        lp.openNotional += vQuoteProceeds;
+        lp.positionSize += vBaseAmount;
 
-        delete lpPosition[account];
+        // if position has been closed entirely, delete it from the state
+        if (lp.positionSize == 0 && lp.openNotional == 0 && lp.liquidityBalance == 0) {
+            delete lpPosition[account];
+        }
 
-        return profit;
+        return (vQuoteProceeds, vBaseAmount, profit);
     }
 
     ///// COMMON OPERATIONS \\\\\

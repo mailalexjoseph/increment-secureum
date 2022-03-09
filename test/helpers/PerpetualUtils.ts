@@ -1,6 +1,6 @@
 import {BigNumber} from 'ethers';
 import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
-import {IERC20Metadata} from '../../typechain';
+import {ERC20, IERC20Metadata} from '../../typechain';
 import {User} from './setup';
 import {ethers} from 'hardhat';
 import {wadToToken} from '../../helpers/contracts-helpers';
@@ -47,6 +47,34 @@ export async function derive_tentativeQuoteAmount(
     ).amountIn;
   }
   return tentativeQuoteAmount;
+}
+
+export async function liquidityProviderProposedAmount(
+  position: UserPositionStructOutput,
+  withdrawnLiquidityTokens: BigNumber,
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
+  // total supply of lp tokens
+  const totalSuppliedLiquidity = await (<ERC20>(
+    await ethers.getContractAt('ERC20', await market.token())
+  )).totalSupply();
+
+  //
+  const withdrawnQuoteTokens = (await market.balances(0))
+    .mul(withdrawnLiquidityTokens)
+    .div(totalSuppliedLiquidity);
+  const withdrawnBaseTokens = (await market.balances(1))
+    .mul(withdrawnLiquidityTokens)
+    .div(totalSuppliedLiquidity);
+
+  const positionAfterWithdrawal = <UserPositionStructOutput>{
+    positionSize: position.positionSize.add(withdrawnBaseTokens),
+    openNotional: position.openNotional.add(withdrawnQuoteTokens),
+    liquidityBalance: position.liquidityBalance.sub(withdrawnLiquidityTokens),
+    cumFundingRate: position.cumFundingRate,
+  };
+
+  return await derive_tentativeQuoteAmount(positionAfterWithdrawal, market);
 }
 
 // open position with 18 decimals
@@ -113,24 +141,20 @@ export async function withdrawLiquidity(
   const userLpPosition = await user.perpetual.getLpPosition(user.address);
   const providedLiquidity = userLpPosition.liquidityBalance;
 
-  await user.clearingHouse.removeLiquidity(0, providedLiquidity);
+  // TODO: fix this
+  await user.clearingHouse.removeLiquidity(
+    0,
+    providedLiquidity,
+    0,
+    0,
+    user.usdc.address
+  );
 
   const positionAfter = await user.perpetual.getLpPosition(user.address);
 
   if (positionAfter.liquidityBalance.gt(0)) {
     throw 'Liquidity not withdrawn';
   }
-
-  const tentativeQuoteAmount = await derive_tentativeQuoteAmount(
-    positionAfter,
-    user.market
-  );
-  await user.clearingHouse.settleAndWithdrawLiquidity(
-    0,
-    tentativeQuoteAmount,
-    0,
-    token.address
-  );
 }
 
 // calculate
