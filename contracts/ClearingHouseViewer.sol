@@ -36,14 +36,17 @@ contract ClearingHouseViewer {
         uint256 idx,
         address trader,
         uint256 iter
-    ) external view returns (uint256) {
+    ) external view returns (uint256 amountIn, uint256 amountOut) {
         int256 positionSize = clearingHouse.getTraderPosition(idx, trader).positionSize;
         uint256 position = uint256(positionSize);
         if (positionSize > 0) {
-            return position;
+            amountIn = position;
+            amountOut = clearingHouse.getExpectedVQuoteAmount(idx, amountIn);
         } else {
-            uint256 amountOut = 0;
-            uint256 amountIn = position.wadMul(clearingHouse.marketPrice(idx));
+            amountOut = 0;
+            amountIn = position.wadMul(clearingHouse.marketPrice(idx));
+
+            // binary search in [marketPrice * 0.7, marketPrice * 1.3]
             uint256 maxVal = (amountIn * 13) / 10;
             uint256 minVal = (amountIn * 7) / 10;
 
@@ -53,7 +56,7 @@ contract ClearingHouseViewer {
                 amountOut = clearingHouse.getExpectedVBaseAmount(idx, amountIn);
 
                 if (amountOut == position) {
-                    return amountIn;
+                    break;
                 } else if (amountOut < position) {
                     minVal = amountIn;
                 } else {
@@ -66,7 +69,7 @@ contract ClearingHouseViewer {
                 amountIn = maxVal;
                 amountOut = clearingHouse.getExpectedVBaseAmount(idx, amountIn);
             }
-            return amountIn;
+            return (amountIn, amountOut);
         }
     }
 }
