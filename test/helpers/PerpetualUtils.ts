@@ -96,10 +96,8 @@ export async function extendPositionWithCollateral(
   const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
   await _checkTokenBalance(user, token, tokenAmount);
 
-  console.log('Approve token');
   await (await user.usdc.approve(user.vault.address, tokenAmount)).wait();
 
-  console.log('Open position');
   await (
     await user.clearingHouse.createPositionWithCollateral(
       0,

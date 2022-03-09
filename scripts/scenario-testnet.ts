@@ -71,7 +71,7 @@ async function fundAccounts(
     await (await usdcMock.mint(account, tokenAmount)).wait();
   }
 }
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function closeExistingPosition(user: User) {
   // We force traders / lps to close their position before opening a new one
   const traderPosition = await user.clearingHouse.getTraderPosition(
@@ -98,6 +98,7 @@ async function closeExistingPosition(user: User) {
   }
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function withdrawExistingLiquidity(user: User) {
   // We force traders / lps to close their position before opening a new one
   const liquidityPosition = await user.perpetual.getLpPosition(user.address);

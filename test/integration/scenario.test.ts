@@ -10,7 +10,7 @@ import {
   extendPositionWithCollateral,
   closePosition,
   provideLiquidity,
-  withdrawLiquidity,
+  withdrawLiquidityAndSettle,
 } from '../helpers/PerpetualUtils';
 import {changeChainlinkOraclePrice} from '../helpers/ChainlinkUtils';
 
@@ -62,7 +62,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -83,7 +83,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -109,7 +109,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -133,7 +133,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -157,7 +157,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -182,7 +182,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -208,7 +208,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -232,7 +232,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -256,7 +256,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -281,7 +281,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1.2'));
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -307,7 +307,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -331,7 +331,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -355,7 +355,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -380,7 +380,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -406,7 +406,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -430,7 +430,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();
@@ -454,7 +454,7 @@ describe('Increment App: Scenario', function () {
 
         await closePosition(trader, trader.usdc);
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
         // // check results
         // await checks();
         // await logUserBalance(lp, 'lp');
@@ -478,7 +478,7 @@ describe('Increment App: Scenario', function () {
         // change price
         await changeChainlinkOraclePrice(parsePrice('1'));
 
-        await withdrawLiquidity(lp, lp.usdc);
+        await withdrawLiquidityAndSettle(lp, lp.usdc);
 
         // check results
         await checks();

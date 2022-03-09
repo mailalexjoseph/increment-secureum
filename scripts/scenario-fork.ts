@@ -11,9 +11,8 @@ import {AggregatorV3Interface} from '../typechain';
 import {tokenToWad} from '../helpers/contracts-helpers';
 import {
   extendPositionWithCollateral,
-  reducePosition,
+  closePosition,
   provideLiquidity,
-  withdrawLiquidity,
 } from '../test/helpers/PerpetualUtils';
 
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
@@ -63,9 +62,9 @@ const main = async function () {
   // change price
   await changeOraclePrice(oracle, parsePrice('1.2'));
 
-  await reducePosition(trader, trader.usdc);
+  await closePosition(trader, trader.usdc);
 
-  await withdrawLiquidity(lp, lp.usdc);
+  await closePosition(lp, lp.usdc);
 };
 
 main();
