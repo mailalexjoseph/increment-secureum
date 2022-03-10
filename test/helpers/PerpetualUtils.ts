@@ -29,7 +29,7 @@ async function _checkTokenBalance(
 }
 
 // Returns a proposed amount precise enough to close a LONG or SHORT position
-export async function deriveProposedAmount(
+export async function deriveCloseProposedAmount(
   position: UserPositionStructOutput,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
@@ -81,7 +81,7 @@ export async function liquidityProviderProposedAmount(
     cumFundingRate: position.cumFundingRate,
   };
 
-  return await deriveProposedAmount(positionAfterWithdrawal, market);
+  return await deriveCloseProposedAmount(positionAfterWithdrawal, market);
 }
 
 // open position with 18 decimals
@@ -122,10 +122,21 @@ export async function closePosition(
   if (direction === Side.Long) {
     proposedAmount = traderPosition.positionSize;
   } else {
-    proposedAmount = await deriveProposedAmount(traderPosition, user.market);
+    proposedAmount = await deriveCloseProposedAmount(
+      traderPosition,
+      user.market
+    );
   }
 
-  await (await user.clearingHouse.reducePosition(0, proposedAmount, 0)).wait();
+  const fullReductionRatio = ethers.utils.parseEther('1');
+  await (
+    await user.clearingHouse.reducePosition(
+      0,
+      fullReductionRatio,
+      proposedAmount,
+      0
+    )
+  ).wait();
 
   await withdrawCollateral(user, token);
 }
@@ -169,9 +180,11 @@ export async function withdrawLiquidityAndSettle(
     user.market
   );
 
+  const closeProposedAmount = ethers.utils.parseEther('1');
   await user.clearingHouse.removeLiquidity(
     0,
     userLpPosition.liquidityBalance,
+    closeProposedAmount,
     proposedAmount,
     0,
     token.address

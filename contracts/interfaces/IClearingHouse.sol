@@ -140,6 +140,7 @@ interface IClearingHouse {
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function reducePosition(
         uint256 idx,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     ) external;
@@ -190,6 +191,7 @@ interface IClearingHouse {
     function removeLiquidity(
         uint256 idx,
         uint256 liquidityAmountToRemove,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token

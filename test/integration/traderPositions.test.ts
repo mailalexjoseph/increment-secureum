@@ -5,13 +5,15 @@ import env, {ethers} from 'hardhat';
 import {rMul, rDiv} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
 import {
-  deriveProposedAmount,
+  deriveCloseProposedAmount,
   setUpPoolLiquidity,
 } from '../helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
 import {Side} from '../helpers/utils/types';
+
+const FULL_REDUCTION_RATIO = ethers.utils.parseEther('1');
 
 describe('Increment: open/close long/short trading positions', () => {
   let alice: User;
@@ -210,7 +212,12 @@ describe('Increment: open/close long/short trading positions', () => {
       await alice.perpetual.getTraderPosition(alice.address)
     ).positionSize;
 
-    await alice.clearingHouse.reducePosition(0, alicePositionSize, 0);
+    await alice.clearingHouse.reducePosition(
+      0,
+      FULL_REDUCTION_RATIO,
+      alicePositionSize,
+      0
+    );
 
     // expected values
     const nextBlockTimestamp = await setNextBlockTimestamp(env);
@@ -351,6 +358,7 @@ describe('Increment: open/close long/short trading positions', () => {
     if (direction === Side.Long) {
       await alice.clearingHouse.reducePosition(
         0,
+        FULL_REDUCTION_RATIO,
         traderPositionAfterSecondTrade.positionSize,
         0
       );
@@ -363,13 +371,14 @@ describe('Increment: open/close long/short trading positions', () => {
           traderPositionAfterSecondTrade.openNotional.div(4)
         );
       // const vQuoteAmountToBuyBackVBasePosition =
-      //   await deriveProposedAmount(
+      //   await deriveCloseProposedAmount(
       //     traderPositionAfterSecondTrade,
       //     alice.market
       //   );
 
       await alice.clearingHouse.reducePosition(
         0,
+        FULL_REDUCTION_RATIO,
         vQuoteAmountToBuyBackVBasePosition,
         0
       );
@@ -474,13 +483,18 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should fail to close position if callee has no opened position at the moment', async () => {
     await expect(
-      alice.clearingHouse.reducePosition(0, ethers.utils.parseEther('1'), 0)
+      alice.clearingHouse.reducePosition(
+        0,
+        FULL_REDUCTION_RATIO,
+        ethers.utils.parseEther('1'),
+        0
+      )
     ).to.be.revertedWith('No position currently opened in this market');
   });
 
   it('Should fail to close position if proposedAmount is null', async () => {
     await expect(
-      alice.clearingHouse.reducePosition(0, 0, 0)
+      alice.clearingHouse.reducePosition(0, FULL_REDUCTION_RATIO, 0, 0)
     ).to.be.revertedWith("The proposed amount can't be null");
   });
 
@@ -517,6 +531,7 @@ describe('Increment: open/close long/short trading positions', () => {
     // sell the entire position, i.e. user.positionSize
     await alice.clearingHouse.reducePosition(
       0,
+      FULL_REDUCTION_RATIO,
       alicePositionBeforeClosingPosition.positionSize,
       0
     );
@@ -596,6 +611,7 @@ describe('Increment: open/close long/short trading positions', () => {
     );
     await alice.clearingHouse.reducePosition(
       0,
+      FULL_REDUCTION_RATIO,
       vQuoteAmountToBuyBackVBasePosition,
       0
     );
@@ -628,7 +644,7 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(alicePositionAfterClosingPosition.cumFundingRate).to.eq(0);
   });
 
-  async function _reducePosition(direction: Side) {
+  async function _reducePosition(direction: Side, reductionRatio: number) {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 
     const traderPositionBeforeFirstTrade =
@@ -669,17 +685,25 @@ describe('Increment: open/close long/short trading positions', () => {
       // reduce position by half
       await alice.clearingHouse.reducePosition(
         0,
-        traderPositionAfterFirstTrade.positionSize.div(2),
+        FULL_REDUCTION_RATIO.div(reductionRatio),
+        traderPositionAfterFirstTrade.positionSize.div(reductionRatio),
         0
       );
     } else {
       // the amount passed to `reducePosition` is arbitrary,
       // though large enough to be able to buy the same of amount of vBase short
       const vQuoteAmountToRemove = traderPositionAfterFirstTrade.openNotional
-        .div(2)
-        .add(traderPositionAfterFirstTrade.openNotional.div(8));
+        .div(reductionRatio)
+        .add(
+          traderPositionAfterFirstTrade.openNotional.div(reductionRatio).div(4)
+        );
 
-      await alice.clearingHouse.reducePosition(0, vQuoteAmountToRemove, 0);
+      await alice.clearingHouse.reducePosition(
+        0,
+        FULL_REDUCTION_RATIO.div(reductionRatio),
+        vQuoteAmountToRemove,
+        0
+      );
     }
 
     // CHECK TRADER POSITION
@@ -706,6 +730,7 @@ describe('Increment: open/close long/short trading positions', () => {
     if (direction === Side.Long) {
       await alice.clearingHouse.reducePosition(
         0,
+        FULL_REDUCTION_RATIO,
         traderPositionAfterSecondTrade.positionSize,
         0
       );
@@ -719,6 +744,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
       await alice.clearingHouse.reducePosition(
         0,
+        FULL_REDUCTION_RATIO,
         vQuoteAmountToBuyBackVBasePosition,
         0
       );
@@ -734,12 +760,20 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(traderPositionAfterClosingPosition.liquidityBalance).to.eq(0);
   }
 
-  it('Should reduce LONG position size if user tries to', async () => {
-    await _reducePosition(Side.Long);
+  it('Should reduce LONG position size by 50% if user tries to', async () => {
+    await _reducePosition(Side.Long, 2);
   });
 
-  it('Should reduce SHORT position size if user tries to', async () => {
-    await _reducePosition(Side.Short);
+  it('Should reduce LONG position size by 20% if user tries to', async () => {
+    await _reducePosition(Side.Long, 5);
+  });
+
+  it('Should reduce SHORT position size by 50% if user tries to', async () => {
+    await _reducePosition(Side.Short, 2);
+  });
+
+  it('Should reduce SHORT position size by 20% if user tries to', async () => {
+    await _reducePosition(Side.Short, 5);
   });
 
   //TODO: add tests to assert the impact of the funding rate on the profit

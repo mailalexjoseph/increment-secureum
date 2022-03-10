@@ -28,6 +28,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     using SafeCast for int256;
     using SafeERC20 for IERC20;
 
+    // constants
+    uint256 public constant FULL_REDUCTION_RATIO = 1e18; // reduce position by 100%
+
     // parameterization
     int256 public constant FEE = 3e16; // 3%
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
@@ -40,8 +43,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     IVault public override vault;
     IInsurance public override insurance;
     IPerpetual[] public override perpetuals;
-
-    // global state
 
     constructor(IVault _vault, IInsurance _insurance) {
         require(address(_vault) != address(0), "Vault address cannot be 0");
@@ -74,7 +75,12 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 proposedAmount,
         uint256 minAmount
     ) external override onlyOwner {
-        (, , int256 profit) = perpetuals[idx].reducePosition(address(this), proposedAmount, minAmount);
+        (, , int256 profit) = perpetuals[idx].reducePosition(
+            address(this),
+            FULL_REDUCTION_RATIO,
+            proposedAmount,
+            minAmount
+        );
 
         // apply changes to collateral
         vault.settleProfit(idx, address(this), profit);
@@ -204,10 +210,12 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Reduces, or closes in full, a position from an account holder
     /// @param idx Index of the perpetual market
+    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function reducePosition(
         uint256 idx,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     ) external override whenNotPaused {
@@ -215,6 +223,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
             msg.sender,
+            reductionRatio,
             proposedAmount,
             minAmount
         );
@@ -270,7 +279,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
 
-        (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, proposedAmount, 0);
+        (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, FULL_REDUCTION_RATIO, proposedAmount, 0);
 
         // traders are allowed to reduce their positions partially, but liquidators have to close positions in full
         require(
@@ -319,12 +328,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Remove liquidity from the pool
     /// @param idx Index of the perpetual market
     /// @param liquidityAmountToRemove Amount of liquidity (in LP tokens) to be removed from the pool. 18 decimals
+    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token in which to perform the funds withdrawal
     function removeLiquidity(
         uint256 idx,
         uint256 liquidityAmountToRemove,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
@@ -332,6 +343,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         (int256 vQuoteProceeds, int256 vBaseAmount, int256 profit) = perpetuals[idx].removeLiquidity(
             msg.sender,
             liquidityAmountToRemove,
+            reductionRatio,
             proposedAmount,
             minAmount
         );

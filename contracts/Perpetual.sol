@@ -194,10 +194,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     /// @notice Closes position from account holder
     /// @param account Trader account to close position for.
+    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function reducePosition(
         address account,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -244,6 +246,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
             trader,
             global,
+            reductionRatio,
             proposedAmount,
             minAmount
         );
@@ -316,12 +319,15 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     }
 
     /// @notice Remove liquidity from the pool
+    /// @param account Account of the LP to remove liquidity from
     /// @param liquidityAmountToRemove Amount of liquidity to be removed from the pool. 18 decimals
+    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function removeLiquidity(
         address account,
         uint256 liquidityAmountToRemove,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -335,7 +341,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         )
     {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
-        LibPerpetual.GlobalPosition storage global = globalPosition;
 
         updateGenericProtocolState();
 
@@ -376,7 +381,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // profit = pnl + fundingPayments
         (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
             lp,
-            global,
+            globalPosition,
+            reductionRatio,
             proposedAmount,
             minAmount
         );
@@ -536,11 +542,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice Profit is the sum of funding payments and the position PnL
+    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function _reducePosition(
         LibPerpetual.UserPosition storage user,
         LibPerpetual.GlobalPosition storage global,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -552,33 +560,26 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         )
     {
         bool isLong = user.positionSize > 0 ? true : false;
+        int256 positionSizeToReduce = LibMath.wadMul(user.positionSize, reductionRatio.toInt256());
+        int256 openNotionalToReduce = LibMath.wadMul(user.openNotional, reductionRatio.toInt256());
 
         require(
-            _checkProposedAmount(isLong, user.positionSize, proposedAmount),
+            _checkProposedAmount(isLong, positionSizeToReduce, proposedAmount),
             "Amount submitted too far from the market price of the position"
         );
 
-        // closing a LONG position is about selling user.positionSize
-        // closing a SHORT position is about buying user.positionSize
-        int256 initialPositionSize = user.positionSize;
-
         // PnL of the position
-        (vBaseAmount, vQuoteProceeds) = _reducePositionOnMarket(user.positionSize, proposedAmount, minAmount);
-
-        // compute a vBase amount to settle the funding rate with
-        // reductionRatio between 0 and 1. 0 no change at all, 1 the position is closed entirely.
-        int256 reductionRatio = LibMath.abs(LibMath.wadDiv(vBaseAmount, initialPositionSize));
-        int256 vBaseAmountToSettle = LibMath.wadMul(LibMath.abs(user.positionSize), reductionRatio);
+        (vBaseAmount, vQuoteProceeds) = _reducePositionOnMarket(positionSizeToReduce, proposedAmount, minAmount);
 
         // update profit using funding payment info in the `global` struct
         int256 fundingRate = _getFundingPayments(
             isLong,
             user.cumFundingRate,
             global.cumFundingRate,
-            vBaseAmountToSettle
+            LibMath.abs(positionSizeToReduce)
         );
 
-        profit = vQuoteProceeds + fundingRate + LibMath.wadMul(user.openNotional, reductionRatio);
+        profit = vQuoteProceeds + fundingRate + openNotionalToReduce;
     }
 
     function _canSellBase(uint256 sellAmount) internal returns (bool) {

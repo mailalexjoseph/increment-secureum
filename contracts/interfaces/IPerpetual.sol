@@ -48,6 +48,7 @@ interface IPerpetual {
 
     function reducePosition(
         address account,
+        uint256 reductionRatio,
         uint256 amount,
         uint256 minAmount
     )
@@ -75,6 +76,7 @@ interface IPerpetual {
     function removeLiquidity(
         address account,
         uint256 liquidityAmountToRemove,
+        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )

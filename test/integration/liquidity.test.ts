@@ -19,9 +19,11 @@ import {Side} from '../helpers/utils/types';
 import {
   extendPositionWithCollateral,
   provideLiquidity,
-  deriveProposedAmount,
+  deriveCloseProposedAmount,
   liquidityProviderProposedAmount,
 } from '../helpers/PerpetualUtils';
+
+const FULL_REDUCTION_RATIO = ethers.utils.parseEther('1');
 
 describe('Increment App: Liquidity', function () {
   let lp: User, lpTwo: User, trader: User;
@@ -182,6 +184,7 @@ describe('Increment App: Liquidity', function () {
           lp.clearingHouse.removeLiquidity(
             0,
             asBigNumber('1'),
+            FULL_REDUCTION_RATIO,
             0,
             0,
             lp.usdc.address
@@ -205,6 +208,7 @@ describe('Increment App: Liquidity', function () {
           lp.clearingHouse.removeLiquidity(
             0,
             providedLiquidity.add(BigNumber.from('1')),
+            FULL_REDUCTION_RATIO,
             0,
             0,
             lp.usdc.address
@@ -241,6 +245,7 @@ describe('Increment App: Liquidity', function () {
           lp.clearingHouse.removeLiquidity(
             0,
             liquidityAmountUSDC,
+            FULL_REDUCTION_RATIO,
             0,
             0,
             lp.usdc.address
@@ -278,6 +283,7 @@ describe('Increment App: Liquidity', function () {
         await lpTwo.clearingHouse.removeLiquidity(
           0,
           lpBalance.liquidityBalance,
+          FULL_REDUCTION_RATIO,
           proposedAmount,
           0,
           lp.usdc.address
@@ -320,6 +326,7 @@ describe('Increment App: Liquidity', function () {
         await lp.clearingHouse.removeLiquidity(
           0,
           lpPosition.liquidityBalance,
+          FULL_REDUCTION_RATIO,
           proposedAmount,
           0,
           lp.usdc.address
@@ -380,12 +387,18 @@ describe('Increment App: Liquidity', function () {
           trader.address
         );
 
-        const tentativeQuoteAmount = await deriveProposedAmount(
+        const closeProposedAmount = await deriveCloseProposedAmount(
           traderPosition,
           trader.market
         );
+        const fullReductionRatio = ethers.utils.parseEther('1');
         await expect(
-          trader.clearingHouse.reducePosition(0, tentativeQuoteAmount, 0)
+          trader.clearingHouse.reducePosition(
+            0,
+            fullReductionRatio,
+            closeProposedAmount,
+            0
+          )
         )
           .to.emit(trader.perpetual, 'DustGenerated')
           .withArgs(eBaseDust);
@@ -418,6 +431,7 @@ describe('Increment App: Liquidity', function () {
       //     lp.clearingHouse.removeLiquidity(
       //       0,
       //       positionBefore.liquidityBalance,
+      //       FULL_REDUCTION_RATIO,
       //       0,
       //       0,
       //       lp.usdc.address
