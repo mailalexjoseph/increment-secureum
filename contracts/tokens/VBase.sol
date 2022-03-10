@@ -13,7 +13,7 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 contract VBase is IVBase, VirtualToken {
     uint8 constant PRECISION = 18;
 
-    AggregatorV3Interface immutable aggregator;
+    AggregatorV3Interface public immutable aggregator;
 
     constructor(
         string memory _name,
@@ -28,7 +28,7 @@ contract VBase is IVBase, VirtualToken {
         return chainlinkPrice(aggregator);
     }
 
-    function chainlinkPrice(AggregatorV3Interface chainlinkInterface) public view returns (int256) {
+    function chainlinkPrice(AggregatorV3Interface chainlinkInterface) internal view returns (int256) {
         uint8 chainlinkDecimals = chainlinkInterface.decimals();
         (, int256 price, , uint256 timeStamp, ) = chainlinkInterface.latestRoundData();
         // If the round is not complete yet, timestamp is 0
