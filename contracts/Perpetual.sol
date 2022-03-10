@@ -29,7 +29,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     uint256 public constant VQUOTE_INDEX = 0;
     uint256 public constant VBASE_INDEX = 1;
     int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
-    uint256 public constant MAX_TRADE_SIZE = 5e16; // can trade maximum of 5% of tokens held
 
     // dependencies
     IVBase public override vBase;
@@ -182,11 +181,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         */
 
         if (isLong) {
-            require(_shareTraded(amount, VQUOTE_INDEX) <= MAX_TRADE_SIZE, "Trade size exceeds maximum");
             openNotional = -amount.toInt256();
             positionSize = _quoteForBase(amount, minAmount).toInt256();
         } else {
-            require(_shareTraded(amount, VBASE_INDEX) <= MAX_TRADE_SIZE, "Trade size exceeds maximum");
             openNotional = _baseForQuote(amount, minAmount).toInt256();
             positionSize = -amount.toInt256();
         }
@@ -636,10 +633,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     function _donate(uint256 baseAmount) internal {
         traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
-    }
-
-    function _shareTraded(uint256 sellAmount, uint256 sellIndex) internal view returns (uint256) {
-        return LibMath.wadDiv(sellAmount, market.balances(sellIndex));
     }
 
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
