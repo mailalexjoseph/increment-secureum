@@ -13,8 +13,6 @@ import {ethers} from 'hardhat';
 import {
   CurveCryptoSwapTest,
   CurveTokenV5Test,
-  CurveCryptoSwap2ETH,
-  CurveTokenV5,
 } from '../contracts-vyper/typechain';
 
 // import {getCryptoSwapConstructorArgsSeparate} from '../helpers/contracts-deployments';

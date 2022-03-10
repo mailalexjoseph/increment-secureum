@@ -6,7 +6,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const {deployer} = await hre.getNamedAccounts();
 
-  // SKIP FOR NOW
   // deploy reserve token when kovan
   if (hre.network.name === 'kovan') {
     await hre.deployments.deploy('USDCmock', {

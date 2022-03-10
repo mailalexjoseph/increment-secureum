@@ -23,6 +23,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     cryptoswap = await getCryptoSwap(factory);
   }
 
+  // deploy perpetual contract
   const clearingHouse = <ClearingHouse>(
     await ethers.getContract('ClearingHouse', deployer)
   );
