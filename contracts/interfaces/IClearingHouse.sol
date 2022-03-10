@@ -84,22 +84,6 @@ interface IClearingHouse {
 
     ///// TRADER FLOW OPERATIONS \\\\\
 
-    /// @notice Single open position function, group collateral deposit and open position
-    /// @param idx Index of the perpetual market
-    /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
-    /// @param token Token to be used for the collateral of the position
-    /// @param positionAmount Amount to be sold, in vQuote (if long) or vBase (if short). Must be 18 decimals
-    /// @param direction Whether the position is LONG or SHORT
-    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
-    function createPositionWithCollateral(
-        uint256 idx,
-        uint256 collateralAmount,
-        IERC20 token,
-        uint256 positionAmount,
-        LibPerpetual.Side direction,
-        uint256 minAmount
-    ) external returns (int256, int256);
-
     /// @notice Deposit tokens into the vault
     /// @param idx Index of the perpetual market
     /// @param amount Amount to be used as collateral. Might not be 18 decimals
@@ -119,6 +103,22 @@ interface IClearingHouse {
         uint256 amount,
         IERC20 token
     ) external;
+
+    /// @notice Single open position function, group collateral deposit and extend position
+    /// @param idx Index of the perpetual market
+    /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
+    /// @param token Token to be used for the collateral of the position
+    /// @param positionAmount Amount to be sold, in vQuote (if long) or vBase (if short). Must be 18 decimals
+    /// @param direction Whether the position is LONG or SHORT
+    /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
+    function extendPositionWithCollateral(
+        uint256 idx,
+        uint256 collateralAmount,
+        IERC20 token,
+        uint256 positionAmount,
+        LibPerpetual.Side direction,
+        uint256 minAmount
+    ) external returns (int256, int256);
 
     /// @notice Open or increase a position, either long or short
     /// @param idx Index of the perpetual market
@@ -181,18 +181,15 @@ interface IClearingHouse {
         IERC20 token
     ) external returns (uint256, uint256);
 
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
+    /// @notice Remove liquidity from the pool
     /// @param idx Index of the perpetual market
-    /// @param amount Amount of liquidity to be removed from the pool. 18 decimals
-    function removeLiquidity(uint256 idx, uint256 amount) external;
-
-    /// @notice Remove liquidity from the pool (but don't close LP position and withdraw amount)
-    /// @notice `proposedAmount` should big enough so that the entire LP position is closed
-    /// @param idx Index of the perpetual market
+    /// @param liquidityAmountToRemove Amount of liquidity (in LP tokens) to be removed from the pool. 18 decimals
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
-    function settleAndWithdrawLiquidity(
+    /// @param token Token in which to perform the funds withdrawal
+    function removeLiquidity(
         uint256 idx,
+        uint256 liquidityAmountToRemove,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token

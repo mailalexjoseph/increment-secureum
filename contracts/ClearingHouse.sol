@@ -328,7 +328,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
-    ) external whenNotPaused {
+    ) external override whenNotPaused {
         (int256 vQuoteProceeds, int256 vBaseAmount, int256 profit) = perpetuals[idx].removeLiquidity(
             msg.sender,
             liquidityAmountToRemove,

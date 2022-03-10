@@ -99,7 +99,7 @@ export async function extendPositionWithCollateral(
   await (await user.usdc.approve(user.vault.address, tokenAmount)).wait();
 
   await (
-    await user.clearingHouse.createPositionWithCollateral(
+    await user.clearingHouse.extendPositionWithCollateral(
       0,
       tokenAmount,
       token.address,
