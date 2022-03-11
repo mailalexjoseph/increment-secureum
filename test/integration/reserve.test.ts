@@ -50,70 +50,75 @@ describe('Increment App: Reserve', function () {
         utils.formatEther(await user.vault.getReserveValue(0, user.address))
       ).to.be.equal(await convertToCurrencyUnits(user.usdc, depositAmount));
     });
-  });
 
-  it('Should withdraw USDC', async function () {
-    // deposit
-    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(0, user.address);
+    it('Should withdraw USDC', async function () {
+      // deposit
+      await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+      const userDeposits = await user.vault.getReserveValue(0, user.address);
 
-    // withdrawal should fire up withdrawal event
-    await expect(
-      user.clearingHouse.withdraw(0, userDeposits, user.usdc.address)
-    )
-      .to.emit(user.clearingHouse, 'Withdraw')
-      .withArgs(0, user.address, user.usdc.address, userDeposits);
+      // withdrawal should fire up withdrawal event
+      await expect(
+        user.clearingHouse.withdraw(0, userDeposits, user.usdc.address)
+      )
+        .to.emit(user.clearingHouse, 'Withdraw')
+        .withArgs(0, user.address, user.usdc.address, userDeposits);
 
-    // balance should be same as before withdrawal
-    expect(await user.usdc.balanceOf(user.address)).to.be.equal(depositAmount);
-  });
+      // balance should be same as before withdrawal
+      expect(await user.usdc.balanceOf(user.address)).to.be.equal(
+        depositAmount
+      );
+    });
 
-  it('Should not withdraw more USDC then deposited', async function () {
-    // deposit
-    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(0, user.address);
-    const tooLargeWithdrawal = userDeposits.add(1);
+    it('Should not withdraw more USDC then deposited', async function () {
+      // deposit
+      await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+      const userDeposits = await user.vault.getReserveValue(0, user.address);
+      const tooLargeWithdrawal = userDeposits.add(1);
 
-    // should not be able to withdraw more than deposited
-    await expect(
-      user.clearingHouse.withdraw(0, tooLargeWithdrawal, user.usdc.address)
-    ).to.be.revertedWith('Not enough balance');
-  });
+      // should not be able to withdraw more than deposited
+      await expect(
+        user.clearingHouse.withdraw(0, tooLargeWithdrawal, user.usdc.address)
+      ).to.be.revertedWith('Not enough balance');
+    });
 
-  it('Should not withdraw other token then deposited', async function () {
-    // deposit
-    await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
-    const userDeposits = await user.vault.getReserveValue(0, user.address);
+    it('Should not withdraw other token then deposited', async function () {
+      // deposit
+      await user.clearingHouse.deposit(0, depositAmount, user.usdc.address);
+      const userDeposits = await user.vault.getReserveValue(0, user.address);
 
-    // should not be able to withdraw other token then deposited
-    const wrongToken = '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3';
-    await expect(
-      user.clearingHouse.withdraw(0, userDeposits, wrongToken)
-    ).to.be.revertedWith('Wrong token address');
-  });
+      // should not be able to withdraw other token then deposited
+      const wrongToken = '0x99d8a9c45b2eca8864373a26d1459e3dff1e17f3';
+      await expect(
+        user.clearingHouse.withdraw(0, userDeposits, wrongToken)
+      ).to.be.revertedWith('Wrong token address');
+    });
 
-  it('User should not be able to access vault directly', async function () {
-    await expect(
-      user.vault.deposit(0, user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NO CLEARINGHOUSE');
+    it('User should not be able to access vault directly', async function () {
+      await expect(
+        user.vault.deposit(0, user.address, depositAmount, user.usdc.address)
+      ).to.be.revertedWith('NO CLEARINGHOUSE');
 
-    await expect(
-      user.vault.withdraw(0, user.address, depositAmount, user.usdc.address)
-    ).to.be.revertedWith('NO CLEARINGHOUSE');
+      await expect(
+        user.vault.withdraw(0, user.address, depositAmount, user.usdc.address)
+      ).to.be.revertedWith('NO CLEARINGHOUSE');
 
-    await expect(
-      user.vault.settleProfit(0, user.address, 0)
-    ).to.be.revertedWith('NO CLEARINGHOUSE');
-  });
+      await expect(
+        user.vault.settleProfit(0, user.address, 0)
+      ).to.be.revertedWith('NO CLEARINGHOUSE');
+    });
 
-  it('User can not deposit once limit is reached', async function () {
-    // set new limit
-    const newMaxTVL = asBigNumber('100');
-    await deployer.vault.setMaxTVL(newMaxTVL);
+    it('User can not deposit once limit is reached', async function () {
+      // set new limit
+      const newMaxTVL = asBigNumber('100');
+      await deployer.vault.setMaxTVL(newMaxTVL);
 
-    const maxDeposit = await wadToToken(await user.usdc.decimals(), newMaxTVL);
-    await expect(
-      user.clearingHouse.deposit(0, maxDeposit.add(1), user.usdc.address)
-    ).to.be.revertedWith('MAX_TVL');
+      const maxDeposit = await wadToToken(
+        await user.usdc.decimals(),
+        newMaxTVL
+      );
+      await expect(
+        user.clearingHouse.deposit(0, maxDeposit.add(1), user.usdc.address)
+      ).to.be.revertedWith('MAX_TVL');
+    });
   });
 });
