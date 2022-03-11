@@ -187,7 +187,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         */
         require(amount > 0, "The amount can't be null");
 
-        (int256 addedOpenNotional, int256 addedPositionSize, int256 fundingPayment) = perpetuals[idx].extendPosition(
+        (int256 addedOpenNotional, int256 addedPositionSize, int256 fundingPayments) = perpetuals[idx].extendPosition(
             msg.sender,
             amount,
             direction,
@@ -198,7 +198,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
         vault.settleProfit(0, address(this), insuranceFee); // always deposit insurance fees into the 0 vault
 
-        int256 traderVaultDiff = fundingPayment - insuranceFee;
+        int256 traderVaultDiff = fundingPayments - insuranceFee;
         vault.settleProfit(idx, msg.sender, traderVaultDiff);
 
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");

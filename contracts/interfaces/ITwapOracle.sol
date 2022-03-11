@@ -7,7 +7,7 @@ interface ITwapOracle {
 
     // state changing functions
 
-    function updateTwap() external;
+    function updateTwapAndFundingRate() external;
 
     // getter
 

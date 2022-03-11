@@ -72,6 +72,10 @@ contract TestPerpetual is Perpetual {
         _updateFundingRate();
     }
 
+    function __TestPerpetual_updateTwap() external {
+        _updateTwap();
+    }
+
     function __TestPerpetual_setTWAP(int256 _marketTwap, int256 _oracleTwap) external {
         marketTwap = _marketTwap;
         oracleTwap = _oracleTwap;

@@ -127,7 +127,7 @@ describe('TwapOracle', async function () {
   ): Promise<BigNumber> {
     const timeStamp = await addTimeToNextBlockTimestamp(hre, timeElapsed);
 
-    await user.perpetual.updateTwapAndFunding();
+    await user.perpetual.updateTwapAndFundingRate();
 
     return timeStamp;
   }
@@ -158,7 +158,7 @@ describe('TwapOracle', async function () {
         env,
         PERIOD.mul(2) // go far in future to force a new period
       );
-      await user.perpetual.updateTwapAndFunding(); // call updateTwapAndFunding() here to update timeOfLastTrade
+      await user.perpetual.updateTwapAndFundingRate(); // call updateTwapAndFundingRate() here to update timeOfLastTrade
 
       // verify start values
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(
@@ -235,7 +235,7 @@ describe('TwapOracle', async function () {
         .add(price3.mul(timeElapsed3));
       const eTwapOracle = weightedPrice.div(PERIOD);
 
-      await expect(user.perpetual.updateTwapAndFunding())
+      await expect(user.perpetual.updateTwapAndFundingRate())
         .to.emit(user.perpetual, 'TwapUpdated')
         .withArgs(timeStamp5, eTwapOracle, INIT_PRICE);
 
@@ -267,7 +267,7 @@ describe('TwapOracle', async function () {
         env,
         PERIOD.mul(2) // go far in future to force a new period
       );
-      await user.perpetual.updateTwapAndFunding();
+      await user.perpetual.updateTwapAndFundingRate();
 
       // verify start values
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(
@@ -344,7 +344,7 @@ describe('TwapOracle', async function () {
         .add(price3.mul(timeElapsed3));
       const eTwapOracle = weightedPrice.div(PERIOD);
 
-      await expect(user.perpetual.updateTwapAndFunding())
+      await expect(user.perpetual.updateTwapAndFundingRate())
         .to.emit(user.perpetual, 'TwapUpdated')
         .withArgs(timeStamp5, INIT_PRICE, eTwapOracle);
 
