@@ -339,37 +339,66 @@ describe('Increment App: Liquidity', function () {
         expect(positionAfter.positionSize).to.be.equal(0);
         expect(positionAfter.openNotional).to.be.equal(0);
       });
+  });
+  describe('Can withdraw liquidity from the curve pool', async function () {
+    it('Should not allow to withdraw liquidity when non provided', async function () {
+      await expect(
+        lp.clearingHouse.removeLiquidity(
+          0,
+          asBigNumber('1'),
+          0,
+          0,
+          lp.usdc.address
+        )
+      ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
     });
 
-    describe('Misc', async function () {
-      it('Should emit provide liquidity event in the curve pool', async function () {
-        const price = await lp.perpetual.indexPrice(); // valid for first deposit
-        const liquidityWadAmount = await tokenToWad(
-          await lp.vault.getReserveTokenDecimals(),
-          liquidityAmountUSDC
-        ); // deposited liquidity with 18 decimals
+    it('Should allow not to withdraw more liquidity than provided', async function () {
+      // deposit
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lp.usdc.address
+      );
 
-        const PRECISION = asBigNumber('1');
-        await expect(
-          lp.clearingHouse.provideLiquidity(
-            0,
-            liquidityAmountUSDC,
-            lp.usdc.address
-          )
+      // try withdraw
+      const providedLiquidity = (await lp.perpetual.getLpPosition(lp.address))
+        .liquidityBalance;
+
+      await expect(
+        lp.clearingHouse.removeLiquidity(
+          0,
+          providedLiquidity.add(BigNumber.from('1')),
+          0,
+          0,
+          lp.usdc.address
         )
-          .to.emit(lp.market, 'AddLiquidity')
-          .withArgs(
-            lp.perpetual.address,
-            [liquidityWadAmount, liquidityWadAmount.mul(PRECISION).div(price)],
-            0,
-            0
-          );
-      });
-      it('Market actions should generate dust', async function () {
-        const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+      ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
+    });
 
-        // generate dust
-        await provideLiquidity(lp, lp.usdc, liquidityAmount);
+    it('Should revert withdrawal if not enough liquidity in the pool', async function () {
+      // deposit
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lp.usdc.address
+      );
+
+      // withdraw token liquidity from pool
+
+      /* take over curve pool & fund with ether*/
+      await impersonateAccountsHardhat([lp.market.address], env);
+      const marketAccount = await setupUser(lp.market.address, {
+        vBase: lp.vBase,
+      });
+      await fundAccountsHardhat([lp.market.address], env);
+
+      /* withdraw liquidity from curve pool*/
+      await marketAccount.vBase.transfer(
+        DEAD_ADDRESS,
+        await lp.vBase.balanceOf(lp.market.address)
+      );
+      expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal(0);
 
         await extendPositionWithCollateral(
           trader,
@@ -400,32 +429,31 @@ describe('Increment App: Liquidity', function () {
             0
           )
         )
-          .to.emit(trader.perpetual, 'DustGenerated')
-          .withArgs(eBaseDust);
+      ).to.be.revertedWith('');
+    });
 
-        expect(await lp.perpetual.getBaseDust()).to.be.eq(eBaseDust);
-      });
+    it('Should allow to remove liquidity from pool, emit event', async function () {
+      // deposit
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lp.usdc.address
+      );
 
-      // Unrealistic because pool/market should never be empty
-      // it.skip('Should remove correct amount of liquidity from pool', async function () {
-      //   // deposit
-      //   await lp.clearingHouse.provideLiquidity(
-      //     0,
-      //     liquidityAmountUSDC,
-      //     lp.usdc.address
-      //   );
-      //   const lpBalanceAfter = await lp.usdc.balanceOf(lp.address);
-      //   expect(lpBalanceAfter).to.be.equal(0);
+      // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
+      // and -1) for market.exchange to work when closing the PnL of the position
+      await lpTwo.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lpTwo.usdc.address
+      );
 
-      //   // withdraw
-      //   const positionBefore = await lp.perpetual.getLpPosition(lp.address);
+      // withdraw
+      const lpBalance = await lpTwo.perpetual.getLpPosition(lpTwo.address);
 
-      //   const dust = await TEST_dust_remove_liquidity(
-      //     // dust balances remaining in contract
-      //     lp.market,
-      //     positionBefore.liquidityBalance,
-      //     [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
-      //   );
+      const perpetualVQuoteAmountBeforeWithdraw = await lpTwo.vQuote.balanceOf(
+        lpTwo.perpetual.address
+      );
 
       //   await expect(
       //     lp.clearingHouse.removeLiquidity(
@@ -440,13 +468,155 @@ describe('Increment App: Liquidity', function () {
       //     .to.emit(lp.clearingHouse, 'LiquidityRemoved')
       //     .withArgs(0, lp.address, positionBefore.liquidityBalance);
 
-      //   const positionAfter = await lp.perpetual.getLpPosition(lp.address);
+      const perpetualVQuoteAmountAfterWithdraw = await lpTwo.vQuote.balanceOf(
+        lpTwo.perpetual.address
+      );
 
-      //   expect(positionAfter.liquidityBalance).to.be.equal(0);
-      //   expect(positionAfter.cumFundingRate).to.be.equal(0);
-      //   expect(positionAfter.positionSize).to.be.equal(-dust.base);
-      //   expect(positionAfter.openNotional).to.be.equal(-dust.quote);
-      // });
+      expect(perpetualVQuoteAmountBeforeWithdraw).to.eq(
+        perpetualVQuoteAmountAfterWithdraw
+      );
     });
+
+    it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
+      // deposit
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lp.usdc.address
+      );
+
+      // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
+      // and -1) for market.exchange to work when closing the PnL of the position
+      await lpTwo.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lpTwo.usdc.address
+      );
+
+      // withdraw
+      const lpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
+
+      const proposedAmount = await liquidityProviderProposedAmount(
+        lpPosition,
+        lpPosition.liquidityBalance,
+        trader.market
+      );
+
+      await lp.clearingHouse.removeLiquidity(
+        0,
+        lpPosition.liquidityBalance,
+        proposedAmount,
+        0,
+        lp.usdc.address
+      );
+
+      const positionAfter = await lp.perpetual.getLpPosition(lp.address);
+      // everything should be set to 0
+      expect(positionAfter.liquidityBalance).to.be.equal(0);
+      expect(positionAfter.cumFundingRate).to.be.equal(0);
+      expect(positionAfter.positionSize).to.be.equal(0);
+      expect(positionAfter.openNotional).to.be.equal(0);
+    });
+  });
+
+  describe('Misc', async function () {
+    it('Should emit provide liquidity event in the curve pool', async function () {
+      const price = await lp.perpetual.indexPrice(); // valid for first deposit
+      const liquidityWadAmount = await tokenToWad(
+        await lp.vault.getReserveTokenDecimals(),
+        liquidityAmountUSDC
+      ); // deposited liquidity with 18 decimals
+
+      const PRECISION = asBigNumber('1');
+      await expect(
+        lp.clearingHouse.provideLiquidity(
+          0,
+          liquidityAmountUSDC,
+          lp.usdc.address
+        )
+      )
+        .to.emit(lp.market, 'AddLiquidity')
+        .withArgs(
+          lp.perpetual.address,
+          [liquidityWadAmount, liquidityWadAmount.mul(PRECISION).div(price)],
+          0,
+          0
+        );
+    });
+    it('Market actions should generate dust', async function () {
+      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+
+      // generate dust
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+
+      await extendPositionWithCollateral(
+        trader,
+        trader.usdc,
+        liquidityAmount.div(40),
+        liquidityAmount.div(100),
+        Side.Short
+      );
+
+      await provideLiquidity(lpTwo, lp.usdc, liquidityAmount);
+
+      // closing position generates dust
+      const eBaseDust = 5095;
+      const traderPosition = await trader.perpetual.getTraderPosition(
+        trader.address
+      );
+
+      const tentativeQuoteAmount = await deriveCloseProposedAmount(
+        traderPosition,
+        trader.market
+      );
+      await expect(
+        trader.clearingHouse.reducePosition(0, tentativeQuoteAmount, 0)
+      )
+        .to.emit(trader.perpetual, 'DustGenerated')
+        .withArgs(eBaseDust);
+
+      expect(await lp.perpetual.getBaseDust()).to.be.eq(eBaseDust);
+    });
+
+    // Unrealistic because pool/market should never be empty
+    // it.skip('Should remove correct amount of liquidity from pool', async function () {
+    //   // deposit
+    //   await lp.clearingHouse.provideLiquidity(
+    //     0,
+    //     liquidityAmountUSDC,
+    //     lp.usdc.address
+    //   );
+    //   const lpBalanceAfter = await lp.usdc.balanceOf(lp.address);
+    //   expect(lpBalanceAfter).to.be.equal(0);
+
+    //   // withdraw
+    //   const positionBefore = await lp.perpetual.getLpPosition(lp.address);
+
+    //   const dust = await TEST_dust_remove_liquidity(
+    //     // dust balances remaining in contract
+    //     lp.market,
+    //     positionBefore.liquidityBalance,
+    //     [MIN_MINT_AMOUNT, MIN_MINT_AMOUNT]
+    //   );
+
+    //   await expect(
+    //     lp.clearingHouse.removeLiquidity(
+    //       0,
+    //       positionBefore.liquidityBalance,
+    //       0,
+    //       0,
+    //       lp.usdc.address
+    //     )
+    //   )
+    //     .to.emit(lp.clearingHouse, 'LiquidityRemoved')
+    //     .withArgs(0, lp.address, positionBefore.liquidityBalance);
+
+    //   const positionAfter = await lp.perpetual.getLpPosition(lp.address);
+
+    //   expect(positionAfter.liquidityBalance).to.be.equal(0);
+    //   expect(positionAfter.cumFundingRate).to.be.equal(0);
+    //   expect(positionAfter.positionSize).to.be.equal(-dust.base);
+    //   expect(positionAfter.openNotional).to.be.equal(-dust.quote);
+    // });
   });
 });

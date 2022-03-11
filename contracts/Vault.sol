@@ -27,6 +27,7 @@ contract Vault is IVault, Context, IncreOwnable {
     using LibMath for int256;
 
     // constants
+    int256 internal constant MIN_DEPOSIT_AMOUNT = 10e18; // min deposit of 10
     uint256 internal constant MAX_DECIMALS = 18;
     uint256 internal immutable reserveTokenDecimals;
 
@@ -100,6 +101,9 @@ contract Vault is IVault, Context, IncreOwnable {
         // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
         uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
+        // deposit must exceed 10
+        require(convertedWadAmount.toInt256() >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
+
         // increment balance
         balances[idx][user] += convertedWadAmount.toInt256();
         totalReserveToken += convertedWadAmount;
@@ -156,6 +160,12 @@ contract Vault is IVault, Context, IncreOwnable {
         }
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
 
+        // deposit must exceed 10
+        int256 balanceAfter = balances[idx][user];
+        if (balanceAfter != 0) {
+            // deposit must exceed 10
+            require(balanceAfter >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
+        }
         return rawTokenAmount;
     }
 

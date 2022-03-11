@@ -90,7 +90,7 @@ export const getContracts = async (deployAccount: string): Promise<any> => {
 
 async function _fundAccount(account: string): Promise<BigNumber> {
   const {usdc} = await getContracts(account);
-  const fullAmount = await convertToCurrencyDecimals(usdc, '100');
+  const fullAmount = await convertToCurrencyDecimals(usdc, '10000');
   await setUSDCBalance(env, usdc, account, fullAmount);
   return fullAmount;
 }
