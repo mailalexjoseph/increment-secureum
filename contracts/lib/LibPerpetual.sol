@@ -24,5 +24,6 @@ library LibPerpetual {
         uint128 timeOfLastTrade;
         uint128 timeOfLastFunding;
         int256 cumFundingRate;
+        int256 priceOfLastTrade;
     }
 }

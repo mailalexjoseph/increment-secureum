@@ -148,7 +148,7 @@ describe('Increment Protocol: Governance', function () {
       await provideLiquidity(lp, lp.usdc, liquidityAmount);
 
       // generate some dust
-      const dustAmount = liquidityAmount.div(20);
+      const dustAmount = liquidityAmount.div(200);
       await user.perpetual.__TestPerpetual_setTraderPosition(
         user.clearingHouse.address,
         0,

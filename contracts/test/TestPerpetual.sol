@@ -31,8 +31,9 @@ contract TestPerpetual is Perpetual {
     function __TestPerpetual_setGlobalPosition(uint128 timeOfLastTrade, int256 cumFundingRate) external {
         globalPosition = LibPerpetual.GlobalPosition({
             timeOfLastTrade: timeOfLastTrade,
+            cumFundingRate: cumFundingRate,
             timeOfLastFunding: globalPosition.timeOfLastFunding,
-            cumFundingRate: cumFundingRate
+            priceOfLastTrade: globalPosition.priceOfLastTrade
         });
     }
 
