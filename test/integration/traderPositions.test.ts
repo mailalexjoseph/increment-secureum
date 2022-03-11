@@ -12,7 +12,6 @@ import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
 import {Side} from '../helpers/utils/types';
-import {setUSDCBalance} from '../helpers/utils/manipulateStorage';
 
 const FULL_REDUCTION_RATIO = ethers.utils.parseEther('1');
 
@@ -83,8 +82,10 @@ describe('Increment: open/close long/short trading positions', () => {
   });
 
   it('Should fail if user does not have enough funds deposited in the vault', async () => {
+    await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await setUpPoolLiquidity(lp, depositAmountUSDC.mul(200));
     await setUpPoolLiquidity(lpTwo, depositAmountUSDC.mul(200));
+    await setUpPoolLiquidity(deployer, depositAmountUSDC.mul(200));
 
     await alice.clearingHouse.deposit(
       0,
@@ -94,7 +95,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // swap succeeds, then it fails when opening the position
     await expect(
-      alice.clearingHouse.extendPosition(0, depositAmount.mul(10), Side.Long, 0)
+      alice.clearingHouse.extendPosition(0, depositAmount.mul(20), Side.Long, 0)
     ).to.be.revertedWith('Not enough margin');
   });
 

@@ -10,7 +10,6 @@ import {
   fundAccountsHardhat,
   setupUser,
 } from '../../helpers/misc-utils';
-import {TEST_dust_remove_liquidity} from '../helpers/CurveUtils';
 import {getChainlinkPrice} from '../../helpers/contracts-getters';
 import {asBigNumber, rDiv} from '../helpers/utils/calculations';
 import {DEAD_ADDRESS} from '../../helpers/constants';
@@ -177,168 +176,6 @@ describe('Increment App: Liquidity', function () {
         vQuotelpBalance.add(liquidityWadAmount)
       );
     });
-
-    describe('Can withdraw liquidity from the curve pool', async function () {
-      it('Should not allow to withdraw liquidity when non provided', async function () {
-        await expect(
-          lp.clearingHouse.removeLiquidity(
-            0,
-            asBigNumber('1'),
-            FULL_REDUCTION_RATIO,
-            0,
-            0,
-            lp.usdc.address
-          )
-        ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
-      });
-
-      it('Should allow not to withdraw more liquidity than provided', async function () {
-        // deposit
-        await lp.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lp.usdc.address
-        );
-
-        // try withdraw
-        const providedLiquidity = (await lp.perpetual.getLpPosition(lp.address))
-          .liquidityBalance;
-
-        await expect(
-          lp.clearingHouse.removeLiquidity(
-            0,
-            providedLiquidity.add(BigNumber.from('1')),
-            FULL_REDUCTION_RATIO,
-            0,
-            0,
-            lp.usdc.address
-          )
-        ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
-      });
-
-      it('Should revert withdrawal if not enough liquidity in the pool', async function () {
-        // deposit
-        await lp.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lp.usdc.address
-        );
-
-        // withdraw token liquidity from pool
-
-        /* take over curve pool & fund with ether*/
-        await impersonateAccountsHardhat([lp.market.address], env);
-        const marketAccount = await setupUser(lp.market.address, {
-          vBase: lp.vBase,
-        });
-        await fundAccountsHardhat([lp.market.address], env);
-
-        /* withdraw liquidity from curve pool*/
-        await marketAccount.vBase.transfer(
-          DEAD_ADDRESS,
-          await lp.vBase.balanceOf(lp.market.address)
-        );
-        expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal(0);
-
-        // try withdrawal from pool:
-        await expect(
-          lp.clearingHouse.removeLiquidity(
-            0,
-            liquidityAmountUSDC,
-            FULL_REDUCTION_RATIO,
-            0,
-            0,
-            lp.usdc.address
-          )
-        ).to.be.revertedWith('');
-      });
-
-      it('Should allow to remove liquidity from pool, emit event', async function () {
-        // deposit
-        await lp.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lp.usdc.address
-        );
-
-        // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
-        // and -1) for market.exchange to work when closing the PnL of the position
-        await lpTwo.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lpTwo.usdc.address
-        );
-
-        // withdraw
-        const lpBalance = await lpTwo.perpetual.getLpPosition(lpTwo.address);
-
-        const perpetualVQuoteAmountBeforeWithdraw =
-          await lpTwo.vQuote.balanceOf(lpTwo.perpetual.address);
-
-        const proposedAmount = await liquidityProviderProposedAmount(
-          lpBalance,
-          lpBalance.liquidityBalance,
-          lp.market
-        );
-        await lpTwo.clearingHouse.removeLiquidity(
-          0,
-          lpBalance.liquidityBalance,
-          FULL_REDUCTION_RATIO,
-          proposedAmount,
-          0,
-          lp.usdc.address
-        );
-
-        const perpetualVQuoteAmountAfterWithdraw = await lpTwo.vQuote.balanceOf(
-          lpTwo.perpetual.address
-        );
-
-        expect(perpetualVQuoteAmountBeforeWithdraw).to.eq(
-          perpetualVQuoteAmountAfterWithdraw
-        );
-      });
-
-      it('Should remove and withdraw liquidity from pool, then delete LP position', async function () {
-        // deposit
-        await lp.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lp.usdc.address
-        );
-
-        // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
-        // and -1) for market.exchange to work when closing the PnL of the position
-        await lpTwo.clearingHouse.provideLiquidity(
-          0,
-          liquidityAmountUSDC,
-          lpTwo.usdc.address
-        );
-
-        // withdraw
-        const lpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
-
-        const proposedAmount = await liquidityProviderProposedAmount(
-          lpPosition,
-          lpPosition.liquidityBalance,
-          trader.market
-        );
-
-        await lp.clearingHouse.removeLiquidity(
-          0,
-          lpPosition.liquidityBalance,
-          FULL_REDUCTION_RATIO,
-          proposedAmount,
-          0,
-          lp.usdc.address
-        );
-
-        const positionAfter = await lp.perpetual.getLpPosition(lp.address);
-        // everything should be set to 0
-        expect(positionAfter.liquidityBalance).to.be.equal(0);
-        expect(positionAfter.cumFundingRate).to.be.equal(0);
-        expect(positionAfter.positionSize).to.be.equal(0);
-        expect(positionAfter.openNotional).to.be.equal(0);
-      });
   });
   describe('Can withdraw liquidity from the curve pool', async function () {
     it('Should not allow to withdraw liquidity when non provided', async function () {
@@ -346,6 +183,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.removeLiquidity(
           0,
           asBigNumber('1'),
+          FULL_REDUCTION_RATIO,
           0,
           0,
           lp.usdc.address
@@ -369,6 +207,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.removeLiquidity(
           0,
           providedLiquidity.add(BigNumber.from('1')),
+          FULL_REDUCTION_RATIO,
           0,
           0,
           lp.usdc.address
@@ -400,34 +239,15 @@ describe('Increment App: Liquidity', function () {
       );
       expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal(0);
 
-        await extendPositionWithCollateral(
-          trader,
-          trader.usdc,
-          liquidityAmount.div(1000),
-          liquidityAmount.div(100),
-          Side.Short
-        );
-
-        await provideLiquidity(lpTwo, lp.usdc, liquidityAmount);
-
-        // closing position generates dust
-        const eBaseDust = 47;
-        const traderPosition = await trader.perpetual.getTraderPosition(
-          trader.address
-        );
-
-        const closeProposedAmount = await deriveCloseProposedAmount(
-          traderPosition,
-          trader.market
-        );
-        const fullReductionRatio = ethers.utils.parseEther('1');
-        await expect(
-          trader.clearingHouse.reducePosition(
-            0,
-            fullReductionRatio,
-            closeProposedAmount,
-            0
-          )
+      // try withdrawal from pool:
+      await expect(
+        lp.clearingHouse.removeLiquidity(
+          0,
+          liquidityAmountUSDC,
+          FULL_REDUCTION_RATIO,
+          0,
+          0,
+          lp.usdc.address
         )
       ).to.be.revertedWith('');
     });
@@ -455,18 +275,19 @@ describe('Increment App: Liquidity', function () {
         lpTwo.perpetual.address
       );
 
-      //   await expect(
-      //     lp.clearingHouse.removeLiquidity(
-      //       0,
-      //       positionBefore.liquidityBalance,
-      //       FULL_REDUCTION_RATIO,
-      //       0,
-      //       0,
-      //       lp.usdc.address
-      //     )
-      //   )
-      //     .to.emit(lp.clearingHouse, 'LiquidityRemoved')
-      //     .withArgs(0, lp.address, positionBefore.liquidityBalance);
+      const proposedAmount = await liquidityProviderProposedAmount(
+        lpBalance,
+        lpBalance.liquidityBalance,
+        lp.market
+      );
+      await lpTwo.clearingHouse.removeLiquidity(
+        0,
+        lpBalance.liquidityBalance,
+        FULL_REDUCTION_RATIO,
+        proposedAmount,
+        0,
+        lp.usdc.address
+      );
 
       const perpetualVQuoteAmountAfterWithdraw = await lpTwo.vQuote.balanceOf(
         lpTwo.perpetual.address
@@ -505,6 +326,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.removeLiquidity(
         0,
         lpPosition.liquidityBalance,
+        FULL_REDUCTION_RATIO,
         proposedAmount,
         0,
         lp.usdc.address
@@ -552,7 +374,7 @@ describe('Increment App: Liquidity', function () {
       await extendPositionWithCollateral(
         trader,
         trader.usdc,
-        liquidityAmount.div(40),
+        liquidityAmount.div(1000),
         liquidityAmount.div(100),
         Side.Short
       );
@@ -565,12 +387,18 @@ describe('Increment App: Liquidity', function () {
         trader.address
       );
 
-      const tentativeQuoteAmount = await deriveCloseProposedAmount(
+      const closeProposedAmount = await deriveCloseProposedAmount(
         traderPosition,
         trader.market
       );
+      const fullReductionRatio = ethers.utils.parseEther('1');
       await expect(
-        trader.clearingHouse.reducePosition(0, tentativeQuoteAmount, 0)
+        trader.clearingHouse.reducePosition(
+          0,
+          fullReductionRatio,
+          closeProposedAmount,
+          0
+        )
       )
         .to.emit(trader.perpetual, 'DustGenerated')
         .withArgs(eBaseDust);
@@ -603,6 +431,7 @@ describe('Increment App: Liquidity', function () {
     //     lp.clearingHouse.removeLiquidity(
     //       0,
     //       positionBefore.liquidityBalance,
+    //       FULL_REDUCTION_RATIO,
     //       0,
     //       0,
     //       lp.usdc.address
