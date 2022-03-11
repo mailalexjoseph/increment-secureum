@@ -163,7 +163,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         (int256 openNotional, int256 positionSize) = _extendPosition(amount, isLong, minAmount);
 
         // check max deviation
-        checkPriceDeviation(marketPrice().toInt256());
+        checkPriceDeviation();
 
         // apply funding rate on existing positionSize
         int256 fundingPayments = _getFundingPayments(
@@ -264,7 +264,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // check max deviation
-        checkPriceDeviation(marketPrice().toInt256());
+        checkPriceDeviation();
 
         // adjust trader position
         trader.openNotional += vQuoteProceeds;
@@ -278,21 +278,19 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (vQuoteProceeds, vBaseAmount, profit);
     }
 
-    function checkPriceDeviation(int256 newPrice) internal {
+    function checkPriceDeviation() internal view {
         // check if market price has changed more than by 2% in this block
 
+        int256 newPrice = marketPrice().toInt256();
         // price deviations of a given block does not exceed 2%
         // <=> 2% > (newPrice - currentPrice) / newPrice
         // 2 * newPrice > (oldPrice - currentPrice) * 100
+
+        // slither-disable-next-line incorrect-equality
         require(
             2e16 * newPrice > LibMath.abs(newPrice - globalPosition.blockStartPrice) * 10e18,
             "Price impact too large"
         );
-        // slither-disable-next-line timestamp
-        if (block.timestamp > globalPosition.timeOfLastTrade) {
-            // console.log("hardhat: new update !");
-            globalPosition.blockStartPrice = newPrice;
-        }
     }
 
     function getUnrealizedPnL(address account) external view override returns (int256) {
@@ -419,6 +417,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             minAmount
         );
 
+        // check max deviation
+        checkPriceDeviation();
+
         // adjust lp position
         lp.openNotional += vQuoteProceeds;
         lp.positionSize += vBaseAmount;
@@ -496,9 +497,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // Don't update the state more than once per block
         // slither-disable-next-line timestamp
         if (currentTime > timeOfLastTrade) {
+            _recordMarketPrice();
             _updateTwap();
             _updateFundingRate();
         }
+    }
+
+    function _recordMarketPrice() internal {
+        globalPosition.blockStartPrice = marketPrice().toInt256();
     }
 
     function _updateTwap() internal {
