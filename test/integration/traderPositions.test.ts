@@ -21,6 +21,7 @@ describe('Increment: open/close long/short trading positions', () => {
   let bob: User;
   let lp: User;
   let lpTwo: User;
+  let deployer: User;
   let depositAmountUSDC: BigNumber;
   let depositAmount: BigNumber; // with 1e18 decimals
 
@@ -51,7 +52,7 @@ describe('Increment: open/close long/short trading positions', () => {
   beforeEach(
     'Give Alice funds and approve transfer by the vault to her balance',
     async () => {
-      ({alice, bob, lp, lpTwo} = await setup());
+      ({alice, bob, lp, lpTwo, deployer} = await setup());
       depositAmountUSDC = (await funding()).div(200); // amount used for collaterals (liquidity provisioning is 200x)
       depositAmount = await tokenToWad(
         await alice.vault.getReserveTokenDecimals(),
@@ -62,7 +63,7 @@ describe('Increment: open/close long/short trading positions', () => {
     }
   );
 
-  it.skip('Should fail if the pool has no liquidity in it', async () => {
+  it('Should fail if the pool has no liquidity in it', async () => {
     await expect(
       alice.clearingHouse.extendPositionWithCollateral(
         0,
@@ -82,10 +83,12 @@ describe('Increment: open/close long/short trading positions', () => {
   });
 
   it('Should fail if user does not have enough funds deposited in the vault', async () => {
-    await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
+    await setUpPoolLiquidity(lp, depositAmountUSDC.mul(200));
+    await setUpPoolLiquidity(lpTwo, depositAmountUSDC.mul(200));
+
     await alice.clearingHouse.deposit(
       0,
-      depositAmountUSDC.div(100),
+      depositAmountUSDC.div(5),
       alice.usdc.address
     );
 
@@ -159,7 +162,7 @@ describe('Increment: open/close long/short trading positions', () => {
     expect(eNewVaultBalance).to.closeTo(vaultBalanceAfterPositionOpened, 1);
   }
 
-  it.skip('Should open LONG position', async () => {
+  it('Should open LONG position', async () => {
     // set-up (needed for `getExpectedVBaseAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
@@ -171,11 +174,11 @@ describe('Increment: open/close long/short trading positions', () => {
     const minVBaseAmount = rMul(expectedVBase, ethers.utils.parseEther('0.99'));
 
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-    const expectedVBaseBought = '440372978255513989';
+    const expectedVBaseBought = '44037297825551398848';
     await _openAndCheckPosition(Side.Long, expectedVBaseBought, minVBaseAmount);
   });
 
-  it.skip('Should open SHORT position', async () => {
+  it('Should open SHORT position', async () => {
     // set-up (needed for `getExpectedVQuoteAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
@@ -190,7 +193,7 @@ describe('Increment: open/close long/short trading positions', () => {
     );
 
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
-    const expectedVQuoteBought = '567106214842943087';
+    const expectedVQuoteBought = '56710621484294309998';
     await _openAndCheckPosition(
       Side.Short,
       expectedVQuoteBought,
@@ -232,7 +235,7 @@ describe('Increment: open/close long/short trading positions', () => {
         nextBlockTimestamp,
         Side.Long,
         depositAmount.mul(-1),
-        '440372968909785562' // very brittle
+        '44037296890978559349' // very brittle
       );
   });
 
@@ -407,6 +410,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await setUpPoolLiquidity(lp, depositAmountUSDC.mul(200));
     await setUpPoolLiquidity(lpTwo, depositAmountUSDC.mul(200));
+    await setUpPoolLiquidity(deployer, depositAmountUSDC.mul(200));
 
     // position is within the margin ratio
     await alice.clearingHouse.extendPositionWithCollateral(
@@ -428,7 +432,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await _createPositionAndIncreaseItOutsideOfMargin(Side.Long);
   });
 
-  it.skip('Should fail to increase SHORT position size if user collateral is insufficient', async () => {
+  it('Should fail to increase SHORT position size if user collateral is insufficient', async () => {
     await _createPositionAndIncreaseItOutsideOfMargin(Side.Short);
   });
 
@@ -781,28 +785,13 @@ describe('Increment: open/close long/short trading positions', () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 
-    // fund some extra usdc
-    const collateralAmount = ethers.utils.parseUnits('100', 6);
-    console.log('mint some more');
-    await setUSDCBalance(env, alice.usdc, alice.address, collateralAmount);
-
-    console.log('approves');
-    await alice.usdc.approve(alice.vault.address, collateralAmount);
-
-    // attempt trade
-    const positionAmount = ethers.utils.parseEther('100');
-
-    // console.log('depositAmount', depositAmount.toString());
-    // console.log('depositAmountUSDC', depositAmountUSDC.toString());
-    // console.log('collateralAmount', collateralAmount.toString());
-    // console.log('positionAmount', positionAmount.toString());
-
+    await alice.usdc.approve(alice.vault.address, depositAmountUSDC.mul(200));
     await expect(
       alice.clearingHouse.extendPositionWithCollateral(
         0,
-        collateralAmount,
+        depositAmountUSDC.mul(200),
         alice.usdc.address,
-        positionAmount,
+        depositAmount.mul(1000),
         Side.Long,
         0
       )

@@ -33,7 +33,7 @@ contract TestPerpetual is Perpetual {
             timeOfLastTrade: timeOfLastTrade,
             cumFundingRate: cumFundingRate,
             timeOfLastFunding: globalPosition.timeOfLastFunding,
-            priceOfLastTrade: globalPosition.priceOfLastTrade
+            blockStartPrice: globalPosition.blockStartPrice
         });
     }
 

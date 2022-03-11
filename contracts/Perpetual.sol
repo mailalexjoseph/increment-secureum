@@ -59,7 +59,11 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         ICryptoSwap _market,
         IClearingHouse _clearingHouse
     ) {
-        // TODO: address zero checks
+        require(address(_vBase) != address(0), "vBase cannot be 0");
+        require(address(_vQuote) != address(0), "vQuote cannot be 0");
+        require(address(_market) != address(0), "market cannot be 0");
+        require(address(_clearingHouse) != address(0), "ClearingHouse cannot be 0");
+
         vBase = _vBase;
         vQuote = _vQuote;
         market = _market;
@@ -69,23 +73,22 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL. TODO: PLZ CHANGE THIS TO DURING CALL");
         require(vQuote.approve(address(market), type(uint256).max), "NO APPROVAL");
 
-        // can't access immutable variables in the constructor
-        int256 lastChainlinkPrice = IVBase(_vBase).getIndexPrice();
-        int256 lastMarketPrice = ICryptoSwap(_market).last_prices().toInt256();
+        // initialize global state
+        _initGlobalState(IVBase(_vBase).getIndexPrice(), ICryptoSwap(_market).last_prices().toInt256());
+    }
 
-        // initialize the oracle
+    function _initGlobalState(int256 lastChainlinkPrice, int256 lastMarketPrice) internal {
+        // initialize twap
         oracleTwap = lastChainlinkPrice;
         marketTwap = lastMarketPrice;
 
+        // initialize funding
         globalPosition = LibPerpetual.GlobalPosition({
             timeOfLastTrade: uint128(block.timestamp),
             timeOfLastFunding: uint128(block.timestamp),
-            priceOfLastTrade: lastMarketPrice,
-            cumFundingRate: 0
+            cumFundingRate: 0,
+            blockStartPrice: lastMarketPrice
         });
-
-        globalPosition.timeOfLastTrade = uint128(block.timestamp);
-        globalPosition.timeOfLastFunding = uint128(block.timestamp);
     }
 
     modifier onlyClearingHouse() {
@@ -153,14 +156,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             );
         }
 
+        // update state
+        updateTwapAndFunding();
+
         // open position
         (int256 openNotional, int256 positionSize) = _extendPosition(amount, isLong, minAmount);
 
         // check max deviation
-        checkMarketPrice();
-
-        // update state (after checking deviation!)
-        updateGenericProtocolState();
+        checkPriceDeviation(marketPrice().toInt256());
 
         // apply funding rate on existing positionSize
         int256 fundingRate = _getFundingPayments(
@@ -249,6 +252,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         require(trader.openNotional != 0 || trader.positionSize != 0, "No position currently opened in this market");
 
+        // update state
+        updateTwapAndFunding();
+
         (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
             trader,
             global,
@@ -258,10 +264,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // check max deviation
-        checkMarketPrice();
-
-        // update state (after checking deviation!)
-        updateGenericProtocolState();
+        checkPriceDeviation(marketPrice().toInt256());
 
         // adjust trader position
         trader.openNotional += vQuoteProceeds;
@@ -275,31 +278,29 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (vQuoteProceeds, vBaseAmount, profit);
     }
 
-    function checkMarketPrice() internal {
-        // check if market price has changed
+    function checkPriceDeviation(int256 newPrice) internal {
+        // check if market price has changed more than by 2% in this block
 
-        // console.log("hardhat: checkMarketPrice");
+        // console.log("hardhat: checkPriceDeviation");
         // console.log("block.timestamp", block.timestamp);
         // console.log("globalPosition.timeOfLastTrade", globalPosition.timeOfLastTrade);
 
-        // slither-disable-next-line timestamp
-        if (globalPosition.timeOfLastTrade < block.timestamp) {
-            // console.log("markPrice", markPrice);
-            // console.log("globalPosition.priceOfLastTrade", globalPosition.priceOfLastTrade);
+        // console.log("newPrice");
+        // console.logInt(newPrice);
 
-            // update market price
-            int256 markPrice = marketPrice().toInt256();
+        // console.log("globalPosition.blockStartPrice");
+        // console.logInt(globalPosition.blockStartPrice);
 
-            // price deviations does not exceed 2%
+        // price deviations of a given block does not exceed 2%
+        // <=> 2% > (newPrice - currentPrice) / newPrice
+        // 2 * newPrice > (oldPrice - currentPrice) * 100
+        require(
+            2e16 * newPrice > LibMath.abs(newPrice - globalPosition.blockStartPrice) * 10e18,
+            "Price impact too large"
+        );
+        if (block.timestamp > globalPosition.timeOfLastTrade) {
             // console.log("hardhat: new update !");
-            // <=> 2% > (olPrice - newPrice) / newPrice
-            // 2 * newPrice > (oldPrice - newPrice) * 100
-            // (2 + 100) newPrice > oldPrice
-            require(
-                2e16 * markPrice > LibMath.abs(markPrice - globalPosition.priceOfLastTrade) * 10e18,
-                "Price impact too large"
-            );
-            globalPosition.priceOfLastTrade = markPrice;
+            globalPosition.blockStartPrice = newPrice;
         }
     }
 
@@ -334,7 +335,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             basePrice = marketPrice();
 
             // note: To start the pool we first have to update the funding rate oracle!
-            updateGenericProtocolState();
+            updateTwapAndFunding();
         } else {
             basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
         }
@@ -382,7 +383,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
 
-        updateGenericProtocolState();
+        updateTwapAndFunding();
 
         // slither-disable-next-line incorrect-equality
         require(liquidityAmountToRemove <= lp.liquidityBalance, "Cannot remove more liquidity than LP provided");
@@ -496,7 +497,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    function updateGenericProtocolState() public {
+    function updateTwapAndFunding() public {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
         uint256 timeOfLastTrade = uint256(global.timeOfLastTrade);
