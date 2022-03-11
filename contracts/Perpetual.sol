@@ -298,6 +298,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             2e16 * newPrice > LibMath.abs(newPrice - globalPosition.blockStartPrice) * 10e18,
             "Price impact too large"
         );
+        // slither-disable-next-line timestamp
         if (block.timestamp > globalPosition.timeOfLastTrade) {
             // console.log("hardhat: new update !");
             globalPosition.blockStartPrice = newPrice;
