@@ -90,7 +90,8 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.clearingHouse.deposit(
       0,
       depositAmountUSDC.div(5),
-      alice.usdc.address
+      alice.usdc.address,
+      true
     );
 
     // swap succeeds, then it fails when opening the position
@@ -107,7 +108,10 @@ describe('Increment: open/close long/short trading positions', () => {
     // expected values
     const nextBlockTimestamp = await setNextBlockTimestamp(env);
 
-    const initialVaultBalance = await alice.vault.getBalance(0, alice.address);
+    const initialVaultBalance = await alice.vault.getTraderBalance(
+      0,
+      alice.address
+    );
 
     let positionSize, notionalAmount;
     if (direction === Side.Long) {
@@ -150,7 +154,7 @@ describe('Increment: open/close long/short trading positions', () => {
       alicePosition.openNotional.abs().div(ethers.utils.parseEther('0.01'))
     ).to.be.above(ethers.BigNumber.from('1'));
 
-    const vaultBalanceAfterPositionOpened = await alice.vault.getBalance(
+    const vaultBalanceAfterPositionOpened = await alice.vault.getTraderBalance(
       0,
       alice.address
     );
@@ -166,7 +170,12 @@ describe('Increment: open/close long/short trading positions', () => {
   it('Should open LONG position', async () => {
     // set-up (needed for `getExpectedVBaseAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
+    await alice.clearingHouse.deposit(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      true
+    );
 
     const expectedVBase = await alice.clearingHouse.getExpectedVBaseAmount(
       0,
@@ -182,7 +191,12 @@ describe('Increment: open/close long/short trading positions', () => {
   it('Should open SHORT position', async () => {
     // set-up (needed for `getExpectedVQuoteAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
+    await alice.clearingHouse.deposit(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      true
+    );
 
     const expectedVQuote = await alice.clearingHouse.getExpectedVQuoteAmount(
       0,
@@ -278,7 +292,7 @@ describe('Increment: open/close long/short trading positions', () => {
     }
     expect(traderPositionAfterFirstTrade.cumFundingRate).to.eq(0);
 
-    const vaultBalanceAfterFirstTrade = await alice.vault.getBalance(
+    const vaultBalanceAfterFirstTrade = await alice.vault.getTraderBalance(
       0,
       alice.address
     );
@@ -325,7 +339,7 @@ describe('Increment: open/close long/short trading positions', () => {
       );
     }
 
-    const vaultBalanceAfterSecondTrade = await alice.vault.getBalance(
+    const vaultBalanceAfterSecondTrade = await alice.vault.getTraderBalance(
       0,
       alice.address
     );
@@ -507,8 +521,16 @@ describe('Increment: open/close long/short trading positions', () => {
   it('LONG positions entirely closed should return the expected profit (no funding payments involved in the profit)', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-    const initialVaultBalance = await alice.vault.getBalance(0, alice.address);
+    await alice.clearingHouse.deposit(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      true
+    );
+    const initialVaultBalance = await alice.vault.getTraderBalance(
+      0,
+      alice.address
+    );
 
     const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
       VQUOTE_INDEX
@@ -561,10 +583,8 @@ describe('Increment: open/close long/short trading positions', () => {
       .add(expectedProfit)
       .sub(insurancePayed);
 
-    const aliceVaultBalanceAfterClosingPosition = await alice.vault.getBalance(
-      0,
-      alice.address
-    );
+    const aliceVaultBalanceAfterClosingPosition =
+      await alice.vault.getTraderBalance(0, alice.address);
 
     expect(expectedNewVaultBalance).to.equal(
       aliceVaultBalanceAfterClosingPosition
@@ -582,8 +602,16 @@ describe('Increment: open/close long/short trading positions', () => {
   it('SHORT positions entirely closed should return the expected profit (no funding payments involved in the profit)', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
-    const initialVaultBalance = await alice.vault.getBalance(0, alice.address);
+    await alice.clearingHouse.deposit(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      true
+    );
+    const initialVaultBalance = await alice.vault.getTraderBalance(
+      0,
+      alice.address
+    );
 
     const vQuoteLiquidityBeforePositionCreated = await alice.market.balances(
       VQUOTE_INDEX
@@ -637,7 +665,10 @@ describe('Increment: open/close long/short trading positions', () => {
       .add(expectedProfit)
       .sub(insurancePayed);
 
-    const newVaultBalance = await alice.vault.getBalance(0, alice.address);
+    const newVaultBalance = await alice.vault.getTraderBalance(
+      0,
+      alice.address
+    );
 
     expect(expectedNewVaultBalance).to.equal(newVaultBalance);
 

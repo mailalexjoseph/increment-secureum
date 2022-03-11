@@ -145,9 +145,9 @@ export async function withdrawCollateral(
   user: User,
   token: IERC20Metadata
 ): Promise<void> {
-  const userDeposits = await user.vault.getReserveValue(0, user.address);
+  const userDeposits = await user.vault.getTraderReserveValue(0, user.address);
   await (
-    await user.clearingHouse.withdraw(0, userDeposits, token.address)
+    await user.clearingHouse.withdraw(0, userDeposits, token.address, true)
   ).wait();
 }
 

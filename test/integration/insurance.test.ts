@@ -32,7 +32,7 @@ async function addTokensToInsurance(user: User, amount: BigNumber) {
 
 async function depositIntoVault(user: User, amount: BigNumber) {
   await user.usdc.approve(user.vault.address, amount);
-  await user.clearingHouse.deposit(0, amount, user.usdc.address);
+  await user.clearingHouse.deposit(0, amount, user.usdc.address, true);
 }
 
 describe('Increment App: Insurance', function () {
@@ -66,8 +66,9 @@ describe('Increment App: Insurance', function () {
     await expect(
       user.clearingHouse.withdraw(
         0,
-        await user.vault.getReserveValue(0, user.address),
-        user.usdc.address
+        await user.vault.getTraderReserveValue(0, user.address),
+        user.usdc.address,
+        true
       )
     ).to.be.revertedWith('Insufficient insurance balance');
   });
@@ -83,8 +84,9 @@ describe('Increment App: Insurance', function () {
     await expect(
       user.clearingHouse.withdraw(
         0,
-        await user.vault.getReserveValue(0, user.address),
-        user.usdc.address
+        await user.vault.getTraderReserveValue(0, user.address),
+        user.usdc.address,
+        true
       )
     )
       .to.emit(user.insurance, 'DebtSettled')
@@ -105,7 +107,7 @@ describe('Increment App: Insurance', function () {
 
     await depositIntoVault(trader, tradeAmountUSDC);
 
-    const traderReserveDeposited = await trader.vault.getBalance(
+    const traderReserveDeposited = await trader.vault.getTraderBalance(
       0,
       trader.address
     );
@@ -122,12 +124,12 @@ describe('Increment App: Insurance', function () {
       INSURANCE_FEE
     );
 
-    expect(await trader.vault.getBalance(0, trader.address)).to.be.eq(
+    expect(await trader.vault.getTraderBalance(0, trader.address)).to.be.eq(
       traderReserveDeposited.sub(insurancePayed)
     );
 
     expect(
-      await trader.vault.getBalance(0, trader.clearingHouse.address)
+      await trader.vault.getTraderBalance(0, trader.clearingHouse.address)
     ).to.be.eq(insurancePayed);
   });
 });

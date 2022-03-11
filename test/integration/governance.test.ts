@@ -1,5 +1,4 @@
 import {expect} from 'chai';
-import {clear} from 'console';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {provideLiquidity} from '../helpers/PerpetualUtils';
 import {funding, setup, User} from '../helpers/setup';
@@ -87,10 +86,10 @@ describe('Increment Protocol: Governance', function () {
       await expect(deployer.clearingHouse.pause());
 
       await expect(
-        user.clearingHouse.deposit(0, 1, user.usdc.address)
+        user.clearingHouse.deposit(0, 1, user.usdc.address, true)
       ).to.be.revertedWith('Pausable: paused');
       await expect(
-        user.clearingHouse.withdraw(0, 1, user.usdc.address)
+        user.clearingHouse.withdraw(0, 1, user.usdc.address, true)
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(
@@ -163,7 +162,7 @@ describe('Increment Protocol: Governance', function () {
       await deployer.clearingHouse.sellDust(0, dustAmount, 0);
 
       expect(
-        await deployer.vault.getBalance(0, deployer.clearingHouse.address)
+        await deployer.vault.getTraderBalance(0, deployer.clearingHouse.address)
       ).to.gt(0);
     });
   });
