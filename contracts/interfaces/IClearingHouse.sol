@@ -91,7 +91,8 @@ interface IClearingHouse {
     function deposit(
         uint256 idx,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) external;
 
     /// @notice Withdraw tokens from the vault
@@ -101,7 +102,8 @@ interface IClearingHouse {
     function withdraw(
         uint256 idx,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) external;
 
     /// @notice Single open position function, group collateral deposit and extend position

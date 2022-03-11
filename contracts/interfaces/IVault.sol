@@ -30,29 +30,33 @@ interface IVault {
         uint256 idx,
         address user,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) external returns (uint256);
 
     function withdrawAll(
         uint256 idx,
         address user,
-        IERC20 withdrawToken
+        IERC20 withdrawToken,
+        bool isTrader
     ) external returns (uint256);
 
     function settleProfit(
         uint256 idx,
         address user,
-        int256 amount
+        int256 amount,
+        bool isTrader
     ) external;
 
     function withdraw(
         uint256 idx,
         address user,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) external returns (uint256);
 
-    // viewer functions
+    // system wide viewer functions
     function getReserveTokenDecimals() external view returns (uint256);
 
     function getTotalReserveToken() external view returns (uint256);
@@ -61,7 +65,12 @@ interface IVault {
 
     function getMaxTVL() external view returns (uint256);
 
-    function getReserveValue(uint256 idx, address account) external view returns (int256);
+    // user viewer functions
+    function getLpReserveValue(uint256 idx, address account) external view returns (int256);
 
-    function getBalance(uint256 idx, address user) external view returns (int256);
+    function getTraderReserveValue(uint256 idx, address account) external view returns (int256);
+
+    function getTraderBalance(uint256 idx, address account) external view returns (int256);
+
+    function getLpBalance(uint256 idx, address account) external view returns (int256);
 }

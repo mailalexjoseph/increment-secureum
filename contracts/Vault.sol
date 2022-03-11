@@ -39,8 +39,9 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 internal badDebt;
     uint256 internal maxTVL;
 
-    //      trader     =>      market  => balances
-    mapping(uint256 => mapping(address => int256)) private balances;
+    //      market     =>      trader  => balance
+    mapping(uint256 => mapping(address => int256)) private traderBalances;
+    mapping(uint256 => mapping(address => int256)) private lpBalances;
     uint256 internal totalReserveToken;
 
     constructor(IERC20 _reserveToken) {
@@ -93,7 +94,8 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 idx,
         address user,
         uint256 amount,
-        IERC20 depositToken
+        IERC20 depositToken,
+        bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
@@ -105,7 +107,7 @@ contract Vault is IVault, Context, IncreOwnable {
         require(convertedWadAmount.toInt256() >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
 
         // increment balance
-        balances[idx][user] += convertedWadAmount.toInt256();
+        _changeBalance(idx, user, convertedWadAmount.toInt256(), isTrader);
         totalReserveToken += convertedWadAmount;
 
         require(totalReserveToken <= maxTVL, "MAX_TVL");
@@ -116,6 +118,19 @@ contract Vault is IVault, Context, IncreOwnable {
         return convertedWadAmount;
     }
 
+    function _changeBalance(
+        uint256 idx,
+        address user,
+        int256 amount,
+        bool isTrader
+    ) internal {
+        if (isTrader) {
+            traderBalances[idx][user] += amount;
+        } else {
+            lpBalances[idx][user] += amount;
+        }
+    }
+
     /**
      * @notice Withdraw all ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
@@ -123,9 +138,11 @@ contract Vault is IVault, Context, IncreOwnable {
     function withdrawAll(
         uint256 idx,
         address user,
-        IERC20 withdrawToken
+        IERC20 withdrawToken,
+        bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
-        return withdraw(idx, user, balances[idx][user].toUint256(), withdrawToken);
+        int256 amount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
+        return withdraw(idx, user, uint256(amount), withdrawToken, isTrader);
     }
 
     /**
@@ -137,16 +154,20 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 idx,
         address user,
         uint256 amount,
-        IERC20 withdrawToken
+        IERC20 withdrawToken,
+        bool isTrader
     ) public override onlyClearingHouse returns (uint256) {
-        require(amount.toInt256() <= balances[idx][user], "Not enough balance");
+        int256 balance = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
+        require(amount.toInt256() <= balance, "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
         //    console.log("hardhat: Withdrawing for user", amount);
 
         uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
 
-        balances[idx][user] -= amount.toInt256();
+        // decrement balance
+        _changeBalance(idx, user, -rawTokenAmount.toInt256(), isTrader);
+
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
 
@@ -161,7 +182,7 @@ contract Vault is IVault, Context, IncreOwnable {
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
 
         // deposit must exceed 10
-        int256 balanceAfter = balances[idx][user];
+        int256 balanceAfter = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
         if (balanceAfter != 0) {
             // deposit must exceed 10
             require(balanceAfter >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
@@ -172,25 +193,38 @@ contract Vault is IVault, Context, IncreOwnable {
     function settleProfit(
         uint256 idx,
         address user,
-        int256 amount
+        int256 amount,
+        bool isTrader
     ) external override onlyClearingHouse {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
-        balances[idx][user] += settlement;
+        _changeBalance(idx, user, settlement, isTrader);
     }
 
     /************************* getter *************************/
 
-    function getBalance(uint256 idx, address user) external view override returns (int256) {
-        return balances[idx][user];
+    function getTraderBalance(uint256 idx, address user) external view override returns (int256) {
+        return traderBalances[idx][user];
+    }
+
+    function getLpBalance(uint256 idx, address user) external view override returns (int256) {
+        return lpBalances[idx][user];
     }
 
     /**
      * @notice get the Portfolio value of an account
      * @param account Account address
      */
-    function getReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return PRBMathSD59x18.mul(balances[idx][account], getAssetPrice());
+    function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
+        return PRBMathSD59x18.mul(traderBalances[idx][account], getAssetPrice());
+    }
+
+    /**
+     * @notice get the Portfolio value of an account
+     * @param account Account address
+     */
+    function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {
+        return PRBMathSD59x18.mul(lpBalances[idx][account], getAssetPrice());
     }
 
     /**

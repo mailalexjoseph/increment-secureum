@@ -83,7 +83,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // apply changes to collateral
-        vault.settleProfit(idx, address(this), profit);
+        vault.settleProfit(idx, address(this), profit, true);
     }
 
     function removeInsurance(
@@ -91,11 +91,11 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         IERC20 token
     ) external override onlyOwner {
-        require(vault.withdraw(idx, address(this), amount, token) > 0);
+        require(vault.withdraw(idx, address(this), amount, token, true) > 0);
 
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
 
-        uint256 lockedInsurance = vault.getBalance(0, address(this)).toUint256();
+        uint256 lockedInsurance = vault.getTraderBalance(0, address(this)).toUint256();
         uint256 tvl = vault.getTotalReserveToken();
 
         require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
@@ -118,7 +118,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         LibPerpetual.Side direction,
         uint256 minAmount
     ) external override returns (int256, int256) {
-        deposit(idx, collateralAmount, token);
+        deposit(idx, collateralAmount, token, true);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
 
@@ -129,9 +129,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function deposit(
         uint256 idx,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) public override whenNotPaused {
-        require(vault.deposit(idx, msg.sender, amount, token) > 0);
+        require(vault.deposit(idx, msg.sender, amount, token, isTrader) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
 
@@ -142,13 +143,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function withdraw(
         uint256 idx,
         uint256 amount,
-        IERC20 token
+        IERC20 token,
+        bool isTrader
     ) external override whenNotPaused {
         // slither-disable-next-line incorrect-equality
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
-        require(vault.withdraw(idx, msg.sender, amount, token) > 0);
+        require(vault.withdraw(idx, msg.sender, amount, token, isTrader) > 0);
         emit Withdraw(idx, msg.sender, address(token), amount);
     }
 
@@ -196,10 +198,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         // pay insurance fee: TODO: can never withdraw this amount!
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
-        vault.settleProfit(0, address(this), insuranceFee); // always deposit insurance fees into the 0 vault
+        vault.settleProfit(0, address(this), insuranceFee, true); // always deposit insurance fees into the 0 vault
 
         int256 traderVaultDiff = fundingPayments - insuranceFee;
-        vault.settleProfit(idx, msg.sender, traderVaultDiff);
+        vault.settleProfit(idx, msg.sender, traderVaultDiff, true);
 
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
@@ -229,7 +231,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // apply changes to collateral
-        vault.settleProfit(idx, msg.sender, profit);
+        vault.settleProfit(idx, msg.sender, profit, true);
 
         emit ReducePosition(idx, msg.sender, uint128(block.timestamp), reducedOpenNotional, reducedPositionSize);
     }
@@ -250,7 +252,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
-    function marginRatio(uint256 idx, address account) public view override returns (int256) {
+    function marginRatio(uint256 idx, address account) public view override returns (int256 marginRatio_) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
 
@@ -260,7 +262,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         int256 openNotional = getTraderPosition(idx, account).openNotional;
 
         int256 positiveOpenNotional = LibMath.abs(openNotional);
-        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
+
+        marginRatio_ = openNotional != 0
+            ? LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional)
+            : int256(0);
     }
 
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
@@ -292,10 +297,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         // subtract reward from liquidatee
         int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
-        vault.settleProfit(idx, liquidatee, reducedProfit);
+        vault.settleProfit(idx, liquidatee, reducedProfit, true);
 
         // add reward to liquidator
-        vault.settleProfit(idx, liquidator, liquidationRewardAmount.toInt256());
+        vault.settleProfit(idx, liquidator, liquidationRewardAmount.toInt256(), true);
 
         emit LiquidationCall(idx, liquidatee, liquidator, uint128(block.timestamp), positiveOpenNotional);
     }
@@ -315,7 +320,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         require(amount != 0, "Zero amount");
 
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
-        uint256 wadAmount = vault.deposit(idx, msg.sender, amount, token);
+        uint256 wadAmount = vault.deposit(idx, msg.sender, amount, token, false);
 
         (uint256 baseAmount, int256 fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
 
@@ -350,11 +355,11 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             minAmount
         );
 
-        vault.settleProfit(idx, msg.sender, profit);
+        vault.settleProfit(idx, msg.sender, profit, false);
 
         // remove the liquidity provider from the list
         // slither-disable-next-line unused-return // can be zero amount
-        vault.withdrawAll(idx, msg.sender, token);
+        vault.withdrawAll(idx, msg.sender, token, false);
 
         emit LiquidityRemoved(
             idx,
@@ -406,7 +411,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
     function getReserveValue(uint256 idx, address account) public view override returns (int256) {
-        return vault.getReserveValue(idx, account);
+        return vault.getTraderReserveValue(idx, account);
     }
 
     /// @notice Return the curve price oracle
