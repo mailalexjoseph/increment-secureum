@@ -312,19 +312,32 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         external
         override
         onlyClearingHouse
-        returns (uint256)
+        returns (uint256, int256)
     {
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(wadAmount != 0, "Zero amount");
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(lpPosition[account].liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
+        updateTwapAndFundingRate();
+
+        // reflect the added liquidity on the LP position
+        LibPerpetual.UserPosition storage lp = lpPosition[account];
+
+        int256 fundingPayments;
+        if (lp.cumFundingRate != globalPosition.cumFundingRate && lp.cumFundingRate != 0) {
+            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
+            int256 vQuotePositionAfterVirtualWithdrawal = lp.openNotional +
+                (((market.balances(VQUOTE_INDEX) * lp.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
+            int256 vBasePositionAfterVirtualWithdrawal = lp.positionSize +
+                (((market.balances(VBASE_INDEX) * lp.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
+
+            fundingPayments = _getFundingPayments(
+                vBasePositionAfterVirtualWithdrawal > 0,
+                lp.cumFundingRate,
+                globalPosition.cumFundingRate,
+                LibMath.abs(lp.positionSize)
+            );
+        }
 
         uint256 basePrice;
         if (totalLiquidityProvided == 0) {
             basePrice = marketPrice();
-
-            // note: To start the pool we first have to update the funding rate oracle!
-            updateTwapAndFundingRate();
         } else {
             basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
         }
@@ -336,16 +349,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         //uint256 min_mint_amount = 0; // set to zero for now
         uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
-        // update balances
-        lpPosition[account] = LibPerpetual.UserPosition({
-            openNotional: -wadAmount.toInt256(),
-            positionSize: -baseAmount.toInt256(),
-            cumFundingRate: globalPosition.cumFundingRate,
-            liquidityBalance: liquidity
-        });
+        lp.openNotional -= wadAmount.toInt256();
+        lp.positionSize -= baseAmount.toInt256();
+        lp.cumFundingRate = globalPosition.cumFundingRate;
+        lp.liquidityBalance += liquidity;
         totalLiquidityProvided += liquidity;
 
-        return baseAmount;
+        return (baseAmount, fundingPayments);
     }
 
     /// @notice Remove liquidity from the pool

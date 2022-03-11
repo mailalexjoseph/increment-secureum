@@ -9,6 +9,7 @@ import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
   setupUser,
+  getLatestTimestamp,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-getters';
 import {asBigNumber, rDiv} from '../helpers/utils/calculations';
@@ -64,19 +65,20 @@ describe('Increment App: Liquidity', function () {
       );
     });
 
-    it('Should not allow to deposit twice', async function () {
+    it('Should allow to deposit twice', async function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC.div(2),
         lp.usdc.address
       );
+
       await expect(
         lp.clearingHouse.provideLiquidity(
           0,
           liquidityAmountUSDC.div(2),
           lp.usdc.address
         )
-      ).to.be.revertedWith('Has provided liquidity before');
+      ).to.not.be.reverted;
     });
 
     it('Should split first deposit according to current chainlink price', async function () {
@@ -118,6 +120,74 @@ describe('Increment App: Liquidity', function () {
       );
       expect(await lpTwo.market.balances(1)).to.be.equal(
         vBaselpBalance.add(rDiv(liquidityWadAmount, price))
+      );
+    });
+
+    it('Should allow multiple deposits from one account', async function () {
+      // set global.cumFundingRate
+      let anteriorTimestamp = (await getLatestTimestamp(env)) - 15;
+      await lp.perpetual.__TestPerpetual_setGlobalPosition(
+        anteriorTimestamp,
+        ethers.utils.parseEther('100') // set any cumFundingRate != 0
+      );
+
+      // lp deposits some assets
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC.div(2),
+        lp.usdc.address
+      );
+
+      // trade some assets to change the ratio in the pool
+      const depositAmount = liquidityAmountUSDC.div(20);
+      await trader.clearingHouse.deposit(0, depositAmount, trader.usdc.address);
+      await trader.clearingHouse.extendPosition(
+        0,
+        depositAmount.mul(2),
+        Side.Long,
+        0
+      );
+
+      // before depositing more liquidity
+      const vBaseBefore = await lp.vBase.balanceOf(lp.market.address);
+      const vQuoteBefore = await lp.vQuote.balanceOf(lp.market.address);
+      const vBaselpBalance = await lp.market.balances(1);
+      const vQuotelpBalance = await lp.market.balances(0);
+      expect(vBaseBefore).to.be.equal(vBaselpBalance);
+      expect(vQuoteBefore).to.be.equal(vQuotelpBalance);
+
+      const priceBefore = rDiv(vQuoteBefore, vBaseBefore);
+      const liquidityWadAmount = await tokenToWad(
+        await lp.vault.getReserveTokenDecimals(),
+        liquidityAmountUSDC.div(2)
+      ); // deposited liquidity with 18 decimals
+
+      // set new global state
+      anteriorTimestamp += 10;
+      await lp.perpetual.__TestPerpetual_setGlobalPosition(
+        anteriorTimestamp,
+        ethers.utils.parseEther('200').mul(-1) // set any cumFundingRate different than the one before
+      );
+
+      // deposit more liquidity
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC.div(2),
+        lp.usdc.address
+      );
+
+      /* balances should increment */
+      expect(await lp.vQuote.balanceOf(lp.market.address)).to.be.equal(
+        vQuoteBefore.add(liquidityWadAmount)
+      );
+      expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal(
+        vBaseBefore.add(rDiv(liquidityWadAmount, priceBefore))
+      );
+      expect(await lp.market.balances(1)).to.be.equal(
+        vBaselpBalance.add(rDiv(liquidityWadAmount, priceBefore))
+      );
+      expect(await lp.market.balances(0)).to.be.equal(
+        vQuotelpBalance.add(liquidityWadAmount)
       );
     });
 

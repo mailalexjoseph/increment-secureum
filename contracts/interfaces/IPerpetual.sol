@@ -71,7 +71,7 @@ interface IPerpetual {
     function getFundingPayments(address account) external view returns (int256);
 
     // liquidator provider functions
-    function provideLiquidity(address account, uint256 wadAmount) external returns (uint256);
+    function provideLiquidity(address account, uint256 wadAmount) external returns (uint256, int256);
 
     function removeLiquidity(
         address account,

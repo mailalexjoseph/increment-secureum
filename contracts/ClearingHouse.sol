@@ -313,13 +313,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused returns (uint256, uint256) {
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(perpetuals[idx].getLpPosition(msg.sender).liquidityBalance == 0, "Has provided liquidity before"); // TODO: can we loosen this restriction (must settle funding!)
 
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
         uint256 wadAmount = vault.deposit(idx, msg.sender, amount, token);
 
-        uint256 baseAmount = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
+        (uint256 baseAmount, int256 fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
+
+        if (fundingPayments != 0) {
+            vault.settleProfit(idx, msg.sender, fundingPayments);
+        }
 
         emit LiquidityProvided(idx, msg.sender, address(token), amount);
         return (wadAmount, baseAmount);
