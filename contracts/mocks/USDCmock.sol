@@ -10,10 +10,10 @@ contract USDCmock is ERC20, IncreOwnable {
     uint8 public _decimals;
 
     constructor(
-        string memory shortName,
-        string memory longName,
+        string memory name,
+        string memory symbol,
         uint8 decimals_
-    ) ERC20(shortName, longName) {
+    ) ERC20(name, symbol) {
         _decimals = decimals_;
     }
 
