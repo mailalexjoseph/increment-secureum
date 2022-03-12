@@ -126,7 +126,10 @@ const main = async function () {
   // Setup
   const users = await getNamedAccounts();
   const contracts = await getContractsKovan(users.deployer);
-  const [deployer, user] = await setupUsers(Object.values(users), contracts);
+  const [deployer, user, liquidator] = await setupUsers(
+    Object.values(users),
+    contracts
+  );
 
   // Scenario
   const tradeSize = asBigNumber('100');
@@ -139,7 +142,7 @@ const main = async function () {
       await fundAccounts(deployer, asBigNumber('100000'), [
         deployer.address,
         user.address,
-        '0x57485dDa80B2eA63F1f0bB5a8877Abf4C6d14f52', // cole
+        liquidator.address,
       ]);
     }
 

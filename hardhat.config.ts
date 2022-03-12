@@ -119,6 +119,9 @@ const config: HardhatUserConfig = {
     lpTwo: {
       default: 7,
     },
+    liquidator: {
+      default: '0x57485dDa80B2eA63F1f0bB5a8877Abf4C6d14f52',
+    },
   },
   etherscan: {
     // Your API key for Etherscan
