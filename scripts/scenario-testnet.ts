@@ -126,7 +126,7 @@ const main = async function () {
   // Setup
   const users = await getNamedAccounts();
   const contracts = await getContractsKovan(users.deployer);
-  const [deployer, user, liquidator] = await setupUsers(
+  const [deployer, user, liquidator, frontend] = await setupUsers(
     Object.values(users),
     contracts
   );
@@ -143,6 +143,8 @@ const main = async function () {
         deployer.address,
         user.address,
         liquidator.address,
+        const [deployer, user, liquidator, frontend] = await setupUsers(
+          .address,
       ]);
     }
 

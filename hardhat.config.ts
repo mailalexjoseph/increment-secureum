@@ -122,6 +122,9 @@ const config: HardhatUserConfig = {
     liquidator: {
       default: '0x57485dDa80B2eA63F1f0bB5a8877Abf4C6d14f52',
     },
+    frontend: {
+      default: '0xB2a98504D0943163701202301f13E07aCE53bD11',
+    },
   },
   etherscan: {
     // Your API key for Etherscan
