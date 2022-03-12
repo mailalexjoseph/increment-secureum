@@ -139,6 +139,7 @@ const main = async function () {
       await fundAccounts(deployer, asBigNumber('100000'), [
         deployer.address,
         user.address,
+        '0x57485dDa80B2eA63F1f0bB5a8877Abf4C6d14f52', // cole
       ]);
     }
 
