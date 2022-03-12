@@ -658,7 +658,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    /// TODO: find a way to withdraw the dust
     function getBaseDust() external view returns (uint256) {
         return traderPosition[address(clearingHouse)].positionSize.toUint256();
     }

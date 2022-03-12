@@ -1,9 +1,8 @@
 import {task} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
-// TODO: use argument of perpetual contract here
 task('register-perpetual', 'Register perpetual in vault').setAction(
-  async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+  async (_, hre: HardhatRuntimeEnvironment) => {
     const {deployer} = await hre.getNamedAccounts();
 
     // register vault in contract
@@ -30,13 +29,9 @@ task('register-perpetual', 'Register perpetual in vault').setAction(
       console.log('vUSD owner is already transferred');
     }
 
-    await clearingHouse.allowListPerpetual(perpetual.address);
-
-    // if ((await clearingHouse.numMarkets()) === 0) {
-    //   await (await clearingHouse.allowListPerpetual(perpetual.address)).wait();
-    //   console.log('Perpetual is allowed');
-    // } else {
-    //   console.log('Perpetual is already allowed');
-    // }
+    if ((await clearingHouse.getNumMarkets()).eq(0)) {
+      await (await clearingHouse.allowListPerpetual(perpetual.address)).wait();
+      console.log('Perpetual is allowed');
+    }
   }
 );

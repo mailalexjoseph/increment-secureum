@@ -2,7 +2,7 @@ import {task} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 task('set-minter', 'Set minter to curve lp token').setAction(
-  async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+  async (_, hre: HardhatRuntimeEnvironment) => {
     const {deployer} = await hre.getNamedAccounts();
 
     const cryptoSwap = await hre.ethers.getContract(

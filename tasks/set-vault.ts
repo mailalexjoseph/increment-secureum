@@ -2,7 +2,7 @@ import {task} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 task('set-insurance', 'Compiles vyper contracts and copy to folder').setAction(
-  async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+  async (_, hre: HardhatRuntimeEnvironment) => {
     const {deployer} = await hre.getNamedAccounts();
 
     // register vault in contract

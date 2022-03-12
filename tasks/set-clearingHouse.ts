@@ -2,7 +2,7 @@ import {task} from 'hardhat/config';
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 
 task('set-insurance', 'Set clearinghouse in vault').setAction(
-  async (taskArgs, hre: HardhatRuntimeEnvironment) => {
+  async (_, hre: HardhatRuntimeEnvironment) => {
     const {deployer} = await hre.getNamedAccounts();
 
     // register vault in contract

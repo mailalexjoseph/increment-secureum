@@ -196,7 +196,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             minAmount
         );
 
-        // pay insurance fee: TODO: can never withdraw this amount!
+        // pay insurance fee
         int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
         vault.settleProfit(0, address(this), insuranceFee, true); // always deposit insurance fees into the 0 vault
 
