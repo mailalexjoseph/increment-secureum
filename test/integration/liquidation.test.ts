@@ -1,12 +1,10 @@
 import {expect} from 'chai';
 import {utils, BigNumber} from 'ethers';
-import env, {ethers} from 'hardhat';
 
-import {rMul, rDiv} from '../helpers/utils/calculations';
+import {rMul} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
 import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
-import {setNextBlockTimestamp} from '../../helpers/misc-utils';
-import {getBlockTime, tokenToWad} from '../../helpers/contracts-helpers';
+import {tokenToWad} from '../../helpers/contracts-helpers';
 import {Side} from '../helpers/utils/types';
 
 /*
@@ -25,24 +23,12 @@ describe('Increment: liquidation', () => {
   let tradeAmount: BigNumber;
 
   // protocol constants
-  let MIN_MARGIN: BigNumber;
   let LIQUIDATION_REWARD: BigNumber;
-  let TWAP_FREQUENCY: BigNumber;
-  let FEE: BigNumber;
-  let MIN_MARGIN_AT_CREATION: BigNumber;
-  let VQUOTE_INDEX: BigNumber;
-  let VBASE_INDEX: BigNumber;
 
   before('Get protocol constants', async () => {
     ({alice, bob} = await setup());
 
-    MIN_MARGIN = await alice.clearingHouse.MIN_MARGIN();
     LIQUIDATION_REWARD = await alice.clearingHouse.LIQUIDATION_REWARD();
-    TWAP_FREQUENCY = await alice.perpetual.TWAP_FREQUENCY();
-    FEE = await alice.clearingHouse.FEE();
-    MIN_MARGIN_AT_CREATION = await alice.clearingHouse.MIN_MARGIN_AT_CREATION();
-    VQUOTE_INDEX = await alice.perpetual.VQUOTE_INDEX();
-    VBASE_INDEX = await alice.perpetual.VBASE_INDEX();
   });
 
   beforeEach(

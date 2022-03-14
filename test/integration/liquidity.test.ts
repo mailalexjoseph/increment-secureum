@@ -30,7 +30,7 @@ describe('Increment App: Liquidity', function () {
   let liquidityAmountUSDC: BigNumber;
 
   // constants
-  const MIN_MINT_AMOUNT = BigNumber.from(0);
+  // const MIN_MINT_AMOUNT = BigNumber.from(0);
 
   beforeEach('Set up', async () => {
     ({lp, trader, lpTwo} = await setup());

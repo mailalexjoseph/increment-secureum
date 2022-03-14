@@ -2,12 +2,9 @@ import {expect} from 'chai';
 import {BigNumber} from 'ethers';
 import env, {ethers} from 'hardhat';
 
-import {rMul, rDiv} from '../helpers/utils/calculations';
+import {rMul} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
-import {
-  deriveCloseProposedAmount,
-  setUpPoolLiquidity,
-} from '../helpers/PerpetualUtils';
+import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {setNextBlockTimestamp} from '../../helpers/misc-utils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
@@ -25,27 +22,14 @@ describe('Increment: open/close long/short trading positions', () => {
   let depositAmount: BigNumber; // with 1e18 decimals
 
   // protocol constants
-  let MIN_MARGIN: BigNumber;
-  let LIQUIDATION_REWARD: BigNumber;
-  let TWAP_FREQUENCY: BigNumber;
-  let FEE: BigNumber;
-  let MIN_MARGIN_AT_CREATION: BigNumber;
   let INSURANCE_FEE: BigNumber;
   let VQUOTE_INDEX: BigNumber;
-  let VBASE_INDEX: BigNumber;
 
   before('Get protocol constants', async () => {
     const {deployer} = await setup();
 
-    MIN_MARGIN = await deployer.clearingHouse.MIN_MARGIN();
-    LIQUIDATION_REWARD = await deployer.clearingHouse.LIQUIDATION_REWARD();
-    TWAP_FREQUENCY = await deployer.perpetual.TWAP_FREQUENCY();
-    FEE = await deployer.clearingHouse.FEE();
-    MIN_MARGIN_AT_CREATION =
-      await deployer.clearingHouse.MIN_MARGIN_AT_CREATION();
     INSURANCE_FEE = await deployer.clearingHouse.INSURANCE_FEE();
     VQUOTE_INDEX = await deployer.perpetual.VQUOTE_INDEX();
-    VBASE_INDEX = await deployer.perpetual.VBASE_INDEX();
   });
 
   beforeEach(

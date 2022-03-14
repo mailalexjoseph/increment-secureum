@@ -32,8 +32,7 @@ import {User} from '../test/helpers/setup';
 import {asBigNumber} from '../test/helpers/utils/calculations';
 import {BigNumber, tEthereumAddress} from '../helpers/types';
 
-const fundUserAccounts = false;
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const getContractsKovan = async (deployAccount: string): Promise<any> => {
   return {
     market: <CurveCryptoSwapTest>(
@@ -86,7 +85,7 @@ async function closeExistingPosition(user: User) {
     console.log('Closing existing position');
     await closePosition(user, user.usdc);
   }
-  const reserveValue = await user.clearingHouse.getReserveValue(
+  const reserveValue = await user.clearingHouse.getTraderReserveValue(
     0,
     user.address
   );
