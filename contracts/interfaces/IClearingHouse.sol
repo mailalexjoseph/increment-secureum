@@ -234,7 +234,12 @@ interface IClearingHouse {
     /// @notice Get the portfolio value of an account
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
-    function getReserveValue(uint256 idx, address account) external view returns (int256);
+    function getTraderReserveValue(uint256 idx, address account) external view returns (int256);
+
+    /// @notice Get the portfolio value of an account
+    /// @param idx Index of the perpetual market
+    /// @param account Address to get the portfolio value from
+    function getLpReserveValue(uint256 idx, address account) external view returns (int256);
 
     /// @notice Return the curve price oracle
     /// @param idx Index of the perpetual market

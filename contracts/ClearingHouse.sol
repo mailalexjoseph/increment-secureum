@@ -128,6 +128,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount to be used as collateral. Might not be 18 decimals
     /// @param token Token to be used for the collateral
+    /// @param isTrader Trader or Liquidity Provider
     function deposit(
         uint256 idx,
         uint256 amount,
@@ -142,6 +143,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount of collateral to withdraw. Must be 18 decimals
     /// @param token Token of the collateral
+    /// @param isTrader Trader or Liquidity Provider
     function withdraw(
         uint256 idx,
         uint256 amount,
@@ -281,13 +283,11 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             return 1e18;
         }
 
-        int256 collateral = getReserveValue(idx, account);
+        int256 collateral = getTraderReserveValue(idx, account);
         int256 fundingPayments = getFundingPayments(idx, account);
         int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
 
-        int256 positiveOpenNotional = openNotional.abs();
-
-        return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(positiveOpenNotional);
+        return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(openNotional.abs());
     }
 
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
@@ -465,13 +465,21 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return perpetuals[idx].getUnrealizedPnL(account);
     }
 
-    /// @notice Get the portfolio value of an account
+    /// @notice Get the portfolio value of an trader
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
-    function getReserveValue(uint256 idx, address account) public view override returns (int256) {
+    function getTraderReserveValue(uint256 idx, address account) public view override returns (int256) {
         return vault.getTraderReserveValue(idx, account);
     }
 
+    /// @notice Get the portfolio value of an Lp
+    /// @param idx Index of the perpetual market
+    /// @param account Address to get the portfolio value from
+    function getLpReserveValue(uint256 idx, address account) public view override returns (int256) {
+        return vault.getLpReserveValue(idx, account);
+    }
+
+    /// @notice Get trader position
     /// @param idx Index of the perpetual market
     /// @param account Address to get the trading position from
     function getTraderPosition(uint256 idx, address account)
@@ -483,6 +491,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return perpetuals[idx].getTraderPosition(account);
     }
 
+    /// @notice Get Lp position
     /// @param idx Index of the perpetual market
     /// @param account Address to get the LP position from
     function getLpPosition(uint256 idx, address account)
