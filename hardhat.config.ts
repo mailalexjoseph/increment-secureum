@@ -125,6 +125,9 @@ const config: HardhatUserConfig = {
     frontend: {
       default: '0xB2a98504D0943163701202301f13E07aCE53bD11',
     },
+    backend: {
+      default: '0x43aC7bc6b21f6cCEC8d55e08ed752FEF9aFd174C',
+    },
   },
   etherscan: {
     // Your API key for Etherscan

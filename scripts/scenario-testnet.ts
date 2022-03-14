@@ -8,7 +8,6 @@ import {
   closePosition,
   provideLiquidity,
   withdrawLiquidityAndSettle,
-  settleAndWithDrawLiquidity,
   withdrawCollateral,
 } from '../test/helpers/PerpetualUtils';
 import env = require('hardhat');
@@ -32,6 +31,8 @@ import {
 import {User} from '../test/helpers/setup';
 import {asBigNumber} from '../test/helpers/utils/calculations';
 import {BigNumber, tEthereumAddress} from '../helpers/types';
+
+const fundUserAccounts = false;
 
 const getContractsKovan = async (deployAccount: string): Promise<any> => {
   return {
@@ -103,14 +104,8 @@ async function withdrawExistingLiquidity(user: User) {
   // We force traders / lps to close their position before opening a new one
   const liquidityPosition = await user.perpetual.getLpPosition(user.address);
   if (!liquidityPosition.liquidityBalance.isZero()) {
-    console.log('Withdraw available liquidity');
+    console.log('Withdraw available liquidity and settle');
     await withdrawLiquidityAndSettle(user, user.usdc);
-  } else if (
-    !liquidityPosition.positionSize.isZero() ||
-    !liquidityPosition.openNotional.isZero()
-  ) {
-    console.log('Settle and Withdraw available liquidity');
-    await settleAndWithDrawLiquidity(user, user.usdc);
   } else {
     console.log('No liquidity to withdraw');
   }
@@ -126,7 +121,7 @@ const main = async function () {
   // Setup
   const users = await getNamedAccounts();
   const contracts = await getContractsKovan(users.deployer);
-  const [deployer, user, liquidator, frontend] = await setupUsers(
+  const [deployer, user, liquidator, frontend, backend] = await setupUsers(
     Object.values(users),
     contracts
   );
@@ -137,17 +132,16 @@ const main = async function () {
   /* provide initial liquidity */
   if ((await deployer.curveToken.totalSupply()).isZero()) {
     console.log('Fund accounts');
-    const usdcMock = await (<USDCmock>deployer.usdc);
+    const usdcMock = <USDCmock>deployer.usdc;
     if ((await usdcMock.owner()) === deployer.address) {
       await fundAccounts(deployer, asBigNumber('100000'), [
         deployer.address,
         user.address,
         liquidator.address,
-        const [deployer, user, liquidator, frontend] = await setupUsers(
-          .address,
+        frontend.address,
+        backend.address,
       ]);
     }
-
     console.log('Provide initial liquidity');
     await provideLiquidity(deployer, deployer.usdc, asBigNumber('100000'));
   }

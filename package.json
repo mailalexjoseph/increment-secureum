@@ -79,7 +79,6 @@
     "fork:dev": "node ./_scripts.js fork:dev",
     "fork:node": "node ./_scripts.js fork:node",
     "fork:test": "node ./_scripts.js fork:test",
-    "verify:etherscan": "yarn hardhat etherscan-verify --network kovan",
     "deployment:kovan": "yarn deploy kovan && yarn hardhat run scripts/scenario-testnet.ts --network kovan && yarn hardhat etherscan-verify --network kovan",
     "contract:size": "echo 'maximum contract size is 24KB' && yarn run hardhat size-contracts",
     "compile:vyper": "rm ./typechain -r & yarn hardhat clean && yarn hardhat compile-vyper --directory contracts-vyper",
