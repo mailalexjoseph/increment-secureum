@@ -21,8 +21,8 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import "hardhat/console.sol";
 
 contract Perpetual is IPerpetual, ITwapOracle, Context {
-    using SafeCast for uint256;
-    using SafeCast for int256;
+    using LibMath for int256;
+    using LibMath for uint256;
 
     // parameterization
     uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
@@ -170,7 +170,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             isLong,
             trader.cumFundingRate,
             global.cumFundingRate,
-            LibMath.abs(trader.positionSize)
+            trader.positionSize.abs()
         );
 
         // update position
@@ -287,16 +287,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // 2 * newPrice > (oldPrice - currentPrice) * 100
 
         // slither-disable-next-line incorrect-equality
-        require(
-            2e16 * newPrice > LibMath.abs(newPrice - globalPosition.blockStartPrice) * 10e18,
-            "Price impact too large"
-        );
+        require(2e16 * newPrice > (newPrice - globalPosition.blockStartPrice).abs() * 10e18, "Price impact too large");
     }
 
     function getUnrealizedPnL(address account) external view override returns (int256) {
         LibPerpetual.UserPosition memory trader = traderPosition[account];
         int256 poolEURUSDTWAP = getMarketTwap();
-        int256 vQuoteVirtualProceeds = LibMath.wadMul(trader.positionSize, poolEURUSDTWAP);
+        int256 vQuoteVirtualProceeds = trader.positionSize.wadMul(poolEURUSDTWAP);
 
         // in the case of a LONG, trader.openNotional is negative but vQuoteVirtualProceeds is positive
         // in the case of a SHORT, trader.openNotional is positive while vQuoteVirtualProceeds is negative
@@ -327,7 +324,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
                 isLong,
                 lp.cumFundingRate,
                 globalPosition.cumFundingRate,
-                LibMath.abs(lp.positionSize)
+                lp.positionSize.abs()
             );
         }
 
@@ -335,9 +332,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         if (totalLiquidityProvided == 0) {
             basePrice = marketPrice();
         } else {
-            basePrice = LibMath.wadDiv(market.balances(0), market.balances(1));
+            basePrice = market.balances(0).wadDiv(market.balances(1));
         }
-        uint256 baseAmount = LibMath.wadDiv(wadAmount, basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
+        uint256 baseAmount = wadAmount.wadDiv(basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
 
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
@@ -448,12 +445,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         int256 marketTWAP = getMarketTwap();
         int256 indexTWAP = getOracleTwap();
 
-        int256 currentTraderPremium = LibMath.wadDiv(marketTWAP - indexTWAP, indexTWAP);
+        int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
         int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
         int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
 
         global.cumFundingRate +=
-            (LibMath.wadMul(SENSITIVITY, weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
+            (SENSITIVITY.wadMul(weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
             1 days;
 
         global.timeOfLastTrade = uint128(currentTime);
@@ -464,7 +461,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         LibPerpetual.GlobalPosition memory global = globalPosition;
         bool isLong = _getPositionDirection(user);
 
-        return _getFundingPayments(isLong, user.cumFundingRate, global.cumFundingRate, LibMath.abs(user.positionSize));
+        return _getFundingPayments(isLong, user.cumFundingRate, global.cumFundingRate, user.positionSize.abs());
     }
 
     /// @notice Calculate missed funding payments
@@ -491,7 +488,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
                 upcomingFundingRate = globalCumFundingRate - userCumFundingRate;
             }
             // fundingPayments = fundingRate * vBaseAmountToSettle
-            upcomingFundingPayment = LibMath.wadMul(upcomingFundingRate, vBaseAmountToSettle);
+            upcomingFundingPayment = upcomingFundingRate.wadMul(vBaseAmountToSettle);
         }
     }
 
@@ -565,7 +562,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         if (isLong) {
             // proposedAmount is a vBase denominated amount
             // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
-            return proposedAmount <= LibMath.abs(positionSize).toUint256();
+            return proposedAmount <= positionSize.abs().toUint256();
         } else {
             // Check that `proposedAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (even though these swings would be cancelled out
@@ -573,10 +570,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             // USD_amount = EUR_USD * EUR_amount
             int256 positivePositionSize = -positionSize;
-            int256 reasonableVQuoteAmount = LibMath.wadMul(marketTwap, positivePositionSize);
+            int256 reasonableVQuoteAmount = marketTwap.wadMul(positivePositionSize);
 
-            int256 deviation = LibMath.wadDiv(
-                LibMath.abs(proposedAmount.toInt256() - reasonableVQuoteAmount),
+            int256 deviation = (proposedAmount.toInt256() - reasonableVQuoteAmount).abs().wadDiv(
                 reasonableVQuoteAmount
             );
 
@@ -620,8 +616,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         )
     {
         bool isLong = _getPositionDirection(user);
-        int256 positionSizeToReduce = LibMath.wadMul(user.positionSize, reductionRatio.toInt256());
-        int256 openNotionalToReduce = LibMath.wadMul(user.openNotional, reductionRatio.toInt256());
+        int256 positionSizeToReduce = user.positionSize.wadMul(reductionRatio.toInt256());
+        int256 openNotionalToReduce = user.openNotional.wadMul(reductionRatio.toInt256());
 
         require(
             _checkProposedAmount(isLong, positionSizeToReduce, proposedAmount),
@@ -641,7 +637,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             isLong,
             user.cumFundingRate,
             global.cumFundingRate,
-            LibMath.abs(positionSizeToReduce)
+            positionSizeToReduce.abs()
         );
 
         profit = vQuoteProceeds + fundingPayment + openNotionalToReduce;

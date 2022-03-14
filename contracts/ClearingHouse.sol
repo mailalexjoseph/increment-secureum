@@ -24,8 +24,8 @@ import {LibReserve} from "./lib/LibReserve.sol";
 import "hardhat/console.sol";
 
 contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
-    using SafeCast for uint256;
-    using SafeCast for int256;
+    using LibMath for int256;
+    using LibMath for uint256;
     using SafeERC20 for IERC20;
 
     // constants
@@ -198,7 +198,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // pay insurance fee
-        int256 insuranceFee = LibMath.wadMul(LibMath.abs(addedOpenNotional), INSURANCE_FEE);
+        int256 insuranceFee = addedOpenNotional.abs().wadMul(INSURANCE_FEE);
         vault.settleProfit(0, address(this), insuranceFee, true); // always deposit insurance fees into the 0 vault
 
         int256 traderVaultDiff = fundingPayments - insuranceFee;
@@ -285,9 +285,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         int256 fundingPayments = getFundingPayments(idx, account);
         int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
 
-        int256 positiveOpenNotional = LibMath.abs(openNotional);
+        int256 positiveOpenNotional = openNotional.abs();
 
-        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
+        return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(positiveOpenNotional);
     }
 
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
@@ -301,7 +301,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused {
         address liquidator = msg.sender;
 
-        uint256 positiveOpenNotional = uint256(LibMath.abs(perpetuals[idx].getTraderPosition(liquidatee).openNotional));
+        uint256 positiveOpenNotional = uint256(perpetuals[idx].getTraderPosition(liquidatee).openNotional.abs());
 
         require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
@@ -315,7 +315,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // adjust liquidator vault amount
-        uint256 liquidationRewardAmount = LibMath.wadMul(positiveOpenNotional, LIQUIDATION_REWARD);
+        uint256 liquidationRewardAmount = positiveOpenNotional.wadMul(LIQUIDATION_REWARD);
 
         // subtract reward from liquidatee
         int256 reducedProfit = profit - liquidationRewardAmount.toInt256();
