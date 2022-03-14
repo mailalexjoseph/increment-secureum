@@ -255,15 +255,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function marginRatio(uint256 idx, address account) public view override returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
+        int256 openNotional = getTraderPosition(idx, account).openNotional;
+        require(openNotional != 0, "No open position");
 
         int256 collateral = getReserveValue(idx, account);
         int256 fundingPayments = getFundingPayments(idx, account);
         int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
-        int256 openNotional = getTraderPosition(idx, account).openNotional;
 
         int256 positiveOpenNotional = LibMath.abs(openNotional);
 
-        require(openNotional != 0, "No open position");
         return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
     }
 
