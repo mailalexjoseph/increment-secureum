@@ -163,7 +163,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         (int256 openNotional, int256 positionSize) = _extendPosition(amount, isLong, minAmount);
 
         // check max deviation
-        checkPriceDeviation();
+        require(
+            _checkPriceDeviation(marketPrice().toInt256(), globalPosition.blockStartPrice),
+            "Price impact too large"
+        );
 
         // apply funding rate on existing positionSize
         int256 fundingPayments = _getFundingPayments(
@@ -264,7 +267,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // check max deviation
-        checkPriceDeviation();
+        require(
+            _checkPriceDeviation(marketPrice().toInt256(), globalPosition.blockStartPrice),
+            "Price impact too large"
+        );
 
         // adjust trader position
         trader.openNotional += vQuoteProceeds;
@@ -278,16 +284,16 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (vQuoteProceeds, vBaseAmount, profit);
     }
 
-    function checkPriceDeviation() internal view {
+    // TODO: write test for function
+    function _checkPriceDeviation(int256 currentPrice, int256 startBlockPrice) internal pure returns (bool) {
         // check if market price has changed more than by 2% in this block
 
-        int256 newPrice = marketPrice().toInt256();
         // price deviations of a given block does not exceed 2%
-        // <=> 2% > (newPrice - currentPrice) / newPrice
-        // 2 * newPrice > (oldPrice - currentPrice) * 100
+        // <=> 2% > (currentPrice - startBlockPrice) / currentPrice
+        // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
 
         // slither-disable-next-line incorrect-equality
-        require(2e16 * newPrice > (newPrice - globalPosition.blockStartPrice).abs() * 10e18, "Price impact too large");
+        return (2e16 * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
     }
 
     function getUnrealizedPnL(address account) external view override returns (int256) {
@@ -421,7 +427,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // check max deviation
-        checkPriceDeviation();
+        require(
+            _checkPriceDeviation(marketPrice().toInt256(), globalPosition.blockStartPrice),
+            "Price impact too large"
+        );
 
         // adjust lp position
         lp.openNotional += vQuoteProceeds;
@@ -479,7 +488,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             comment: Making an negative funding payment is equivalent to receiving a positive one.
         */
-        // slither-disable-next-line timestamp
         if (userCumFundingRate != globalCumFundingRate) {
             int256 upcomingFundingRate;
             if (isLong) {
@@ -577,7 +585,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             );
 
             // Allow for a 50% deviation from the market vQuote TWAP price to close this position
-            // slither-disable-next-line timestamp (TODO: false positive)
             return deviation < 5e17;
         }
     }
