@@ -141,7 +141,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount to be used as collateral. Might not be 18 decimals
     /// @param token Token to be used for the collateral
-    /// @param isTrader Trader or Liquidity Provider
     function deposit(
         uint256 idx,
         uint256 amount,
@@ -156,7 +155,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount of collateral to withdraw. Must be 18 decimals
     /// @param token Token of the collateral
-    /// @param isTrader Trader or Liquidity Provider
     function withdraw(
         uint256 idx,
         uint256 amount,
@@ -164,7 +162,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) public override whenNotPaused {
         // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
         uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
-
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
         emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
@@ -279,7 +276,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         address account,
         int256 ratio
     ) public view override returns (bool) {
-        // slither-disable-next-line timestamp
         return marginRatio(idx, account) >= ratio;
     }
 
@@ -353,7 +349,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         IERC20 token
     ) external override whenNotPaused returns (uint256, uint256) {
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(amount != 0, "Zero amount");
 
         // split liquidity between long and short (TODO: account for value of liquidity provider already made)
@@ -366,6 +361,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         }
 
         emit LiquidityProvided(idx, msg.sender, address(token), amount);
+
         return (wadAmount, baseAmount);
     }
 
@@ -406,6 +402,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             profit,
             address(token)
         );
+
+        // remove the liquidity provider from the list
+        require(vault.withdrawAll(idx, msg.sender, token, false) >= 0, "No withdrawal");
     }
 
     /* ****************** */
@@ -460,7 +459,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /* ****************** */
 
     /// @notice Calculate missed funding payments
-    // slither-disable-next-line timestamp
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the funding payments
     function getFundingPayments(uint256 idx, address account)
@@ -488,7 +486,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the portfolio value of an Lp
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
-    function getLpReserveValue(uint256 idx, address account) public view override returns (int256) {
+    function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {
         return vault.getLpReserveValue(idx, account);
     }
 
