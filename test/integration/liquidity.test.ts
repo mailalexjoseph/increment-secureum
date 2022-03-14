@@ -140,7 +140,12 @@ describe('Increment App: Liquidity', function () {
 
       // trade some assets to change the ratio in the pool
       const depositAmount = liquidityAmountUSDC.div(20);
-      await trader.clearingHouse.deposit(0, depositAmount, trader.usdc.address);
+      await trader.clearingHouse.deposit(
+        0,
+        depositAmount,
+        trader.usdc.address,
+        true
+      );
       await trader.clearingHouse.extendPosition(
         0,
         depositAmount.mul(2),

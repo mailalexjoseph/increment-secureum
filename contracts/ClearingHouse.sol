@@ -324,7 +324,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         (uint256 baseAmount, int256 fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
 
         if (fundingPayments != 0) {
-            vault.settleProfit(idx, msg.sender, fundingPayments);
+            vault.settleProfit(idx, msg.sender, fundingPayments, false);
         }
 
         emit LiquidityProvided(idx, msg.sender, address(token), amount);
