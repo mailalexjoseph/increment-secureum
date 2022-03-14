@@ -212,7 +212,8 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /**
-     * @notice get the Portfolio value of an account
+     * @notice Get the value of a balance, accounted for in USD (with 18 decimals)
+     * @param idx Perpetual market index
      * @param account Account address
      */
     function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
@@ -220,7 +221,8 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /**
-     * @notice get the Portfolio value of an account
+     * @notice Get the value of a balance, accounted for in USD (with 18 decimals)
+     * @param idx Perpetual market index
      * @param account Account address
      */
     function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {

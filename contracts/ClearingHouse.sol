@@ -252,7 +252,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
-    function marginRatio(uint256 idx, address account) public view override returns (int256 marginRatio_) {
+    function marginRatio(uint256 idx, address account) public view override returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
 
@@ -263,9 +263,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         int256 positiveOpenNotional = LibMath.abs(openNotional);
 
-        marginRatio_ = openNotional != 0
-            ? LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional)
-            : int256(0);
+        require(openNotional != 0, "No open position");
+        return LibMath.wadDiv(collateral + unrealizedPositionPnl + fundingPayments, positiveOpenNotional);
     }
 
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward

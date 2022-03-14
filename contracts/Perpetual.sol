@@ -521,13 +521,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             priceCumulative1 = priceCumulative0 + price1 * timeElapsed
         */
 
+        // will overflow in ~3000 years
         // update cumulative chainlink price feed
         int256 latestChainlinkPrice = indexPrice();
-        oracleCumulativeAmount = oracleCumulativeAmount + latestChainlinkPrice * timeElapsed;
+        oracleCumulativeAmount += latestChainlinkPrice * timeElapsed;
 
         // update cumulative market price feed
         int256 latestMarketPrice = marketPrice().toInt256();
-        marketCumulativeAmount = marketCumulativeAmount + latestMarketPrice * timeElapsed;
+        marketCumulativeAmount += latestMarketPrice * timeElapsed;
 
         uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastFunding;
 
