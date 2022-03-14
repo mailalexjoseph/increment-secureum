@@ -101,9 +101,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
     }
 
-    ///// TRADER FLOW OPERATIONS \\\\\
-
-    /// @notice Single open/extend position function, groups collateral deposit and extend position
+    /* ****************** */
+    /*   Trader flow      */
+    /* ****************** */
+    /// @notice Single open position function, group collateral deposit and extend position
     /// @param idx Index of the perpetual market
     /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
     /// @param token Token to be used for the collateral of the position
@@ -326,7 +327,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit LiquidationCall(idx, liquidatee, liquidator, uint128(block.timestamp), positiveOpenNotional);
     }
 
-    ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
+    /* ****************** */
+    /*   Liquidity flow   */
+    /* ****************** */
 
     /// @notice Provide liquidity to the pool
     /// @param idx Index of the perpetual market
@@ -392,6 +395,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
     }
 
+    /* ****************** */
+    /*   Market viewer    */
+    /* ****************** */
+
+    function getNumMarkets() external view override returns (uint256) {
+        return perpetuals.length;
+    }
+
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
     /// @param idx Index of the perpetual market
@@ -407,6 +418,33 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view override returns (uint256) {
         return perpetuals[idx].getExpectedVQuoteAmount(vBaseAmountToSpend);
     }
+
+    /// @notice Return the curve price oracle
+    /// @param idx Index of the perpetual market
+    function marketPriceOracle(uint256 idx) external view override returns (uint256) {
+        return perpetuals[idx].marketPriceOracle();
+    }
+
+    /// @notice Return the last traded price (used for TWAP)
+    /// @param idx Index of the perpetual market
+    function marketPrice(uint256 idx) external view override returns (uint256) {
+        return perpetuals[idx].marketPrice();
+    }
+
+    /// @notice Return the current off-chain exchange rate for vBase/vQuote
+    /// @param idx Index of the perpetual market
+    function indexPrice(uint256 idx) external view override returns (int256) {
+        return perpetuals[idx].indexPrice();
+    }
+
+    /// @param idx Index of the perpetual market
+    function getGlobalPosition(uint256 idx) external view override returns (LibPerpetual.GlobalPosition memory) {
+        return perpetuals[idx].getGlobalPosition();
+    }
+
+    /* ****************** */
+    /*   User viewer      */
+    /* ****************** */
 
     /// @notice Calculate missed funding payments
     // slither-disable-next-line timestamp
@@ -434,29 +472,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return vault.getTraderReserveValue(idx, account);
     }
 
-    /// @notice Return the curve price oracle
-    /// @param idx Index of the perpetual market
-    function marketPriceOracle(uint256 idx) external view override returns (uint256) {
-        return perpetuals[idx].marketPriceOracle();
-    }
-
-    /// @notice Return the last traded price (used for TWAP)
-    /// @param idx Index of the perpetual market
-    function marketPrice(uint256 idx) external view override returns (uint256) {
-        return perpetuals[idx].marketPrice();
-    }
-
-    /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    /// @param idx Index of the perpetual market
-    function indexPrice(uint256 idx) external view override returns (int256) {
-        return perpetuals[idx].indexPrice();
-    }
-
-    /// @param idx Index of the perpetual market
-    function getGlobalPosition(uint256 idx) external view override returns (LibPerpetual.GlobalPosition memory) {
-        return perpetuals[idx].getGlobalPosition();
-    }
-
     /// @param idx Index of the perpetual market
     /// @param account Address to get the trading position from
     function getTraderPosition(uint256 idx, address account)
@@ -477,9 +492,5 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         returns (LibPerpetual.UserPosition memory)
     {
         return perpetuals[idx].getLpPosition(account);
-    }
-
-    function getNumMarkets() external view override returns (uint256) {
-        return perpetuals.length;
     }
 }
