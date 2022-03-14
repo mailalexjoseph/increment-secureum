@@ -56,6 +56,10 @@ interface IClearingHouse {
     );
     event Log(string errorMessage);
 
+    event DustSold(uint256 indexed idx, int256 profit);
+
+    event InsuranceRemoved(uint256 amount);
+
     // dependencies
     function vault() external view returns (IVault);
 
@@ -73,14 +77,11 @@ interface IClearingHouse {
     function sellDust(
         uint256 idx,
         uint256 proposedAmount,
-        uint256 minAmount
-    ) external;
-
-    function removeInsurance(
-        uint256 idx,
-        uint256 amount,
+        uint256 minAmount,
         IERC20 token
     ) external;
+
+    function removeInsurance(uint256 amount, IERC20 token) external;
 
     ///// TRADER FLOW OPERATIONS \\\\\
 

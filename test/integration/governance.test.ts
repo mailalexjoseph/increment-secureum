@@ -159,11 +159,12 @@ describe('Increment Protocol: Governance', function () {
       expect(await user.perpetual.getBaseDust()).to.eq(dustAmount);
 
       // withdraw dust
-      await deployer.clearingHouse.sellDust(0, dustAmount, 0);
-
-      expect(
-        await deployer.vault.getTraderBalance(0, deployer.clearingHouse.address)
-      ).to.gt(0);
+      const eProfit = await deployer.market.get_dy(1, 0, dustAmount);
+      await expect(
+        deployer.clearingHouse.sellDust(0, dustAmount, 0, deployer.usdc.address)
+      )
+        .to.emit(user.clearingHouse, 'DustSold')
+        .withArgs(0, eProfit);
     });
   });
 });

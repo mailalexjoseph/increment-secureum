@@ -62,18 +62,26 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit MarketAdded(perp, perpetuals.length);
     }
 
+    /// @notice Pause the contract
     function pause() external override onlyOwner {
         _pause();
     }
 
+    /// @notice Unpause the contract
     function unpause() external override onlyOwner {
         _unpause();
     }
 
+    /// @notice Sell dust in market idx
+    /// @param idx Index of the perpetual market
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @param token Token of the collateral
     function sellDust(
         uint256 idx,
         uint256 proposedAmount,
-        uint256 minAmount
+        uint256 minAmount,
+        IERC20 token
     ) external override onlyOwner {
         (, , int256 profit) = perpetuals[idx].reducePosition(
             address(this),
@@ -83,15 +91,18 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // apply changes to collateral
-        vault.settleProfit(idx, address(this), profit, true);
+        vault.settleProfit(1, address(this), profit, true);
+
+        // withdraw
+        require(vault.withdrawAll(1, address(this), token, true) > 0);
+        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
+
+        emit DustSold(idx, profit);
     }
 
-    function removeInsurance(
-        uint256 idx,
-        uint256 amount,
-        IERC20 token
-    ) external override onlyOwner {
-        require(vault.withdraw(idx, address(this), amount, token, true) > 0);
+    // TODO: write test
+    function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner {
+        require(vault.withdraw(0, address(this), amount, token, true) > 0);
 
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
 
@@ -99,6 +110,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 tvl = vault.getTotalReserveToken();
 
         require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
+
+        emit InsuranceRemoved(amount);
     }
 
     /* ****************** */
