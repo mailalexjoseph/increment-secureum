@@ -321,14 +321,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         int256 fundingPayments;
         if (lp.cumFundingRate != globalPosition.cumFundingRate && lp.cumFundingRate != 0) {
-            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
-            int256 vQuotePositionAfterVirtualWithdrawal = lp.openNotional +
-                (((market.balances(VQUOTE_INDEX) * lp.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
-            int256 vBasePositionAfterVirtualWithdrawal = lp.positionSize +
-                (((market.balances(VBASE_INDEX) * lp.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
+            bool isLong = _getPositionDirection(lp);
 
             fundingPayments = _getFundingPayments(
-                vBasePositionAfterVirtualWithdrawal > 0,
+                isLong,
                 lp.cumFundingRate,
                 globalPosition.cumFundingRate,
                 LibMath.abs(lp.positionSize)
@@ -466,7 +462,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     function getFundingPayments(address account) external view override returns (int256) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
-        bool isLong = user.positionSize > 0 ? true : false;
+        bool isLong = _getPositionDirection(user);
 
         return _getFundingPayments(isLong, user.cumFundingRate, global.cumFundingRate, LibMath.abs(user.positionSize));
     }
@@ -567,7 +563,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     ) internal view returns (bool) {
         if (isLong) {
             // proposedAmount is a vBase denominated amount
-            return proposedAmount <= positionSize.toUint256();
+            // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
+            return proposedAmount <= LibMath.abs(positionSize).toUint256();
         } else {
             // Check that `proposedAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (even though these swings would be cancelled out
@@ -585,6 +582,20 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             // Allow for a 50% deviation from the market vQuote TWAP price to close this position
             // slither-disable-next-line timestamp (TODO: false positive)
             return deviation < 5e17;
+        }
+    }
+
+    function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool isLong) {
+        if (user.liquidityBalance > 0) {
+            // LP position
+            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
+            int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
+                (((market.balances(VBASE_INDEX) * user.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
+
+            return vBasePositionAfterVirtualWithdrawal > 0;
+        } else {
+            // trader position
+            return user.positionSize > 0;
         }
     }
 
@@ -607,7 +618,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             int256 profit
         )
     {
-        bool isLong = user.positionSize > 0 ? true : false;
+        bool isLong = _getPositionDirection(user);
         int256 positionSizeToReduce = LibMath.wadMul(user.positionSize, reductionRatio.toInt256());
         int256 openNotionalToReduce = LibMath.wadMul(user.openNotional, reductionRatio.toInt256());
 
@@ -617,7 +628,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // PnL of the position
-        (vBaseAmount, vQuoteProceeds) = _reducePositionOnMarket(positionSizeToReduce, proposedAmount, minAmount);
+        (vBaseAmount, vQuoteProceeds) = _reducePositionOnMarket(
+            isLong,
+            positionSizeToReduce,
+            proposedAmount,
+            minAmount
+        );
 
         // update profit using funding payment info in the `global` struct
         int256 fundingPayment = _getFundingPayments(
@@ -648,12 +664,11 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     /// @notice Returns vBaseAmount and vQuoteProceeds to reflect how much the position has been reduced
     function _reducePositionOnMarket(
+        bool isLong,
         int256 positionSize,
         uint256 proposedAmount,
         uint256 minAmount
     ) internal returns (int256 vBaseAmount, int256 vQuoteProceeds) {
-        bool isLong = positionSize > 0 ? true : false;
-
         if (isLong) {
             uint256 amount = _baseForQuote(proposedAmount, minAmount);
             vQuoteProceeds = amount.toInt256();

@@ -409,6 +409,72 @@ describe('Increment App: Liquidity', function () {
       expect(positionAfter.positionSize).to.be.equal(0);
       expect(positionAfter.openNotional).to.be.equal(0);
     });
+
+    it('Should allow LP to remove liquidity partially', async function () {
+      // deposit
+      await lp.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lp.usdc.address
+      );
+
+      // add extra liquidity else, the amounts of lp.openNotional and lp.positionSize are too small (respectively -2
+      // and -1) for market.exchange to work when closing the PnL of the position
+      await lpTwo.clearingHouse.provideLiquidity(
+        0,
+        liquidityAmountUSDC,
+        lpTwo.usdc.address
+      );
+
+      // first partial withdraw
+      const initialLpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
+
+      const firstProposedAmountToClosePosition =
+        await liquidityProviderProposedAmount(
+          initialLpPosition,
+          initialLpPosition.liquidityBalance,
+          trader.market
+        );
+
+      await lp.clearingHouse.removeLiquidity(
+        0,
+        initialLpPosition.liquidityBalance.div(2),
+        FULL_REDUCTION_RATIO.div(2),
+        firstProposedAmountToClosePosition.div(2),
+        0,
+        lp.usdc.address
+      );
+
+      // second withdraw, full withdraw this time
+
+      const secondLpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
+
+      const secondProposedAmountToClosePosition =
+        await liquidityProviderProposedAmount(
+          secondLpPosition,
+          secondLpPosition.liquidityBalance,
+          trader.market
+        );
+
+      await lp.clearingHouse.removeLiquidity(
+        0,
+        secondLpPosition.liquidityBalance,
+        FULL_REDUCTION_RATIO,
+        secondProposedAmountToClosePosition,
+        0,
+        lp.usdc.address
+      );
+
+      const positionAfterSecondWithdrawal = await lp.perpetual.getLpPosition(
+        lp.address
+      );
+
+      // everything should now be set to 0
+      expect(positionAfterSecondWithdrawal.liquidityBalance).to.be.equal(0);
+      expect(positionAfterSecondWithdrawal.cumFundingRate).to.be.equal(0);
+      expect(positionAfterSecondWithdrawal.positionSize).to.be.equal(0);
+      expect(positionAfterSecondWithdrawal.openNotional).to.be.equal(0);
+    });
   });
 
   describe('Misc', async function () {
@@ -435,6 +501,7 @@ describe('Increment App: Liquidity', function () {
           0
         );
     });
+
     it('Market actions should generate dust', async function () {
       const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
 

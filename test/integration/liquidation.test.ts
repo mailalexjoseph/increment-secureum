@@ -136,7 +136,9 @@ describe('Increment: liquidation', () => {
     );
   });
 
-  async function _tryToLiquidatePositionWithInsufficient(direction: Side) {
+  async function _tryToLiquidatePositionWithExcessiveProposedAmount(
+    direction: Side
+  ) {
     await alice.clearingHouse.extendPosition(0, tradeAmount, direction, 0);
 
     // make the funding rate negative so that the Alice's position drops below MIN_MARGIN
@@ -155,24 +157,20 @@ describe('Increment: liquidation', () => {
       );
     }
 
-    const excessiveTentativeVQuoteAmount = tradeAmount.mul(10);
+    const excessiveProposedAmount = tradeAmount.mul(10);
     await expect(
-      bob.clearingHouse.liquidate(
-        0,
-        alice.address,
-        excessiveTentativeVQuoteAmount
-      )
+      bob.clearingHouse.liquidate(0, alice.address, excessiveProposedAmount)
     ).to.be.revertedWith(
       'Amount submitted too far from the market price of the position'
     );
   }
 
   it('Should fail to liquidate LONG position out-of-the-money if excessive proposedAmount is submitted by liquidator', async () => {
-    await _tryToLiquidatePositionWithInsufficient(Side.Long);
+    await _tryToLiquidatePositionWithExcessiveProposedAmount(Side.Long);
   });
 
   it('Should fail to liquidate SHORT position out-of-the-money if excessive proposedAmount is submitted by liquidator', async () => {
-    await _tryToLiquidatePositionWithInsufficient(Side.Short);
+    await _tryToLiquidatePositionWithExcessiveProposedAmount(Side.Short);
   });
 
   async function _tryLiquidatePositionWithLowProposedAmount(direction: Side) {
