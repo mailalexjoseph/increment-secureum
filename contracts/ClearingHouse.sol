@@ -351,7 +351,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused returns (uint256, uint256) {
         require(amount != 0, "Zero amount");
 
-        // split liquidity between long and short (TODO: account for value of liquidity provider already made)
+        // split liquidity between long and short
         uint256 wadAmount = vault.deposit(idx, msg.sender, amount, token, false);
 
         (uint256 baseAmount, int256 fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
