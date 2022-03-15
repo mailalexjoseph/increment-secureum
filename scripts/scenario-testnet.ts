@@ -121,10 +121,8 @@ const main = async function () {
   // Setup
   const users = await getNamedAccounts();
   const contracts = await getContractsKovan(users.deployer);
-  const [deployer, user, liquidator, frontend, backend] = await setupUsers(
-    Object.values(users),
-    contracts
-  );
+  const [deployer, user, liquidator, frontend, backend, tester] =
+    await setupUsers(Object.values(users), contracts);
 
   // Scenario
   const tradeSize = asBigNumber('100');
@@ -140,6 +138,7 @@ const main = async function () {
         liquidator.address,
         frontend.address,
         backend.address,
+        tester.address,
       ]);
     }
     console.log('Provide initial liquidity');
