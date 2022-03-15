@@ -146,7 +146,8 @@ describe('Increment: open/close long/short trading positions', () => {
     // note: fundingRate is null in this case
     const eNewVaultBalance = initialVaultBalance.sub(eInsuranceFee);
 
-    // for some reason, the last digit doesn't match by 1 unit for shorts...
+    // The last digit doesn't match by 1 unit for shorts...
+    // Why? Solidity Math library adds one wei (see: https://github.com/paulrberg/prb-math/blob/da6400015454d52b90ec6fe97ffab3c98df4fefc/contracts/PRBMath.sol#L483)
     expect(eNewVaultBalance).to.closeTo(vaultBalanceAfterPositionOpened, 1);
   }
 
@@ -388,8 +389,9 @@ describe('Increment: open/close long/short trading positions', () => {
       .add(eFundingPayment)
       .sub(eInsuranceFee);
 
-    // for some reason, the last digit of the expected insurance fee doesn't match by a few units for shorts...
-    expect(eNewVaultBalance).to.closeTo(vaultBalanceAfterSecondTrade, 10);
+    // The last digit doesn't match by 1 unit for shorts...
+    // Why? Solidity Math library adds one wei (see: https://github.com/paulrberg/prb-math/blob/da6400015454d52b90ec6fe97ffab3c98df4fefc/contracts/PRBMath.sol#L483)
+    expect(eNewVaultBalance).to.closeTo(vaultBalanceAfterSecondTrade, 1);
     expect(vaultBalanceAfterSecondTrade).to.lt(vaultBalanceAfterFirstTrade);
 
     if (direction === Side.Long) {

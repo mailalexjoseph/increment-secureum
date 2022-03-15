@@ -262,6 +262,7 @@ describe('Increment: liquidation', () => {
     );
 
     // closeTo is used to avoid error of 1 wei here
+    // Why? Solidity Math library adds one wei (see: https://github.com/paulrberg/prb-math/blob/da6400015454d52b90ec6fe97ffab3c98df4fefc/contracts/PRBMath.sol#L483)
     expect(bobVaultBalanceAfterLiquidation).to.be.closeTo(
       bobVaultBalanceBeforeLiquidation.add(liquidationReward),
       1
