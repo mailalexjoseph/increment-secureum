@@ -147,7 +147,7 @@ export async function withdrawCollateral(
 ): Promise<void> {
   const userDeposits = await user.vault.getTraderReserveValue(0, user.address);
   await (
-    await user.clearingHouse.withdraw(0, userDeposits, token.address, true)
+    await user.clearingHouse.withdraw(0, userDeposits, token.address)
   ).wait();
 }
 

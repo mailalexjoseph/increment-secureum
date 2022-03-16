@@ -34,13 +34,6 @@ interface IVault {
         bool isTrader
     ) external returns (uint256);
 
-    function withdrawAll(
-        uint256 idx,
-        address user,
-        IERC20 withdrawToken,
-        bool isTrader
-    ) external returns (uint256);
-
     function settleProfit(
         uint256 idx,
         address user,
@@ -53,6 +46,21 @@ interface IVault {
         address user,
         uint256 amount,
         IERC20 token,
+        bool isTrader
+    ) external returns (uint256);
+
+    function withdrawPartial(
+        uint256 idx,
+        address user,
+        IERC20 withdrawToken,
+        uint256 reductionRatio,
+        bool isTrader
+    ) external returns (uint256);
+
+    function withdrawAll(
+        uint256 idx,
+        address user,
+        IERC20 withdrawToken,
         bool isTrader
     ) external returns (uint256);
 

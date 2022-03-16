@@ -141,8 +141,20 @@ contract Vault is IVault, Context, IncreOwnable {
         IERC20 withdrawToken,
         bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
-        int256 amount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
-        return withdraw(idx, user, uint256(amount), withdrawToken, isTrader);
+        int256 fullAmount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
+        return withdraw(idx, user, fullAmount.toUint256(), withdrawToken, isTrader);
+    }
+
+    function withdrawPartial(
+        uint256 idx,
+        address user,
+        IERC20 withdrawToken,
+        uint256 reductionRatio,
+        bool isTrader
+    ) external override onlyClearingHouse returns (uint256) {
+        int256 fullAmount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
+        int256 partialAmount = fullAmount.wadMul(reductionRatio.toInt256());
+        return withdraw(idx, user, partialAmount.toUint256(), withdrawToken, isTrader);
     }
 
     /**
@@ -180,7 +192,6 @@ contract Vault is IVault, Context, IncreOwnable {
         // deposit must exceed 10
         int256 balanceAfter = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
         if (balanceAfter != 0) {
-            // deposit must exceed 10
             require(balanceAfter >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
         }
 

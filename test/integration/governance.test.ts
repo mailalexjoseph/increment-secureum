@@ -86,10 +86,10 @@ describe('Increment Protocol: Governance', function () {
       await expect(deployer.clearingHouse.pause());
 
       await expect(
-        user.clearingHouse.deposit(0, 1, user.usdc.address, true)
+        user.clearingHouse.deposit(0, 1, user.usdc.address)
       ).to.be.revertedWith('Pausable: paused');
       await expect(
-        user.clearingHouse.withdraw(0, 1, user.usdc.address, true)
+        user.clearingHouse.withdraw(0, 1, user.usdc.address)
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(

@@ -32,7 +32,7 @@ async function addTokensToInsurance(user: User, amount: BigNumber) {
 
 async function depositIntoVault(user: User, amount: BigNumber) {
   await user.usdc.approve(user.vault.address, amount);
-  await user.clearingHouse.deposit(0, amount, user.usdc.address, true);
+  await user.clearingHouse.deposit(0, amount, user.usdc.address);
 }
 
 describe('Increment App: Insurance', function () {
@@ -67,8 +67,7 @@ describe('Increment App: Insurance', function () {
       user.clearingHouse.withdraw(
         0,
         await user.vault.getTraderReserveValue(0, user.address),
-        user.usdc.address,
-        true
+        user.usdc.address
       )
     ).to.be.revertedWith('Insufficient insurance balance');
   });
@@ -85,8 +84,7 @@ describe('Increment App: Insurance', function () {
       user.clearingHouse.withdraw(
         0,
         await user.vault.getTraderReserveValue(0, user.address),
-        user.usdc.address,
-        true
+        user.usdc.address
       )
     )
       .to.emit(user.insurance, 'DebtSettled')

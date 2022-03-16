@@ -90,8 +90,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await alice.clearingHouse.deposit(
       0,
       depositAmountUSDC.div(5),
-      alice.usdc.address,
-      true
+      alice.usdc.address
     );
 
     // swap succeeds, then it fails when opening the position
@@ -170,12 +169,7 @@ describe('Increment: open/close long/short trading positions', () => {
   it('Should open LONG position', async () => {
     // set-up (needed for `getExpectedVBaseAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(
-      0,
-      depositAmountUSDC,
-      alice.usdc.address,
-      true
-    );
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
 
     const expectedVBase = await alice.clearingHouse.getExpectedVBaseAmount(
       0,
@@ -191,12 +185,7 @@ describe('Increment: open/close long/short trading positions', () => {
   it('Should open SHORT position', async () => {
     // set-up (needed for `getExpectedVQuoteAmount` to work)
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(
-      0,
-      depositAmountUSDC,
-      alice.usdc.address,
-      true
-    );
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
 
     const expectedVQuote = await alice.clearingHouse.getExpectedVQuoteAmount(
       0,
@@ -286,7 +275,7 @@ describe('Increment: open/close long/short trading positions', () => {
       await alice.perpetual.getTraderPosition(alice.address)
     ).positionSize;
 
-    await alice.clearingHouse.reducePositionWithdrawCollateral(
+    await alice.clearingHouse.closePositionWithdrawCollateral(
       0,
       alicePositionSize,
       0,
@@ -566,12 +555,7 @@ describe('Increment: open/close long/short trading positions', () => {
   it('LONG positions entirely closed should return the expected profit (no funding payments involved in the profit)', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(
-      0,
-      depositAmountUSDC,
-      alice.usdc.address,
-      true
-    );
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
     const initialVaultBalance = await alice.vault.getTraderBalance(
       0,
       alice.address
@@ -647,12 +631,7 @@ describe('Increment: open/close long/short trading positions', () => {
   it('SHORT positions entirely closed should return the expected profit (no funding payments involved in the profit)', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
-    await alice.clearingHouse.deposit(
-      0,
-      depositAmountUSDC,
-      alice.usdc.address,
-      true
-    );
+    await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
     const initialVaultBalance = await alice.vault.getTraderBalance(
       0,
       alice.address

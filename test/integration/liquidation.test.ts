@@ -60,12 +60,7 @@ describe('Increment: liquidation', () => {
       // bob deposits liquidity, alice opens a position of half this liquidity
       await setUpPoolLiquidity(bob, depositAmountUSDC);
       await alice.usdc.approve(alice.vault.address, aliceUSDCAmount);
-      await alice.clearingHouse.deposit(
-        0,
-        aliceUSDCAmount,
-        alice.usdc.address,
-        true
-      );
+      await alice.clearingHouse.deposit(0, aliceUSDCAmount, alice.usdc.address);
     }
   );
 

@@ -91,30 +91,17 @@ interface IClearingHouse {
     function deposit(
         uint256 idx,
         uint256 amount,
-        IERC20 token,
-        bool isTrader
+        IERC20 token
     ) external;
 
     /// @notice Withdraw tokens from the vault
     /// @param idx Index of the perpetual market
     /// @param amount Amount of collateral to withdraw. Might not be 18 decimals
     /// @param token Token of the collateral
-    /// @param isTrader Whether or not an user is a trader
     function withdraw(
         uint256 idx,
         uint256 amount,
-        IERC20 token,
-        bool isTrader
-    ) external;
-
-    /// @notice Withdraw tokens from the vault
-    /// @param idx Index of the perpetual market
-    /// @param token Token of the collateral
-    /// @param isTrader Whether or not an user is a trader
-    function withdrawAll(
-        uint256 idx,
-        IERC20 token,
-        bool isTrader
+        IERC20 token
     ) external;
 
     /// @notice Single open position function, group collateral deposit and extend position
@@ -147,12 +134,12 @@ interface IClearingHouse {
         uint256 minAmount
     ) external returns (int256, int256);
 
-    /// @notice Single close/reduction position function, group reduce position and withdraw collateral
+    /// @notice Single close function, group reduce position and withdraw collateral
     /// @param idx Index of the perpetual market
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token used for the collateral
-    function reducePositionWithdrawCollateral(
+    function closePositionWithdrawCollateral(
         uint256 idx,
         uint256 proposedAmount,
         uint256 minAmount,

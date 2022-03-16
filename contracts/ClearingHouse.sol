@@ -118,7 +118,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         LibPerpetual.Side direction,
         uint256 minAmount
     ) external override whenNotPaused returns (int256, int256) {
-        deposit(idx, collateralAmount, token, true);
+        deposit(idx, collateralAmount, token);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
 
@@ -129,10 +129,9 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function deposit(
         uint256 idx,
         uint256 amount,
-        IERC20 token,
-        bool isTrader
+        IERC20 token
     ) public override whenNotPaused {
-        require(vault.deposit(idx, msg.sender, amount, token, isTrader) > 0);
+        require(vault.deposit(idx, msg.sender, amount, token, true) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
 
@@ -143,32 +142,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     function withdraw(
         uint256 idx,
         uint256 amount,
-        IERC20 token,
-        bool isTrader
+        IERC20 token
     ) public override whenNotPaused {
         // slither-disable-next-line incorrect-equality
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
         // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
-        uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, isTrader);
-        emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
-    }
+        uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
 
-    /// @notice Withdraw tokens from the vault
-    /// @param idx Index of the perpetual market
-    /// @param token Token of the collateral
-    function withdrawAll(
-        uint256 idx,
-        IERC20 token,
-        bool isTrader
-    ) public override whenNotPaused {
-        // slither-disable-next-line incorrect-equality
-        // slither-disable-next-line timestamp // TODO: sounds incorrect
-        require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position");
+        require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
-        // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
-        uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, isTrader);
         emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
     }
 
@@ -234,7 +217,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token used for the collateral
-    function reducePositionWithdrawCollateral(
+    function closePositionWithdrawCollateral(
         uint256 idx,
         uint256 proposedAmount,
         uint256 minAmount,
@@ -242,8 +225,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused {
         reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
 
-        // slither-disable-next-line unused-return // can be zero amount
-        withdrawAll(idx, token, true);
+        uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, true);
+        emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
     }
 
     /// @notice Reduces, or closes in full, a position from an account holder
@@ -292,7 +275,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
         int256 openNotional = getTraderPosition(idx, account).openNotional;
-        require(openNotional != 0, "No open position");
+
+        if (openNotional == 0) {
+            return 1e18;
+        }
 
         int256 collateral = getReserveValue(idx, account);
         int256 fundingPayments = getFundingPayments(idx, account);
@@ -393,7 +379,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         vault.settleProfit(idx, msg.sender, profit, false);
 
         // remove the liquidity provider from the list
-        withdrawAll(idx, token, false);
+        vault.withdrawPartial(idx, msg.sender, token, reductionRatio, false);
 
         emit LiquidityRemoved(
             idx,
