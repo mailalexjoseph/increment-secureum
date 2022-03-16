@@ -1,12 +1,15 @@
 import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
+import {getVaultVersionToUse} from '../helpers/contracts-deployments';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
+  const vault = await ethers.getContract(getVaultVersionToUse(hre), deployer);
+
   const clearingHouseConstructorArgs = [
-    (await ethers.getContract('Vault', deployer)).address,
+    vault.address,
     (await ethers.getContract('Insurance', deployer)).address,
   ];
 
@@ -17,7 +20,6 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   });
 
   // register clearingHouse in vault
-  const vault = await ethers.getContract('Vault', deployer);
   const clearingHouse = await ethers.getContract('ClearingHouse', deployer);
 
   if ((await vault.clearingHouse()) !== clearingHouse.address) {

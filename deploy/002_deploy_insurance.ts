@@ -2,12 +2,14 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 
+import {getVaultVersionToUse} from '../helpers/contracts-deployments';
+
 import {getReserveAddress} from '../helpers/contracts-getters';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
   const {deployer} = await hre.getNamedAccounts();
 
-  const vault = await ethers.getContract('Vault', deployer);
+  const vault = await ethers.getContract(getVaultVersionToUse(hre), deployer);
 
   // deploy reserve token when kovan
   let insuranceConstructorArgs;

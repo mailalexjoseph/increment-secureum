@@ -21,7 +21,7 @@ import {setUSDCBalance} from './utils/manipulateStorage';
 import {
   ERC20,
   TestPerpetual,
-  Vault,
+  TestVault,
   VirtualToken,
   Insurance,
   ClearingHouse,
@@ -36,7 +36,7 @@ import {
 
 export type User = {address: string} & {
   perpetual: TestPerpetual;
-  vault: Vault;
+  vault: TestVault;
   usdc: ERC20;
   vBase: VirtualToken;
   vQuote: VirtualToken;
@@ -74,7 +74,7 @@ export const getContracts = async (deployAccount: string): Promise<any> => {
 
     vBase: <VirtualToken>await ethers.getContract('VBase', deployAccount),
     vQuote: <VirtualToken>await ethers.getContract('VQuote', deployAccount),
-    vault: <Vault>await ethers.getContract('Vault', deployAccount),
+    vault: <TestVault>await ethers.getContract('TestVault', deployAccount),
     perpetual: <TestPerpetual>(
       await ethers.getContract('TestPerpetual', deployAccount)
     ),

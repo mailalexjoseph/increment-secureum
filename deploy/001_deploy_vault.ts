@@ -2,6 +2,8 @@ import {HardhatRuntimeEnvironment} from 'hardhat/types';
 import {DeployFunction} from 'hardhat-deploy/types';
 import {ethers} from 'hardhat';
 
+import {getVaultVersionToUse} from '../helpers/contracts-deployments';
+
 import {getReserveAddress} from '../helpers/contracts-getters';
 
 const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
@@ -15,14 +17,16 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     vaultConstructorArgs = [getReserveAddress('USDC', hre)];
   }
 
-  await hre.deployments.deploy('Vault', {
+  // deploy vault
+  const vaultVersionToUse = getVaultVersionToUse(hre);
+  await hre.deployments.deploy(vaultVersionToUse, {
     from: deployer,
     args: vaultConstructorArgs,
     log: true,
   });
 
   // set maxTVL
-  const vault = await ethers.getContract('Vault', deployer);
+  const vault = await ethers.getContract(vaultVersionToUse, deployer);
   if ((await vault.getMaxTVL()).eq(0)) {
     await (await vault.setMaxTVL(ethers.constants.MaxUint256)).wait();
   }

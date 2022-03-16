@@ -2,7 +2,7 @@ import {expect} from 'chai';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {provideLiquidity} from '../helpers/PerpetualUtils';
 import {funding, setup, User} from '../helpers/setup';
-import {asBigNumber} from '../helpers/utils/calculations';
+import {asBigNumber, rMul} from '../helpers/utils/calculations';
 
 const newPerpAddress = '0x494E435245000000000000000000000000000000';
 
@@ -165,6 +165,52 @@ describe('Increment Protocol: Governance', function () {
       )
         .to.emit(user.clearingHouse, 'DustSold')
         .withArgs(0, eProfit);
+    });
+  });
+  describe('Insurance', function () {
+    it('Owner can withdraw insurance fees exceeding 10% of TVL', async function () {
+      // provide initial liquidity
+      const liquidityAmountUSDC = await funding();
+      const liquidityAmount = await tokenToWad(
+        await lp.usdc.decimals(),
+        liquidityAmountUSDC
+      );
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+
+      // insurance owns > 10% of TVL
+      const tvl = await user.vault.getTotalReserveToken();
+      const insuranceEarned = tvl.div(9);
+
+      // everything exceeding 10% of TVL  can be withdrawn
+      const maxWithdrawal = insuranceEarned.sub(
+        rMul(tvl, await user.clearingHouse.INSURANCE_RATIO())
+      );
+
+      await user.vault.__TestVault_set_trader_balance(
+        0,
+        user.clearingHouse.address,
+        insuranceEarned
+      );
+      expect(
+        await user.vault.getTraderBalance(0, user.clearingHouse.address)
+      ).to.eq(insuranceEarned);
+
+      // can withdraw (insuranceFees - 10% of TVL)
+      await expect(
+        deployer.clearingHouse.removeInsurance(
+          maxWithdrawal.add(1),
+          deployer.usdc.address
+        )
+      ).to.be.revertedWith('Insurance is not enough');
+
+      await expect(
+        deployer.clearingHouse.removeInsurance(
+          maxWithdrawal,
+          deployer.usdc.address
+        )
+      )
+        .to.emit(user.clearingHouse, 'InsuranceRemoved')
+        .withArgs(maxWithdrawal);
     });
   });
 });

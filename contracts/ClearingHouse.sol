@@ -37,7 +37,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE + 25e15; // initial margin is 2.5% + 3% + 2.5% = 8%
     uint256 public constant LIQUIDATION_REWARD = 60e15; // 6%
     int256 public constant INSURANCE_FEE = 1e15; // 0.1%
-    uint256 internal constant INSURANCE_RATIO = 1e17; // 10%
+    uint256 public constant INSURANCE_RATIO = 1e17; // 10%
 
     // dependencies
     IVault public override vault;
@@ -100,19 +100,23 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit DustSold(idx, profit);
     }
 
-    // TODO: write test
+    /// @notice Remove insurance fees exceeding 10% of the TVL from the vault
+    /// @param amount Token withdrawn. 18 decimals
+    /// @param token Token to be withdrawn from the vault
     function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner {
-        require(vault.withdraw(0, address(this), amount, token, true) > 0);
+        uint256 tvl = vault.getTotalReserveToken();
 
+        require(vault.withdraw(0, address(this), amount, token, true) > 0, "Unsuccessful withdrawal");
         IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
 
         uint256 lockedInsurance = vault.getTraderBalance(0, address(this)).toUint256();
-        uint256 tvl = vault.getTotalReserveToken();
 
-        require(lockedInsurance >= tvl * INSURANCE_RATIO, "Insurance is not enough");
+        require(lockedInsurance >= tvl.wadMul(INSURANCE_RATIO), "Insurance is not enough");
 
         emit InsuranceRemoved(amount);
     }
+
+    // TODO: write test
 
     /* ****************** */
     /*   Trader flow      */
@@ -175,6 +179,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
     /// @dev No checks are done if bought amount exceeds allowance
+    /// @return TODO: add return description
     function extendPosition(
         uint256 idx,
         uint256 amount,
@@ -474,7 +479,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return perpetuals[idx].getUnrealizedPnL(account);
     }
 
-    /// @notice Get the portfolio value of an trader
+    /// @notice Get the portfolio value of a trader
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
     function getTraderReserveValue(uint256 idx, address account) public view override returns (int256) {

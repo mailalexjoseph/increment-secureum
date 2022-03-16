@@ -19,6 +19,13 @@ export function getPerpetualVersionToUse(
   return 'Perpetual';
 }
 
+export function getVaultVersionToUse(hre: HardhatRuntimeEnvironment): string {
+  if (getEthereumNetworkFromHRE(hre) === eEthereumNetwork.hardhat) {
+    return 'TestVault';
+  }
+  return 'Vault';
+}
+
 // constructor variables for factory deployments of Curve Crypto Contracts
 // https://github.com/curvefi/curve-factory-crypto/blob/e2a59ab163b5b715b38500585a5d1d9c0671eb34/contracts/Factory.vy#L151-L164
 export function getCryptoSwapConstructorArgs(
