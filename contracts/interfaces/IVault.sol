@@ -18,6 +18,8 @@ interface IVault {
 
     event MaxTVLChanged(uint256 newMaxTVL);
 
+    event ValueLockedChanged(uint256 totalValueLocked);
+
     // dependencies
     function reserveToken() external view returns (IERC20);
 

@@ -322,7 +322,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // reflect the added liquidity on the LP position
         LibPerpetual.UserPosition storage lp = lpPosition[account];
 
-        int256 fundingPayments;
+        int256 fundingPayments = 0;
         if (lp.cumFundingRate != globalPosition.cumFundingRate && lp.cumFundingRate != 0) {
             bool isLong = _getPositionDirection(lp);
 
@@ -345,13 +345,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
         vBase.mint(baseAmount);
-        //uint256 min_mint_amount = 0; // set to zero for now
+        //uint256 min_mint_amount = 0; // set to zero for now (TODO: use min_mint_amount from LP)
         uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
 
         lp.openNotional -= wadAmount.toInt256();
         lp.positionSize -= baseAmount.toInt256();
         lp.cumFundingRate = globalPosition.cumFundingRate;
         lp.liquidityBalance += liquidity;
+
         totalLiquidityProvided += liquidity;
 
         return (baseAmount, fundingPayments);

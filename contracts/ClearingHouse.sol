@@ -164,7 +164,11 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
-        emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
+        require(vault.withdraw(idx, msg.sender, amount, token, isTrader) > 0);
+
+        require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
+
+        emit Withdraw(idx, msg.sender, address(token), amount);
     }
 
     /// @notice Open or increase a position, either long or short
@@ -404,7 +408,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         );
 
         // remove the liquidity provider from the list
-        require(vault.withdrawAll(idx, msg.sender, token, false) >= 0, "No withdrawal");
+        require(vault.withdrawAll(idx, msg.sender, token, false) > 0, "No withdrawal");
     }
 
     /* ****************** */

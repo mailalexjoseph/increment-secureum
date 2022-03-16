@@ -39,9 +39,20 @@ contract Vault is IVault, Context, IncreOwnable {
     uint256 internal badDebt;
     uint256 internal maxTVL;
 
-    //      market     =>      trader  => balance
+    /* Balances of users and liquidity providers
+
+    We follow a strict separate margin design where have to deposit collateral for any market
+
+    There exist two balances with a special type of meaning:
+
+    traderBalances[0][clearingHouse.address] := insurance reserve of the protocol
+    traderBalances[1][clearingHouse.address] := profit earned by governance from selling dust
+
+            market     =>      trader  => balance
+    */
     mapping(uint256 => mapping(address => int256)) private traderBalances;
     mapping(uint256 => mapping(address => int256)) private lpBalances;
+
     uint256 internal totalReserveToken;
 
     constructor(IERC20 _reserveToken) {
@@ -99,8 +110,6 @@ contract Vault is IVault, Context, IncreOwnable {
     ) external override onlyClearingHouse returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
-        // this prevents dust from being added to the user account
-        // eg 10^18 -> 10^8 -> 10^18 will remove lower order bits
         uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
 
         // deposit must exceed 10
@@ -114,6 +123,8 @@ contract Vault is IVault, Context, IncreOwnable {
 
         // deposit reserveTokens to contract
         IERC20(depositToken).safeTransferFrom(user, address(this), amount);
+
+        emit ValueLockedChanged(totalReserveToken);
 
         return convertedWadAmount;
     }
@@ -195,6 +206,8 @@ contract Vault is IVault, Context, IncreOwnable {
             require(balanceAfter >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
         }
 
+        emit ValueLockedChanged(totalReserveToken);
+
         return rawTokenAmount;
     }
 
@@ -206,7 +219,7 @@ contract Vault is IVault, Context, IncreOwnable {
         bool isTrader
     ) external override onlyClearingHouse {
         //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
-        int256 settlement = LibMath.wadDiv(amount, getAssetPrice());
+        int256 settlement = amount.wadDiv(getAssetPrice());
         _changeBalance(idx, user, settlement, isTrader);
     }
 
@@ -226,7 +239,7 @@ contract Vault is IVault, Context, IncreOwnable {
      * @param account Account address
      */
     function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return PRBMathSD59x18.mul(traderBalances[idx][account], getAssetPrice());
+        return traderBalances[idx][account].wadMul(getAssetPrice());
     }
 
     /**
@@ -235,7 +248,7 @@ contract Vault is IVault, Context, IncreOwnable {
      * @param account Account address
      */
     function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return PRBMathSD59x18.mul(lpBalances[idx][account], getAssetPrice());
+        return lpBalances[idx][account].wadMul(getAssetPrice());
     }
 
     /**
