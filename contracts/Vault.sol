@@ -43,7 +43,7 @@ contract Vault is IVault, Context, IncreOwnable {
 
     We follow a strict separate margin design where have to deposit collateral for any market
 
-    There exist two balances with a special type of meaning:
+    There exists two balances with a special type of meaning:
 
     traderBalances[0][clearingHouse.address] := insurance reserve of the protocol
     traderBalances[1][clearingHouse.address] := profit earned by governance from selling dust
