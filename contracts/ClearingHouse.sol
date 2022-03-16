@@ -123,6 +123,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Deposit tokens into the vault
+    /// @dev Should only be called by the trader
     /// @param idx Index of the perpetual market
     /// @param amount Amount to be used as collateral. Might not be 18 decimals
     /// @param token Token to be used for the collateral
@@ -136,6 +137,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /// @notice Withdraw tokens from the vault
+    /// @dev Should only be called by the trader
     /// @param idx Index of the perpetual market
     /// @param amount Amount of collateral to withdraw. Must be 18 decimals
     /// @param token Token of the collateral
@@ -144,9 +146,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         IERC20 token
     ) public override whenNotPaused {
-        // slither-disable-next-line incorrect-equality
-        require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
-
         // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
         uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
 
@@ -276,6 +275,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
         int256 openNotional = getTraderPosition(idx, account).openNotional;
 
+        // when no position open, margin ratio is 100%
         if (openNotional == 0) {
             return 1e18;
         }
