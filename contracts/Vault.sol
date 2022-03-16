@@ -148,7 +148,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /**
      * @notice Withdraw ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
-     * @param amount Amount of USDC deposited. Must be 18 decimals
+     * @param amount Collateral amount to withdraw. Must be 18 decimals
      */
     function withdraw(
         uint256 idx,
@@ -187,6 +187,7 @@ contract Vault is IVault, Context, IncreOwnable {
         return rawTokenAmount;
     }
 
+    /// @param amount Must be 18 decimals
     function settleProfit(
         uint256 idx,
         address user,

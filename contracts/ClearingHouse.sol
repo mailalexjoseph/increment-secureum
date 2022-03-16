@@ -234,18 +234,16 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token used for the collateral
-    /// @param isTrader Whether or not an user is a trader
     function reducePositionWithdrawCollateral(
         uint256 idx,
         uint256 proposedAmount,
         uint256 minAmount,
-        IERC20 token,
-        bool isTrader
+        IERC20 token
     ) external override whenNotPaused {
         reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
 
         // slither-disable-next-line unused-return // can be zero amount
-        withdrawAll(idx, token, isTrader);
+        withdrawAll(idx, token, true);
     }
 
     /// @notice Reduces, or closes in full, a position from an account holder

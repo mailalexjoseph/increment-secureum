@@ -290,8 +290,7 @@ describe('Increment: open/close long/short trading positions', () => {
       0,
       alicePositionSize,
       0,
-      alice.usdc.address,
-      true // isTrader
+      alice.usdc.address
     );
 
     const alicePositionCollateralAfterPositionClosed =
