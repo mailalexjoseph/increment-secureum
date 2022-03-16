@@ -72,6 +72,9 @@ describe('Increment App: Reserve', function () {
       expect(await user.usdc.balanceOf(user.address)).to.be.equal(
         depositAmount
       );
+      expect(await user.vault.getLpReserveValue(0, user.address)).to.be.equal(
+        0
+      );
     });
 
     it('Should not withdraw more USDC then deposited', async function () {

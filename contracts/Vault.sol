@@ -148,7 +148,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /**
      * @notice Withdraw ERC20 reserveToken from margin of the contract account.
      * @param withdrawToken ERC20 reserveToken address
-     * @param  amount  Amount of USDC deposited
+     * @param amount Amount of USDC deposited. Must be 18 decimals
      */
     function withdraw(
         uint256 idx,
@@ -161,18 +161,14 @@ contract Vault is IVault, Context, IncreOwnable {
         require(amount.toInt256() <= balance, "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
-        //    console.log("hardhat: Withdrawing for user", amount);
-
-        uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
-
         // decrement balance
-        _changeBalance(idx, user, -rawTokenAmount.toInt256(), isTrader);
+        _changeBalance(idx, user, -amount.toInt256(), isTrader);
 
         // Safemath will throw if tvl < amount
         totalReserveToken -= amount;
 
-        //    console.log("Withdrawing for user (raw)", rawTokenAmount);
         // perform transfer
+        uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
         if (withdrawToken.balanceOf(address(this)) < rawTokenAmount) {
             uint256 borrowedAmount = rawTokenAmount - withdrawToken.balanceOf(address(this));
             insurance.settleDebt(borrowedAmount);
@@ -187,6 +183,7 @@ contract Vault is IVault, Context, IncreOwnable {
             // deposit must exceed 10
             require(balanceAfter >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
         }
+
         return rawTokenAmount;
     }
 
