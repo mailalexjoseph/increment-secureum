@@ -235,7 +235,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         to close the position:
 
             trader has long position:
-                @proposedAmount := can be anything, as it's not used to close LONG position
+                @proposedAmount := amount of vBase used to reduce the position (an arbitrary amount, must be below user.positionSize)
                 => User trades the vBase tokens with the curve pool for vQuote tokens
 
             trader has short position:

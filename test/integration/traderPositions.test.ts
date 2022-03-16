@@ -254,6 +254,52 @@ describe('Increment: open/close long/short trading positions', () => {
       );
   });
 
+  it('Should deposit collateral & open position then close position & withdraw collateral', async () => {
+    // set-up
+    await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
+
+    // deposit collateral & open position
+    await alice.clearingHouse.extendPositionWithCollateral(
+      0,
+      depositAmountUSDC,
+      alice.usdc.address,
+      depositAmount,
+      Side.Long,
+      0
+    );
+
+    const alicePosition = await alice.clearingHouse.getTraderPosition(
+      0,
+      alice.address
+    );
+
+    const eInsuranceFee = rMul(alicePosition.openNotional.abs(), INSURANCE_FEE);
+    const eCollateralAmount = depositAmount.sub(eInsuranceFee);
+
+    const alicePositionCollateralAfterPositionOpened =
+      await alice.vault.getTraderReserveValue(0, alice.address);
+
+    expect(alicePositionCollateralAfterPositionOpened).to.eq(eCollateralAmount);
+
+    // close position & withdraw collateral
+    const alicePositionSize = (
+      await alice.perpetual.getTraderPosition(alice.address)
+    ).positionSize;
+
+    await alice.clearingHouse.reducePositionWithdrawCollateral(
+      0,
+      alicePositionSize,
+      0,
+      alice.usdc.address,
+      true // isTrader
+    );
+
+    const alicePositionCollateralAfterPositionClosed =
+      await alice.vault.getTraderReserveValue(0, alice.address);
+
+    expect(alicePositionCollateralAfterPositionClosed).to.eq(0);
+  });
+
   async function _openPositionThenIncreasePositionWithinMarginRequirement(
     direction: Side
   ) {
@@ -813,7 +859,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await _reducePosition(Side.Short, 5);
   });
 
-  it('Should fail if the price impact is to big', async () => {
+  it('Should fail if the price impact is too big', async () => {
     // set-up
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 

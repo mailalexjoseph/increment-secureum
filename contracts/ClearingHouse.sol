@@ -103,7 +103,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     ///// TRADER FLOW OPERATIONS \\\\\
 
-    /// @notice Single open position function, group collateral deposit and extend position
+    /// @notice Single open/extend position function, groups collateral deposit and extend position
     /// @param idx Index of the perpetual market
     /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
     /// @param token Token to be used for the collateral of the position
@@ -117,7 +117,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 positionAmount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) external override returns (int256, int256) {
+    ) external override whenNotPaused returns (int256, int256) {
         deposit(idx, collateralAmount, token, true);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
@@ -138,20 +138,38 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     /// @notice Withdraw tokens from the vault
     /// @param idx Index of the perpetual market
-    /// @param amount Amount of collateral to withdraw. Might not be 18 decimals
+    /// @param amount Amount of collateral to withdraw. Must be 18 decimals
     /// @param token Token of the collateral
     function withdraw(
         uint256 idx,
         uint256 amount,
         IERC20 token,
         bool isTrader
-    ) external override whenNotPaused {
+    ) public override whenNotPaused {
         // slither-disable-next-line incorrect-equality
         // slither-disable-next-line timestamp // TODO: sounds incorrect
         require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position"); // TODO: can we loosen this restriction (i.e. check marginRatio in the end?)
 
-        require(vault.withdraw(idx, msg.sender, amount, token, isTrader) > 0);
-        emit Withdraw(idx, msg.sender, address(token), amount);
+        // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
+        uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, isTrader);
+        emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
+    }
+
+    /// @notice Withdraw tokens from the vault
+    /// @param idx Index of the perpetual market
+    /// @param token Token of the collateral
+    function withdrawAll(
+        uint256 idx,
+        IERC20 token,
+        bool isTrader
+    ) public override whenNotPaused {
+        // slither-disable-next-line incorrect-equality
+        // slither-disable-next-line timestamp // TODO: sounds incorrect
+        require(getTraderPosition(idx, msg.sender).openNotional == 0, "Has open position");
+
+        // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
+        uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, isTrader);
+        emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
     }
 
     /// @notice Open or increase a position, either long or short
@@ -210,6 +228,26 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         return (addedOpenNotional, addedPositionSize);
     }
 
+    /// @notice Single close position function, groups close position and withdraw collateral
+    /// @notice Important: `proposedAmount` must be large enough to close the entire position else the function call will fail
+    /// @param idx Index of the perpetual market
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @param token Token used for the collateral
+    /// @param isTrader Whether or not an user is a trader
+    function reducePositionWithdrawCollateral(
+        uint256 idx,
+        uint256 proposedAmount,
+        uint256 minAmount,
+        IERC20 token,
+        bool isTrader
+    ) external override whenNotPaused {
+        reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
+
+        // slither-disable-next-line unused-return // can be zero amount
+        withdrawAll(idx, token, isTrader);
+    }
+
     /// @notice Reduces, or closes in full, a position from an account holder
     /// @param idx Index of the perpetual market
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
@@ -220,7 +258,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
-    ) external override whenNotPaused {
+    ) public override whenNotPaused {
         require(proposedAmount > 0, "The proposed amount can't be null");
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
@@ -357,8 +395,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         vault.settleProfit(idx, msg.sender, profit, false);
 
         // remove the liquidity provider from the list
-        // slither-disable-next-line unused-return // can be zero amount
-        vault.withdrawAll(idx, msg.sender, token, false);
+        withdrawAll(idx, token, false);
 
         emit LiquidityRemoved(
             idx,

@@ -60,13 +60,22 @@ describe('Increment App: Reserve', function () {
         false
       );
       const userDeposits = await user.vault.getLpReserveValue(0, user.address);
+      const userDepositsInUSDCDecimals = await wadToToken(
+        await user.usdc.decimals(),
+        userDeposits
+      );
 
       // withdrawal should fire up withdrawal event
       await expect(
         user.clearingHouse.withdraw(0, userDeposits, user.usdc.address, false)
       )
         .to.emit(user.clearingHouse, 'Withdraw')
-        .withArgs(0, user.address, user.usdc.address, userDeposits);
+        .withArgs(
+          0,
+          user.address,
+          user.usdc.address,
+          userDepositsInUSDCDecimals
+        );
 
       // balance should be same as before withdrawal
       expect(await user.usdc.balanceOf(user.address)).to.be.equal(
