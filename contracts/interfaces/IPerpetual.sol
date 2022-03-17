@@ -14,7 +14,6 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
-    event LiquidationCall(address indexed liquidatee, address indexed liquidator, uint256 notional);
     event FundingPayment(uint256 value, bool isPositive);
     event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
     event LiquidityRemoved(address indexed liquidityProvider, uint256 amount);
