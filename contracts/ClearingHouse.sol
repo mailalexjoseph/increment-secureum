@@ -23,19 +23,20 @@ import {LibReserve} from "./lib/LibReserve.sol";
 
 import "hardhat/console.sol";
 
+/// @title Clearing house contract
+/// @notice Entry point for users to vault and perpetual markets
 contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     using LibMath for int256;
     using LibMath for uint256;
     using SafeERC20 for IERC20;
 
     // constants
-    uint256 public constant FULL_REDUCTION_RATIO = 1e18; // reduce position by 100%
+    uint256 internal constant FULL_REDUCTION_RATIO = 1e18; // reduce position by 100%
 
     // parameterization
-    int256 public constant FEE = 3e16; // 3%
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
-    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + FEE + 25e15; // initial margin is 2.5% + 3% + 2.5% = 8%
-    uint256 public constant LIQUIDATION_REWARD = 60e15; // 6%
+    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + 55e15; // initial margin is 2.5% + 5.5% = 8%
+    uint256 public constant LIQUIDATION_REWARD = 2e16; // 2% (important: LIQUIDATION_REWARD >> MIN_MARGIN or liquidations will result in protocol losses)
     int256 public constant INSURANCE_FEE = 1e15; // 0.1%
     uint256 public constant INSURANCE_RATIO = 1e17; // 10%
 
