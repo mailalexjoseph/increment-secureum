@@ -32,7 +32,7 @@ contract TestPerpetual is Perpetual {
         globalPosition = LibPerpetual.GlobalPosition({
             timeOfLastTrade: timeOfLastTrade,
             cumFundingRate: cumFundingRate,
-            timeOfLastFunding: globalPosition.timeOfLastFunding,
+            timeOfLastTwapUpdate: globalPosition.timeOfLastTwapUpdate,
             blockStartPrice: globalPosition.blockStartPrice
         });
     }

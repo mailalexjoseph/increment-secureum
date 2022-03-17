@@ -165,7 +165,7 @@ describe('TwapOracle', async function () {
         timeStamp0
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp0);
 
       expect(await user.perpetual.getOracleTwap()).to.eq(INIT_PRICE);
@@ -205,7 +205,7 @@ describe('TwapOracle', async function () {
         timeStamp1
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp0);
 
       expect(await user.perpetual.getOracleTwap()).to.eq(INIT_PRICE);
@@ -244,7 +244,7 @@ describe('TwapOracle', async function () {
         timeStamp5
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp5);
 
       expect(await user.perpetual.getOracleTwap()).to.eq(eTwapOracle);
@@ -274,7 +274,7 @@ describe('TwapOracle', async function () {
         timeStamp0
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp0);
 
       expect(await user.perpetual.getMarketTwap()).to.eq(INIT_PRICE);
@@ -314,7 +314,7 @@ describe('TwapOracle', async function () {
         timeStamp1
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp0);
 
       expect(await user.perpetual.getMarketTwap()).to.eq(INIT_PRICE);
@@ -353,7 +353,7 @@ describe('TwapOracle', async function () {
         timeStamp5
       );
       expect(
-        (await user.perpetual.getGlobalPosition()).timeOfLastFunding
+        (await user.perpetual.getGlobalPosition()).timeOfLastTwapUpdate
       ).to.eq(timeStamp5);
 
       expect(await user.perpetual.getMarketTwap()).to.eq(eTwapOracle);

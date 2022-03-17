@@ -85,7 +85,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // initialize funding
         globalPosition = LibPerpetual.GlobalPosition({
             timeOfLastTrade: uint128(block.timestamp),
-            timeOfLastFunding: uint128(block.timestamp),
+            timeOfLastTwapUpdate: uint128(block.timestamp),
             cumFundingRate: 0,
             blockStartPrice: lastMarketPrice
         });
@@ -536,7 +536,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         int256 latestMarketPrice = marketPrice().toInt256();
         marketCumulativeAmount += latestMarketPrice * timeElapsed;
 
-        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastFunding;
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastTwapUpdate;
 
         // slither-disable-next-line timestamp
         if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
@@ -557,7 +557,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             // reset cumulative amount and timestamp
             oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
             marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
-            globalPosition.timeOfLastFunding = uint128(block.timestamp);
+            globalPosition.timeOfLastTwapUpdate = uint128(block.timestamp);
 
             emit TwapUpdated(oracleTwap, marketTwap);
         }
