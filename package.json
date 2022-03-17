@@ -84,5 +84,8 @@
     "compile:vyper": "rm ./typechain -r & yarn hardhat clean && yarn hardhat compile-vyper --directory contracts-vyper",
     "prerun:scenario": "mkdir deployments/mainnet || cp -r deployments/localhost/* deployments/mainnet",
     "run:scenario": "hardhat run scripts/scenario.ts --network localhost"
+  },
+  "resolutions": {
+    "@typescript-eslint/typescript-estree": "5.9.0"
   }
 }
