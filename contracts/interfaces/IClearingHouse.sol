@@ -13,9 +13,31 @@ import {IInsurance} from "./IInsurance.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IClearingHouse {
+    /// @notice Emitted when new perpetual market is added
+    /// @param perpetual The new perpetual market
+    /// @param numPerpetuals The number of perpetual markets
     event MarketAdded(IPerpetual indexed perpetual, uint256 numPerpetuals);
+
+    /// @notice Emitted when collateral is deposited into the vault
+    /// @param idx Index of the perpetual market
+    /// @param user User who deposited collateral
+    /// @param asset Token to be used for the collateral
+    /// @param amount Amount to be used as collateral. Might not be 18 decimals
     event Deposit(uint256 indexed idx, address indexed user, address indexed asset, uint256 amount);
+
+    /// @notice Emitted when collateral is withdrawn from the vault
+    /// @param idx Index of the perpetual market
+    /// @param user User who deposited collateral
+    /// @param asset Amount to be used as collateral. Might not be 18 decimals
+    /// @param amount Token to be used for the collateral
     event Withdraw(uint256 indexed idx, address indexed user, address indexed asset, uint256 amount);
+
+    /// @notice Emitted when a position is extended/opened
+    /// @param idx Index of the perpetual market
+    /// @param user User who deposited collateral
+    /// @param direction Whether the position is LONG or SHORT
+    /// @param addedOpenNotional Added notional (USD assets/debt) to the position
+    /// @param addedPositionSize Added positionSize (Base assets/debt) to the position
     event ExtendPosition(
         uint256 indexed idx,
         address indexed user,

@@ -12,8 +12,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
 
-import "hardhat/console.sol";
-
+/// @title Clearing house helper
+/// @notice Entry point for all user actions
 contract ClearingHouseViewer {
     using SafeCast for uint256;
     using SafeCast for int256;
@@ -28,7 +28,8 @@ contract ClearingHouseViewer {
         clearingHouse = _clearingHouse;
     }
 
-    /// @dev used for testnet
+    /// @notice Get the proposed amount needed to close a position
+    /// @dev Solidity implementation to minimize the node calls once has to make when finding proposed amount
     /// @param idx Index of the perpetual market
     /// @param trader Account
     /// @param iter Maximum iterations
