@@ -218,7 +218,6 @@ contract Vault is IVault, Context, IncreOwnable {
         int256 amount,
         bool isTrader
     ) external override onlyClearingHouse {
-        //console.log("hardhat: amount", amount > 0 ? amount.toUint256() : (-1 * amount).toUint256());
         int256 settlement = amount.wadDiv(getAssetPrice());
         _changeBalance(idx, user, settlement, isTrader);
     }

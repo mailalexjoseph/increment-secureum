@@ -610,8 +610,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function _reducePosition(
-        LibPerpetual.UserPosition storage user,
-        LibPerpetual.GlobalPosition storage global,
+        LibPerpetual.UserPosition memory user,
+        LibPerpetual.GlobalPosition memory global,
         uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
