@@ -3,7 +3,7 @@ pragma solidity 0.8.4;
 
 interface ITwapOracle {
     // events
-    event TwapUpdated(uint256 timeStamp, int256 newOracleTwap, int256 newMarketTwap);
+    event TwapUpdated(int256 newOracleTwap, int256 newMarketTwap);
 
     // state changing functions
 

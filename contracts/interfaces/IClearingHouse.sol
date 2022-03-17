@@ -19,7 +19,6 @@ interface IClearingHouse {
     event ExtendPosition(
         uint256 indexed idx,
         address indexed user,
-        uint128 indexed timeStamp,
         LibPerpetual.Side direction,
         int256 addedOpenNotional,
         int256 addedPositionSize
@@ -27,7 +26,6 @@ interface IClearingHouse {
     event ReducePosition(
         uint256 indexed idx,
         address indexed user,
-        uint128 indexed timeStamp,
         int256 reducedOpenNotional,
         int256 reducedPositionSize
     );
@@ -35,7 +33,6 @@ interface IClearingHouse {
         uint256 indexed idx,
         address indexed liquidatee,
         address indexed liquidator,
-        uint128 timestamp,
         uint256 notional
     );
     event FundingPayment(uint256 indexed idx, uint256 indexed blockNumber, uint256 value, bool isPositive);
@@ -223,7 +220,6 @@ interface IClearingHouse {
     function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view returns (uint256);
 
     /// @notice Calculate missed funding payments
-    // slither-disable-next-line timestamp
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the funding payments
     function getFundingPayments(uint256 idx, address account) external view returns (int256 upcomingFundingPayment);

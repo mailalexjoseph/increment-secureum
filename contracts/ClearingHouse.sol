@@ -116,11 +116,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit InsuranceRemoved(amount);
     }
 
-    // TODO: write test
-
     /* ****************** */
     /*   Trader flow      */
     /* ****************** */
+
     /// @notice Single open position function, group collateral deposit and extend position
     /// @param idx Index of the perpetual market
     /// @param collateralAmount Amount to be used as the collateral of the position. Might not be 18 decimals
@@ -224,7 +223,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
 
-        emit ExtendPosition(idx, msg.sender, uint128(block.timestamp), direction, addedOpenNotional, addedPositionSize);
+        emit ExtendPosition(idx, msg.sender, direction, addedOpenNotional, addedPositionSize);
 
         return (addedOpenNotional, addedPositionSize);
     }
@@ -270,7 +269,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // apply changes to collateral
         vault.settleProfit(idx, msg.sender, profit, true);
 
-        emit ReducePosition(idx, msg.sender, uint128(block.timestamp), reducedOpenNotional, reducedPositionSize);
+        emit ReducePosition(idx, msg.sender, reducedOpenNotional, reducedPositionSize);
     }
 
     /// @notice Determines whether or not a position is valid for a given margin ratio
@@ -339,7 +338,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // add reward to liquidator
         vault.settleProfit(idx, liquidator, liquidationRewardAmount.toInt256(), true);
 
-        emit LiquidationCall(idx, liquidatee, liquidator, uint128(block.timestamp), positiveOpenNotional);
+        emit LiquidationCall(idx, liquidatee, liquidator, positiveOpenNotional);
     }
 
     /* ****************** */

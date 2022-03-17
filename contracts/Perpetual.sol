@@ -559,7 +559,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
             globalPosition.timeOfLastFunding = uint128(block.timestamp);
 
-            emit TwapUpdated(block.timestamp, oracleTwap, marketTwap);
+            emit TwapUpdated(oracleTwap, marketTwap);
         }
     }
 

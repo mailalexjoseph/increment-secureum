@@ -237,7 +237,7 @@ describe('TwapOracle', async function () {
 
       await expect(user.perpetual.updateTwapAndFundingRate())
         .to.emit(user.perpetual, 'TwapUpdated')
-        .withArgs(timeStamp5, eTwapOracle, INIT_PRICE);
+        .withArgs(eTwapOracle, INIT_PRICE);
 
       // verify end values
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(
@@ -346,7 +346,7 @@ describe('TwapOracle', async function () {
 
       await expect(user.perpetual.updateTwapAndFundingRate())
         .to.emit(user.perpetual, 'TwapUpdated')
-        .withArgs(timeStamp5, INIT_PRICE, eTwapOracle);
+        .withArgs(INIT_PRICE, eTwapOracle);
 
       // verify end values
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(

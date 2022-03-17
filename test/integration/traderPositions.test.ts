@@ -89,8 +89,6 @@ describe('Increment: open/close long/short trading positions', () => {
     minAmount: BigNumber
   ) {
     // expected values
-    const nextBlockTimestamp = await setNextBlockTimestamp(env);
-
     const initialVaultBalance = await alice.vault.getTraderBalance(
       0,
       alice.address
@@ -109,14 +107,7 @@ describe('Increment: open/close long/short trading positions', () => {
       alice.clearingHouse.extendPosition(0, depositAmount, direction, minAmount)
     )
       .to.emit(alice.clearingHouse, 'ExtendPosition')
-      .withArgs(
-        0,
-        alice.address,
-        nextBlockTimestamp,
-        direction,
-        notionalAmount,
-        positionSize
-      );
+      .withArgs(0, alice.address, direction, notionalAmount, positionSize);
 
     const alicePosition = await alice.perpetual.getTraderPosition(
       alice.address
@@ -213,7 +204,6 @@ describe('Increment: open/close long/short trading positions', () => {
     );
 
     // expected values
-    const nextBlockTimestamp = await setNextBlockTimestamp(env);
     await expect(
       alice.clearingHouse.extendPosition(0, depositAmount, Side.Long, 0)
     )
@@ -221,7 +211,6 @@ describe('Increment: open/close long/short trading positions', () => {
       .withArgs(
         0,
         alice.address,
-        nextBlockTimestamp,
         Side.Long,
         depositAmount.mul(-1),
         '44037296890978559349' // very brittle
@@ -572,6 +561,7 @@ describe('Increment: open/close long/short trading positions', () => {
     );
 
     // sell the entire position, i.e. user.positionSize
+    // TODO: check 'ReducePosition' is getting emitted
     await alice.clearingHouse.reducePosition(
       0,
       FULL_REDUCTION_RATIO,

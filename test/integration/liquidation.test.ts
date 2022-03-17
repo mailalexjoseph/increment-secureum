@@ -89,6 +89,7 @@ describe('Increment: liquidation', () => {
     // Check `LiquidationCall` event sent with proper values
     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
     // so we don't check the values of the arguments of the event
+    // TODO: add tests now after we removed the timestamp
     await expect(
       bob.clearingHouse.liquidate(0, alice.address, alicePositionSize)
     ).to.emit(alice.clearingHouse, 'LiquidationCall');
@@ -229,6 +230,7 @@ describe('Increment: liquidation', () => {
     // Check `LiquidationCall` event sent with proper values
     // Note: the value of the timestamp at which the liquidation is performed can't be predicted reliably
     // so we don't check the values of the arguments of the event
+    // TODO: add tests now after we removed the timestamp
     const properVQuoteAmountToBuyBackShortPosition = tradeAmount.add(
       tradeAmount.div(2)
     );
