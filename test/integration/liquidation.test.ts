@@ -294,7 +294,7 @@ describe('Increment: liquidation', () => {
 
     (A) Collateral of liquidator = notional * LIQUIDATION_REWARD
 
-    (B) Collateral of liquidatee = unrealizedPnL + fundingPayment - notional * LIQUIDATION_REWARD
+    (B) Collateral of liquidatee = collateral + unrealizedPnL + fundingPayment - notional * LIQUIDATION_REWARD
 
     When MIN_MARGIN < LIQUIDATION_REWARD, the second equation will always be negative.
 
