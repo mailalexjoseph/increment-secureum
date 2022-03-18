@@ -78,9 +78,9 @@ interface IPerpetual {
     )
         external
         returns (
-            int256,
-            int256,
-            int256
+            int256 addedOpenNotional,
+            int256 addedPositionSize,
+            int256 fundingPayments
         );
 
     function reducePosition(
@@ -91,9 +91,9 @@ interface IPerpetual {
     )
         external
         returns (
-            int256,
-            int256,
-            int256
+            int256 vQuoteProceeds,
+            int256 vBaseAmount,
+            int256 profit
         );
 
     function provideLiquidity(address account, uint256 wadAmount) external returns (uint256, int256);
@@ -107,8 +107,8 @@ interface IPerpetual {
     )
         external
         returns (
-            int256,
-            int256,
-            int256
+            int256 vQuoteProceeds,
+            int256 vBaseAmount,
+            int256 profit
         );
 }
