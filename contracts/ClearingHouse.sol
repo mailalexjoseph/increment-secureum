@@ -36,7 +36,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     // parameterization
     int256 public constant MIN_MARGIN = 25e15; // 2.5%
     int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + 55e15; // initial margin is 2.5% + 5.5% = 8%
-    uint256 public constant LIQUIDATION_REWARD = 2e16; // 2% (important: LIQUIDATION_REWARD >> MIN_MARGIN or liquidations will result in protocol losses)
+    uint256 public constant LIQUIDATION_REWARD = 15e15; // 1.5% (important: LIQUIDATION_REWARD >> MIN_MARGIN or liquidations will result in protocol losses)
     int256 public constant INSURANCE_FEE = 1e15; // 0.1%
     uint256 public constant INSURANCE_RATIO = 1e17; // 10%
 
@@ -302,6 +302,15 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         int256 fundingPayments = getFundingPayments(idx, account);
         int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
 
+        return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
+    }
+
+    function _marginRatio(
+        int256 collateral,
+        int256 fundingPayments,
+        int256 unrealizedPositionPnl,
+        int256 openNotional
+    ) internal pure returns (int256) {
         return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(openNotional.abs());
     }
 
@@ -318,7 +327,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         uint256 positiveOpenNotional = uint256(perpetuals[idx].getTraderPosition(liquidatee).openNotional.abs());
 
-        require(getTraderPosition(idx, liquidatee).openNotional != 0, "No position currently opened");
+        require(positiveOpenNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
 
         (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, FULL_REDUCTION_RATIO, proposedAmount, 0);

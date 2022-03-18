@@ -268,7 +268,7 @@ describe('Increment: liquidation', () => {
       1
     );
   });
-  it.only('Regular liquidations should not generate bad debt', async () => {
+  it('Regular liquidations should not generate bad debt', async () => {
     await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
     const positionOpenNotional = (
       await alice.perpetual.getTraderPosition(alice.address)
@@ -359,7 +359,7 @@ describe('Increment: liquidation', () => {
     const aliceMargin = await alice.clearingHouse.marginRatio(0, alice.address);
     expect(aliceMargin).to.be.lt(MIN_MARGIN);
     expect(aliceMargin).to.be.gt(LIQUIDATION_REWARD);
-    expect(aliceMargin).to.be.eq(MIN_MARGIN.sub(1));
+    expect(aliceMargin).to.be.eq(MIN_MARGIN.sub(1)); // check to show (1) and (2) arrive at the correct result
 
     // Check `LiquidationCall` event sent with proper values
     const properVQuoteAmountToBuyBackShortPosition = tradeAmount.add(
