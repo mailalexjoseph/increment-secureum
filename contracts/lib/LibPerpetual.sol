@@ -16,9 +16,9 @@ library LibPerpetual {
     }
 
     struct UserPosition {
-        // quote assets / liabilities
+        // quote assets or liabilities
         int256 openNotional;
-        // base assets / liabilities
+        // base assets or liabilities
         int256 positionSize;
         // user cumulative funding rate (updated when open/close position)
         int256 cumFundingRate;
