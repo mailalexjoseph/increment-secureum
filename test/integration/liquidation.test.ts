@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {utils, BigNumber} from 'ethers';
+import {utils, BigNumber, ethers} from 'ethers';
 
 import {rDiv, rMul} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
@@ -268,20 +268,11 @@ describe('Increment: liquidation', () => {
       1
     );
   });
-  it('Regular liquidations should not generate bad debt', async () => {
-    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
-    const positionOpenNotional = (
-      await alice.perpetual.getTraderPosition(alice.address)
-    ).openNotional;
-
-    const aliceVaultBalanceBeforeClosingPosition =
-      await alice.vault.getTraderBalance(0, alice.address);
-    const bobVaultBalanceBeforeLiquidation = await bob.vault.getTraderBalance(
-      0,
-      bob.address
-    );
-
-    //
+  async function _liquidateAccountWithFundingRate(
+    liquidateee: User,
+    liquidator: User,
+    TARGET_MARGIN: BigNumber
+  ) {
     /*
     ******************* TASK *******************
 
@@ -292,9 +283,15 @@ describe('Increment: liquidation', () => {
 
     The positions after the liquidation are:
 
-    (A) Collateral of liquidator = notional * LIQUIDATION_REWARD
+    (A) Collateral of liquidator = quoteProceeds * LIQUIDATION_REWARD
 
-    (B) Collateral of liquidatee = collateral + unrealizedPnL + fundingPayment - notional * LIQUIDATION_REWARD
+    (B) Collateral of liquidatee = collateral + unrealizedPnL                         + fundingPayment - notional      * LIQUIDATION_REWARD
+
+                                = collateral + positionSize * price - notionalAmount + fundingPayment - quoteProceeds * LIQUIDATION_REWARD
+
+                                = collateral + quoteProceeds        - notionalAmount + fundingPayment - quoteProceeds * LIQUIDATION_REWARD
+
+                                = collateral - notionalAmount + fundingPayment + (1 - LIQUIDATION_REWARD) * quoteProceeds
 
     When MIN_MARGIN < LIQUIDATION_REWARD, the second equation will always be negative.
 
@@ -308,8 +305,8 @@ describe('Increment: liquidation', () => {
     First, realize define funding payments as:
 
     marginRatio                                                        = (collateral + unrealizedPositionPnl + fundingPayments) / absOpenNotional
-<=> marginRatio * absOpenNotional                                      = (collateral + unrealizedPositionPnl + fundingPayments)
-<=> marginRatio * absOpenNotional - collateral - unrealizedPositionPnL = fundingPayments
+    <=> marginRatio * absOpenNotional                                      = (collateral + unrealizedPositionPnl + fundingPayments)
+    <=> marginRatio * absOpenNotional - collateral - unrealizedPositionPnL = fundingPayments
 
     So the following condition has to be satisfied:
 
@@ -338,12 +335,25 @@ describe('Increment: liquidation', () => {
 
     fundingRate = -4.9678
 
-  */
+    */
+    const openNotional = (
+      await liquidateee.perpetual.getTraderPosition(liquidateee.address)
+    ).openNotional.abs();
+
+    const collateral = await liquidateee.vault.getTraderBalance(
+      0,
+      liquidateee.address
+    );
 
     // eq (1)
-    const funding = rMul(MIN_MARGIN, positionOpenNotional.abs())
-      .sub(aliceVaultBalanceBeforeClosingPosition)
-      .sub(await alice.clearingHouseViewer.getUnrealizedPnL(0, alice.address));
+    const funding = rMul(TARGET_MARGIN, openNotional)
+      .sub(collateral)
+      .sub(
+        await liquidateee.clearingHouseViewer.getUnrealizedPnL(
+          0,
+          liquidateee.address
+        )
+      );
 
     // eq (2)
     const fundingRate = rDiv(funding, tradeAmount).sub(1); // 1 subtracted to make position liquidable
@@ -351,41 +361,54 @@ describe('Increment: liquidation', () => {
     // const timestampForkedMainnetBlock2 = await getBlockTime();
     const timestampForkedMainnetBlock = 1639682285;
     const timestampJustBefore = timestampForkedMainnetBlock - 15;
-    await bob.perpetual.__TestPerpetual_setGlobalPosition(
+    await liquidator.perpetual.__TestPerpetual_setGlobalPosition(
       timestampJustBefore,
       fundingRate
     );
     // check that user margin is (LIQUIDATION_REWARD, MIN_MARGIN)
-    const aliceMargin = await alice.clearingHouse.marginRatio(0, alice.address);
-    expect(aliceMargin).to.be.lt(MIN_MARGIN);
-    expect(aliceMargin).to.be.gt(LIQUIDATION_REWARD);
-    expect(aliceMargin).to.be.eq(MIN_MARGIN.sub(1)); // check to show (1) and (2) arrive at the correct result
+    const liquidateeeMargin = await liquidateee.clearingHouse.marginRatio(
+      0,
+      liquidateee.address
+    );
+    expect(liquidateeeMargin).to.be.lt(MIN_MARGIN);
+    // expect(liquidateeeMargin).to.be.gt(LIQUIDATION_REWARD);
+    expect(liquidateeeMargin).to.be.eq(TARGET_MARGIN.sub(1)); // check to show (1) and (2) arrive at the correct result
 
     // Check `LiquidationCall` event sent with proper values
     const properVQuoteAmountToBuyBackShortPosition = tradeAmount.add(
       tradeAmount.div(2)
     );
     await expect(
-      bob.clearingHouse.liquidate(
+      liquidator.clearingHouse.liquidate(
         0,
-        alice.address,
+        liquidateee.address,
         properVQuoteAmountToBuyBackShortPosition
       )
     )
-      .to.emit(alice.clearingHouse, 'LiquidationCall')
-      .withArgs(0, alice.address, bob.address, positionOpenNotional.abs());
+      .to.emit(liquidateee.clearingHouse, 'LiquidationCall')
+      .withArgs(0, liquidateee.address, liquidator.address, openNotional.abs());
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
-    const alicePosition = await alice.perpetual.getTraderPosition(
-      alice.address
+    const liquidateeePosition = await liquidateee.perpetual.getTraderPosition(
+      liquidateee.address
     );
-    expect(alicePosition.openNotional).to.eq(0);
-    expect(alicePosition.positionSize).to.eq(0);
+    expect(liquidateeePosition.openNotional).to.eq(0);
+    expect(liquidateeePosition.positionSize).to.eq(0);
+  }
 
-    // Check trader's vault.balance is reduced by negative profit and liquidation fee
-    const aliceVaultBalanceAfterClosingPosition =
-      await alice.vault.getTraderBalance(0, alice.address);
-    expect(aliceVaultBalanceAfterClosingPosition).to.be.gt(0);
+  it('Liquidations with margin (LIQUIDATION_REWARD, MIN_MARGIN) should not generate bad debt', async () => {
+    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
+    const positionOpenNotional = (
+      await alice.perpetual.getTraderPosition(alice.address)
+    ).openNotional;
+
+    const bobVaultBalanceBeforeLiquidation = await bob.vault.getTraderBalance(
+      0,
+      bob.address
+    );
+
+    // liquidate account with target margin ratio slightly below the minimum margin
+    await _liquidateAccountWithFundingRate(alice, bob, MIN_MARGIN);
 
     // Check liquidator's vault.balance is increased by the liquidation reward
     const liquidationReward = rMul(positionOpenNotional, LIQUIDATION_REWARD);
@@ -394,19 +417,57 @@ describe('Increment: liquidation', () => {
       bob.address
     );
 
-    // closeTo is used to avoid error of 1 wei here
-    // Why? Solidity Math library adds one wei (see: https://github.com/paulrberg/prb-math/blob/da6400015454d52b90ec6fe97ffab3c98df4fefc/contracts/PRBMath.sol#L483)
     expect(bobVaultBalanceAfterLiquidation).to.be.closeTo(
       bobVaultBalanceBeforeLiquidation.add(liquidationReward),
-      1
+      1 // closeTo is used to avoid error of 1 wei here
     );
 
-    // sum of liquidator rewards and trade should not exceed position amount of the trader
-    expect(
-      aliceVaultBalanceAfterClosingPosition.add(bobVaultBalanceAfterLiquidation)
-    ).lt(
-      aliceVaultBalanceBeforeClosingPosition.add(
-        bobVaultBalanceBeforeLiquidation
+    // Check trader's vault.balance is reduced by negative profit and liquidation fee
+    // BUT it is still larger than 0
+    expect(await alice.vault.getTraderBalance(0, alice.address)).to.be.gt(0);
+  });
+  it.only('Liquidations with margin < LIQUIDATION_REWARD should generate bad debt', async () => {
+    await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
+    const positionOpenNotional = (
+      await alice.perpetual.getTraderPosition(alice.address)
+    ).openNotional;
+
+    const bobVaultBalanceBeforeLiquidation = await bob.vault.getTraderBalance(
+      0,
+      bob.address
+    );
+
+    // liquidate account with target margin ratio slightly below the minimum
+    await _liquidateAccountWithFundingRate(alice, bob, LIQUIDATION_REWARD);
+
+    // Check liquidator's vault.balance is increased by the liquidation reward
+    const liquidationReward = rMul(positionOpenNotional, LIQUIDATION_REWARD);
+    const bobVaultBalanceAfterLiquidation = await bob.vault.getTraderBalance(
+      0,
+      bob.address
+    );
+
+    expect(bobVaultBalanceAfterLiquidation).to.be.closeTo(
+      bobVaultBalanceBeforeLiquidation.add(liquidationReward),
+      1 // closeTo is used to avoid error of 1 wei here
+    );
+
+    // Check trader's vault.balance is reduced by negative profit and liquidation fee
+    // AND it is less than 0
+    expect(await alice.vault.getTraderBalance(0, alice.address)).to.be.lt(0);
+    console.log(
+      'Bad liquidations with liquidationReward = LIQUIDATION_REWARD * notionalAmount'
+    );
+    console.log(
+      'Generated bad debt:',
+      ethers.utils.formatEther(
+        await alice.vault.getTraderBalance(0, alice.address)
+      )
+    );
+    console.log(
+      'Liquidator reward:',
+      ethers.utils.formatEther(
+        await alice.vault.getTraderBalance(0, bob.address)
       )
     );
   });
