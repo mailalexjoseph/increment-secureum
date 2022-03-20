@@ -539,6 +539,24 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         globalPosition.blockStartPrice = marketPrice().toInt256();
     }
 
+    function _updateFundingRate() internal {
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 currentTime = block.timestamp;
+
+        int256 marketTWAP = getMarketTwap();
+        int256 indexTWAP = getOracleTwap();
+
+        int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
+        int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
+        int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
+
+        global.cumFundingRate +=
+            (SENSITIVITY.wadMul(weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
+            1 days;
+
+        global.timeOfLastTrade = uint128(currentTime);
+    }
+
     function _updateTwap() internal {
         uint256 currentTime = block.timestamp;
         int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
@@ -664,7 +682,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         require(
             _checkProposedAmount(isLong, positionSizeToReduce, proposedAmount),
-            "Amount submitted too far from the market price of the position"
+            "Amount submitted too far from the market price of the position or exceeds the position size"
         );
 
         // PnL of the position

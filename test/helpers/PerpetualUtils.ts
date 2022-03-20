@@ -57,9 +57,6 @@ export async function removeLiquidityProposedAmount(
   const lpTokenToWithdraw = rMul(position.liquidityBalance, reductionRatio);
   const positionSizeToReduce = rMul(position.positionSize, reductionRatio);
 
-  console.log('positionSizeToReduce');
-  console.log(positionSizeToReduce.toString());
-
   const withdrawnBaseTokens = (await market.balances(1))
     .mul(lpTokenToWithdraw)
     .div(lpTotalSupply)

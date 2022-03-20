@@ -143,7 +143,7 @@ describe('Increment: liquidation', () => {
     await expect(
       bob.clearingHouse.liquidate(0, alice.address, excessiveProposedAmount)
     ).to.be.revertedWith(
-      'Amount submitted too far from the market price of the position'
+      'Amount submitted too far from the market price of the position or exceeds the position size'
     );
   }
 
@@ -269,7 +269,7 @@ describe('Increment: liquidation', () => {
     );
   });
   async function _liquidateAccountWithFundingRate(
-    liquidateee: User,
+    liquidatee: User,
     liquidator: User,
     TARGET_MARGIN: BigNumber
   ) {
@@ -337,21 +337,21 @@ describe('Increment: liquidation', () => {
 
     */
     const openNotional = (
-      await liquidateee.perpetual.getTraderPosition(liquidateee.address)
+      await liquidatee.perpetual.getTraderPosition(liquidatee.address)
     ).openNotional.abs();
 
-    const collateral = await liquidateee.vault.getTraderBalance(
+    const collateral = await liquidatee.vault.getTraderBalance(
       0,
-      liquidateee.address
+      liquidatee.address
     );
 
     // eq (1)
     const funding = rMul(TARGET_MARGIN, openNotional)
       .sub(collateral)
       .sub(
-        await liquidateee.clearingHouseViewer.getUnrealizedPnL(
+        await liquidatee.clearingHouseViewer.getUnrealizedPnL(
           0,
-          liquidateee.address
+          liquidatee.address
         )
       );
 
@@ -366,13 +366,13 @@ describe('Increment: liquidation', () => {
       fundingRate
     );
     // check that user margin is (LIQUIDATION_REWARD, MIN_MARGIN)
-    const liquidateeeMargin = await liquidateee.clearingHouse.marginRatio(
+    const liquidateeMargin = await liquidatee.clearingHouse.marginRatio(
       0,
-      liquidateee.address
+      liquidatee.address
     );
-    expect(liquidateeeMargin).to.be.lt(MIN_MARGIN);
-    // expect(liquidateeeMargin).to.be.gt(LIQUIDATION_REWARD);
-    expect(liquidateeeMargin).to.be.eq(TARGET_MARGIN.sub(1)); // check to show (1) and (2) arrive at the correct result
+    expect(liquidateeMargin).to.be.lt(MIN_MARGIN);
+    // expect(liquidateeMargin).to.be.gt(LIQUIDATION_REWARD);
+    expect(liquidateeMargin).to.be.eq(TARGET_MARGIN.sub(1)); // check to show (1) and (2) arrive at the correct result
 
     // Check `LiquidationCall` event sent with proper values
     const properVQuoteAmountToBuyBackShortPosition = tradeAmount.add(
@@ -381,19 +381,19 @@ describe('Increment: liquidation', () => {
     await expect(
       liquidator.clearingHouse.liquidate(
         0,
-        liquidateee.address,
+        liquidatee.address,
         properVQuoteAmountToBuyBackShortPosition
       )
     )
-      .to.emit(liquidateee.clearingHouse, 'LiquidationCall')
-      .withArgs(0, liquidateee.address, liquidator.address, openNotional.abs());
+      .to.emit(liquidatee.clearingHouse, 'LiquidationCall')
+      .withArgs(0, liquidatee.address, liquidator.address, openNotional.abs());
 
     // Check trader's position is closed, i.e. user.openNotional and user.positionSize = 0
-    const liquidateeePosition = await liquidateee.perpetual.getTraderPosition(
-      liquidateee.address
+    const liquidateePosition = await liquidatee.perpetual.getTraderPosition(
+      liquidatee.address
     );
-    expect(liquidateeePosition.openNotional).to.eq(0);
-    expect(liquidateeePosition.positionSize).to.eq(0);
+    expect(liquidateePosition.openNotional).to.eq(0);
+    expect(liquidateePosition.positionSize).to.eq(0);
   }
 
   it('Liquidations with margin (LIQUIDATION_REWARD, MIN_MARGIN) should not generate bad debt', async () => {
@@ -426,7 +426,7 @@ describe('Increment: liquidation', () => {
     // BUT it is still larger than 0
     expect(await alice.vault.getTraderBalance(0, alice.address)).to.be.gt(0);
   });
-  it.only('Liquidations with margin < LIQUIDATION_REWARD should generate bad debt', async () => {
+  it('Liquidations with margin < LIQUIDATION_REWARD should generate bad debt', async () => {
     await alice.clearingHouse.extendPosition(0, tradeAmount, Side.Short, 0);
     const positionOpenNotional = (
       await alice.perpetual.getTraderPosition(alice.address)
@@ -455,20 +455,5 @@ describe('Increment: liquidation', () => {
     // Check trader's vault.balance is reduced by negative profit and liquidation fee
     // AND it is less than 0
     expect(await alice.vault.getTraderBalance(0, alice.address)).to.be.lt(0);
-    console.log(
-      'Bad liquidations with liquidationReward = LIQUIDATION_REWARD * notionalAmount'
-    );
-    console.log(
-      'Generated bad debt:',
-      ethers.utils.formatEther(
-        await alice.vault.getTraderBalance(0, alice.address)
-      )
-    );
-    console.log(
-      'Liquidator reward:',
-      ethers.utils.formatEther(
-        await alice.vault.getTraderBalance(0, bob.address)
-      )
-    );
   });
 });
