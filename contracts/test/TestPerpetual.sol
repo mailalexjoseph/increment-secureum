@@ -80,4 +80,8 @@ contract TestPerpetual is Perpetual {
         marketTwap = _marketTwap;
         oracleTwap = _oracleTwap;
     }
+
+    function __TestPerpetual_setBlockStartPrice(uint256 blockStartPrice) external {
+        globalPosition.blockStartPrice = int256(blockStartPrice);
+    }
 }
