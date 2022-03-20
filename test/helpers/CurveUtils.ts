@@ -314,18 +314,3 @@ async function getParameterization(
 
   return [PRECISION, PRECISIONS, price_scale];
 }
-
-// function logConfiguration(
-//   i: number,
-//   j: number,
-//   dx: BigNumber,
-//   y: BigNumber,
-//   PRECISION: BigNumber,
-//   price_scale: BigNumber
-// ): void {
-// //  console.log('CurveUtils: get_dy(, i, j, dx)');
-// //  console.log('CurveUtils: i: ', i.toString(), 'j: ', j.toString(), 'dx: ', dx.toString());
-// //  console.log('CurveUtils: PRECISION: ', PRECISION.toString());
-// //  console.log('CurveUtils: price_scale', price_scale.toString());
-// //  console.log('CurveUtils: y', y.toString());
-// }

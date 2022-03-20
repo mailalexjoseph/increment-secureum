@@ -71,6 +71,16 @@ export async function setNextBlockTimestamp(
   return nextBlockTimestamp;
 }
 
+export async function increaseTime(
+  hre: HardhatRuntimeEnvironment,
+  amount: number
+): Promise<void> {
+  await hre.network.provider.request({
+    method: 'evm_increaseTime',
+    params: [amount],
+  });
+}
+
 export function getEthereumNetworkFromString(String: string): eEthereumNetwork {
   if (Object.values(eEthereumNetwork).some((col: string) => col === String)) {
     return <eEthereumNetwork>String;

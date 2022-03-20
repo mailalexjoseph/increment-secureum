@@ -7,6 +7,13 @@ import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
 import {Side} from './utils/types';
 import {UserPositionStructOutput} from '../../typechain/Perpetual';
+import {asBigNumber, rMul} from './utils/calculations';
+
+import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
+
+/* ********************************* */
+/*   liquidity provider operations   */
+/* ********************************* */
 
 export async function setUpPoolLiquidity(
   lp: User,
@@ -16,45 +23,26 @@ export async function setUpPoolLiquidity(
   await lp.clearingHouse.provideLiquidity(0, depositAmount, lp.usdc.address);
 }
 
-/* helper functions */
-async function _checkTokenBalance(
-  user: User,
-  token: IERC20Metadata,
-  usdcAmount: BigNumber
-): Promise<void> {
-  const usdcBalance = await token.balanceOf(user.address);
-  if (usdcAmount.gt(usdcBalance)) {
-    throw `${user.address} balance of ${usdcBalance} not enough to deposit ${usdcAmount}`;
-  }
-}
-
-// Returns a proposed amount precise enough to close a LONG or SHORT position
-export async function deriveCloseProposedAmount(
-  position: UserPositionStructOutput,
-  market: CurveCryptoSwap2ETH
-): Promise<BigNumber> {
-  if (position.positionSize.gte(0)) {
-    return position.positionSize;
-  } else {
-    return (
-      await TEST_get_exactOutputSwap(
-        market,
-        position.positionSize.abs(),
-        ethers.constants.MaxUint256,
-        0,
-        1
-      )
-    ).amountIn;
-  }
-}
-
 // Returns a proposed amount precise enough to close LP position
 // whether it looks like a LONG or a SHORT
 export async function liquidityProviderProposedAmount(
   position: UserPositionStructOutput,
-  lpTokenToWithdraw: BigNumber,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
+  return removeLiquidityProposedAmount(position, FULL_REDUCTION_RATIO, market);
+}
+
+// Returns a proposed amount precise enough to reduce a LP position
+// whether it looks like a LONG or a SHORT
+export async function removeLiquidityProposedAmount(
+  position: UserPositionStructOutput,
+  reductionRatio: BigNumber,
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
+  if (reductionRatio.gt(FULL_REDUCTION_RATIO) || reductionRatio.lt(0)) {
+    throw new Error('reductionRatio must be between 0 and 1');
+  }
+
   // total supply of lp tokens
   const lpTotalSupply = await (<ERC20>(
     await ethers.getContractAt('ERC20', await market.token())
@@ -65,23 +53,96 @@ export async function liquidityProviderProposedAmount(
   for reference:
   https://github.com/Increment-Finance/increment-protocol/blob/c405099de6fddd6b0eeae56be674c00ee4015fc5/contracts-vyper/contracts/CurveCryptoSwap2ETH.vy#L1013
   */
-  const withdrawnQuoteTokens = (await market.balances(0))
-    .mul(lpTokenToWithdraw)
-    .div(lpTotalSupply)
-    .sub(1);
+
+  const lpTokenToWithdraw = rMul(position.liquidityBalance, reductionRatio);
+  const positionSizeToReduce = rMul(position.positionSize, reductionRatio);
+
+  console.log('positionSizeToReduce');
+  console.log(positionSizeToReduce.toString());
+
   const withdrawnBaseTokens = (await market.balances(1))
     .mul(lpTokenToWithdraw)
     .div(lpTotalSupply)
     .sub(1);
 
-  const positionAfterWithdrawal = <UserPositionStructOutput>{
-    positionSize: position.positionSize.add(withdrawnBaseTokens),
-    openNotional: position.openNotional.add(withdrawnQuoteTokens),
-    liquidityBalance: position.liquidityBalance.sub(lpTokenToWithdraw),
-    cumFundingRate: position.cumFundingRate,
-  };
+  const positionAfterWithdrawal = positionSizeToReduce.add(withdrawnBaseTokens);
 
-  return await deriveCloseProposedAmount(positionAfterWithdrawal, market);
+  return await deriveReduceProposedAmount(positionAfterWithdrawal, market);
+}
+
+// provide liquidity with 18 decimals
+export async function provideLiquidity(
+  user: User,
+  token: IERC20Metadata,
+  liquidityAmount: BigNumber
+): Promise<void> {
+  // get liquidity amount in USD
+  const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
+  await _checkTokenBalance(user, token, tokenAmount);
+
+  await (await token.approve(user.vault.address, tokenAmount)).wait();
+  await (
+    await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address)
+  ).wait();
+}
+
+// withdraw liquidity
+export async function withdrawLiquidityAndSettle(
+  user: User,
+  token: IERC20Metadata
+): Promise<void> {
+  const userLpPosition = await user.perpetual.getLpPosition(user.address);
+
+  const proposedAmount = await liquidityProviderProposedAmount(
+    userLpPosition,
+    user.market
+  );
+
+  const closeProposedAmount = ethers.utils.parseEther('1');
+  await user.clearingHouse.removeLiquidity(
+    0,
+    userLpPosition.liquidityBalance,
+    closeProposedAmount,
+    proposedAmount,
+    0,
+    token.address
+  );
+  const positionAfter = await user.perpetual.getLpPosition(user.address);
+
+  if (positionAfter.liquidityBalance.gt(0)) {
+    throw 'Liquidity not withdrawn';
+  }
+}
+
+/* ********************************* */
+/*          Trader operations        */
+/* ********************************* */
+
+// deposit collateral  with 18 decimals
+export async function deposit(
+  user: User,
+  token: IERC20Metadata,
+  depositAmount: BigNumber
+): Promise<void> {
+  // get liquidity amount in USD
+  const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
+  await _checkTokenBalance(user, token, tokenAmount);
+
+  await (await user.usdc.approve(user.vault.address, tokenAmount)).wait();
+
+  await (
+    await user.clearingHouse.deposit(0, tokenAmount, user.usdc.address)
+  ).wait();
+}
+
+export async function withdrawCollateral(
+  user: User,
+  token: IERC20Metadata
+): Promise<void> {
+  const userDeposits = await user.vault.getTraderReserveValue(0, user.address);
+  await (
+    await user.clearingHouse.withdraw(0, userDeposits, token.address)
+  ).wait();
 }
 
 // open position with 18 decimals
@@ -141,77 +202,48 @@ export async function closePosition(
   await withdrawCollateral(user, token);
 }
 
-export async function withdrawCollateral(
-  user: User,
-  token: IERC20Metadata
-): Promise<void> {
-  const userDeposits = await user.vault.getTraderReserveValue(0, user.address);
-  await (
-    await user.clearingHouse.withdraw(0, userDeposits, token.address)
-  ).wait();
+/* ********************************* */
+/*       Helper operations           */
+/* ********************************* */
+
+// Returns a proposed amount precise enough to reduce a LONG or SHORT position
+export async function deriveCloseProposedAmount(
+  position: UserPositionStructOutput,
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
+  return deriveReduceProposedAmount(position.positionSize, market);
 }
 
-// provide liquidity with 18 decimals
-export async function provideLiquidity(
-  user: User,
-  token: IERC20Metadata,
-  liquidityAmount: BigNumber
-): Promise<void> {
-  // get liquidity amount in USD
-  const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
-  await _checkTokenBalance(user, token, tokenAmount);
-
-  await (await token.approve(user.vault.address, tokenAmount)).wait();
-  await (
-    await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address)
-  ).wait();
-}
-
-// withdraw liquidity
-export async function withdrawLiquidityAndSettle(
-  user: User,
-  token: IERC20Metadata
-): Promise<void> {
-  const userLpPosition = await user.perpetual.getLpPosition(user.address);
-
-  const proposedAmount = await liquidityProviderProposedAmount(
-    userLpPosition,
-    userLpPosition.liquidityBalance,
-    user.market
-  );
-
-  const closeProposedAmount = ethers.utils.parseEther('1');
-  await user.clearingHouse.removeLiquidity(
-    0,
-    userLpPosition.liquidityBalance,
-    closeProposedAmount,
-    proposedAmount,
-    0,
-    token.address
-  );
-  const positionAfter = await user.perpetual.getLpPosition(user.address);
-
-  if (positionAfter.liquidityBalance.gt(0)) {
-    throw 'Liquidity not withdrawn';
+// Returns a proposed amount precise enough to reduce a LONG or SHORT position
+export async function deriveReduceProposedAmount(
+  positionSizeToReduce: BigNumber,
+  market: CurveCryptoSwap2ETH
+): Promise<BigNumber> {
+  if (positionSizeToReduce.gte(0)) {
+    return positionSizeToReduce;
+  } else {
+    return (
+      await TEST_get_exactOutputSwap(
+        market,
+        positionSizeToReduce.abs(),
+        ethers.constants.MaxUint256,
+        0,
+        1
+      )
+    ).amountIn;
   }
 }
 
-// calculate
-export async function calcCloseShortPosition(
-  market: CurveCryptoSwap2ETH,
-  amountInMaximum: BigNumber,
-  amountOut: BigNumber
-): Promise<BigNumber> {
-  const QUOTE_INDEX = 0;
-  const BASE_INDEX = 1;
-
-  return calcSwapForExact(
-    market,
-    amountInMaximum,
-    amountOut,
-    QUOTE_INDEX,
-    BASE_INDEX
-  );
+/* helper functions */
+async function _checkTokenBalance(
+  user: User,
+  token: IERC20Metadata,
+  usdcAmount: BigNumber
+): Promise<void> {
+  const usdcBalance = await token.balanceOf(user.address);
+  if (usdcAmount.gt(usdcBalance)) {
+    throw `${user.address} balance of ${usdcBalance} not enough to deposit ${usdcAmount}`;
+  }
 }
 
 /*

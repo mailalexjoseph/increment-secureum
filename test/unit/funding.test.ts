@@ -13,11 +13,7 @@ import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
 import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
 
 import {TestPerpetual} from '../../typechain';
-
-// time-utils
-const minutes = (number: number) => number * 60;
-const hours = (number: number) => minutes(number) * 60;
-const days = (number: number) => hours(number) * 24;
+import {days, minutes} from '../helpers/utils/time';
 
 let nextBlockTimestamp = 2000000000;
 async function addTimeToNextBlockTimestamp(

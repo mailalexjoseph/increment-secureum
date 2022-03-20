@@ -8,8 +8,7 @@ import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
 import {Side} from '../helpers/utils/types';
-
-const FULL_REDUCTION_RATIO = ethers.utils.parseEther('1');
+import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
 
 describe('Increment: open/close long/short trading positions', () => {
   let alice: User;
