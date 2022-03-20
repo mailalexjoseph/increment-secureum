@@ -26,7 +26,7 @@ interface IVault {
     event InsuranceChanged(IInsurance newInsurance);
 
     /// @notice Emitted when the maximum Total Value locked (TVL) is changed
-    /// @param nexMaxTVL New maximum TVL level
+    /// @param newMaxTVL New maximum TVL level
     event MaxTVLChanged(uint256 newMaxTVL);
 
     /// @notice Emitted when the Total Value Locked changed
