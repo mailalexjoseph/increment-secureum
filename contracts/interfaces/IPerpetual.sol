@@ -14,12 +14,12 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
-    event FundingPayment(uint256 value, bool isPositive);
-    event LiquidityProvided(address indexed liquidityProvider, address indexed asset, uint256 amount);
-    event LiquidityRemoved(address indexed liquidityProvider, uint256 amount);
-    event LiquidityWithdrawn(address indexed liquidityProvider);
+    /// @notice Emitted when swap with cryptoswap pool fails
+    /// @param errorMessage Return error message
     event Log(string errorMessage);
-    event TokenDonated(address indexed burner, uint256 vBaseAmount, uint256 liquidity);
+
+    /// @notice Emitted when (base) dust is generated
+    /// @param vBaseAmount Amount of dust
     event DustGenerated(uint256 vBaseAmount);
 
     function market() external view returns (ICryptoSwap);

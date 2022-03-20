@@ -35,8 +35,6 @@ contract Insurance is IInsurance, IncreOwnable {
         require(IERC20(token).balanceOf(address(this)) >= amount, "Insufficient insurance balance");
 
         IERC20(token).safeTransfer(caller, amount);
-
-        emit DebtSettled(caller, amount);
     }
 
     function withdrawRemainder() external override onlyOwner {

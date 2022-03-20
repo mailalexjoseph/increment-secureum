@@ -10,14 +10,27 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 // @author: The interface used in other contracts
 interface IVault {
     // Event
+
+    /// @notice Emitted when bad debt is settled for by the insurance reserve
+    /// @param idx Index of the perpetual market
+    /// @param beneficiary Beneficiary of the insurance payment
+    /// @param amount Amount of bad insurance requested
     event BadDebtGenerated(uint256 idx, address beneficiary, uint256 amount);
 
+    /// @notice Emitted when a new ClearingHouse is connected to the vault
+    /// @param newClearingHouse New ClearingHouse contract address
     event ClearingHouseChanged(IClearingHouse newClearingHouse);
 
+    /// @notice Emitted when a new Insurance is connected to the vault
+    /// @param newInsurance New Insurance contract address
     event InsuranceChanged(IInsurance newInsurance);
 
+    /// @notice Emitted when the maximum Total Value locked (TVL) is changed
+    /// @param nexMaxTVL New maximum TVL level
     event MaxTVLChanged(uint256 newMaxTVL);
 
+    /// @notice Emitted when the Total Value Locked changed
+    /// @param totalValueLocked New amount of tokens locked
     event ValueLockedChanged(uint256 totalValueLocked);
 
     // dependencies
