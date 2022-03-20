@@ -196,7 +196,7 @@ contract Vault is IVault, Context, IncreOwnable {
             uint256 borrowedAmount = rawTokenAmount - withdrawToken.balanceOf(address(this));
             insurance.settleDebt(borrowedAmount);
             badDebt += borrowedAmount;
-            emit BadDebtGenerated(0, user, borrowedAmount);
+            emit BadDebtGenerated(idx, user, borrowedAmount);
         }
         IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
 

@@ -87,8 +87,8 @@ describe('Increment App: Insurance', function () {
         user.usdc.address
       )
     )
-      .to.emit(user.insurance, 'DebtSettled')
-      .withArgs(user.vault.address, depositAmountUSDC);
+      .to.emit(user.vault, 'BadDebtGenerated')
+      .withArgs(0, user.address, depositAmountUSDC);
 
     expect(await user.vault.getBadDebt()).to.be.eq(depositAmountUSDC);
   });
