@@ -14,6 +14,10 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
+    /* ****************** */
+    /*     Events         */
+    /* ****************** */
+
     /// @notice Emitted when swap with cryptoswap pool fails
     /// @param errorMessage Return error message
     event Log(string errorMessage);
@@ -21,6 +25,10 @@ interface IPerpetual {
     /// @notice Emitted when (base) dust is generated
     /// @param vBaseAmount Amount of dust
     event DustGenerated(uint256 vBaseAmount);
+
+    /* ****************** */
+    /*     Viewer         */
+    /* ****************** */
 
     function market() external view returns (ICryptoSwap);
 
@@ -30,7 +38,29 @@ interface IPerpetual {
 
     function clearingHouse() external view returns (IClearingHouse);
 
-    // buy/ sell functions
+    function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
+
+    function getLpPosition(address account) external view returns (LibPerpetual.UserPosition memory);
+
+    function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
+
+    function getUnrealizedPnL(address account) external view returns (int256);
+
+    function getFundingPayments(address account) external view returns (int256);
+
+    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);
+
+    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view returns (uint256);
+
+    function marketPriceOracle() external view returns (uint256);
+
+    function marketPrice() external view returns (uint256);
+
+    function indexPrice() external view returns (int256);
+
+    /* ****************** */
+    /*  State modifying   */
+    /* ****************** */
 
     function extendPosition(
         address account,
@@ -58,18 +88,6 @@ interface IPerpetual {
             int256
         );
 
-    // user position function
-    function getTraderPosition(address account) external view returns (LibPerpetual.UserPosition memory);
-
-    function getLpPosition(address account) external view returns (LibPerpetual.UserPosition memory);
-
-    function getGlobalPosition() external view returns (LibPerpetual.GlobalPosition memory);
-
-    function getUnrealizedPnL(address account) external view returns (int256);
-
-    function getFundingPayments(address account) external view returns (int256);
-
-    // liquidator provider functions
     function provideLiquidity(address account, uint256 wadAmount) external returns (uint256, int256);
 
     function removeLiquidity(
@@ -85,15 +103,4 @@ interface IPerpetual {
             int256,
             int256
         );
-
-    // price getter
-    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);
-
-    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view returns (uint256);
-
-    function marketPriceOracle() external view returns (uint256);
-
-    function marketPrice() external view returns (uint256);
-
-    function indexPrice() external view returns (int256);
 }

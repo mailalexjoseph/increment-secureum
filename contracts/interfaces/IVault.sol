@@ -9,7 +9,9 @@ import {IClearingHouse} from "./IClearingHouse.sol";
 // @dev: deposit uint and withdraw int
 // @author: The interface used in other contracts
 interface IVault {
-    // Event
+    /* ****************** */
+    /*     Events         */
+    /* ****************** */
 
     /// @notice Emitted when bad debt is settled for by the insurance reserve
     /// @param idx Index of the perpetual market
@@ -33,14 +35,35 @@ interface IVault {
     /// @param totalValueLocked New amount of tokens locked
     event ValueLockedChanged(uint256 totalValueLocked);
 
-    // dependencies
+    /* ****************** */
+    /*     Viewer         */
+    /* ****************** */
     function reserveToken() external view returns (IERC20);
 
     function insurance() external view returns (IInsurance);
 
     function clearingHouse() external view returns (IClearingHouse);
 
-    // state modifying functions
+    function getReserveTokenDecimals() external view returns (uint256);
+
+    function getTotalReserveToken() external view returns (uint256);
+
+    function getBadDebt() external view returns (uint256);
+
+    function getMaxTVL() external view returns (uint256);
+
+    function getLpReserveValue(uint256 idx, address account) external view returns (int256);
+
+    function getTraderReserveValue(uint256 idx, address account) external view returns (int256);
+
+    function getTraderBalance(uint256 idx, address account) external view returns (int256);
+
+    function getLpBalance(uint256 idx, address account) external view returns (int256);
+
+    /* ****************** */
+    /*  State modifying   */
+    /* ****************** */
+
     function deposit(
         uint256 idx,
         address user,
@@ -78,22 +101,4 @@ interface IVault {
         IERC20 withdrawToken,
         bool isTrader
     ) external returns (uint256);
-
-    // system wide viewer functions
-    function getReserveTokenDecimals() external view returns (uint256);
-
-    function getTotalReserveToken() external view returns (uint256);
-
-    function getBadDebt() external view returns (uint256);
-
-    function getMaxTVL() external view returns (uint256);
-
-    // user viewer functions
-    function getLpReserveValue(uint256 idx, address account) external view returns (int256);
-
-    function getTraderReserveValue(uint256 idx, address account) external view returns (int256);
-
-    function getTraderBalance(uint256 idx, address account) external view returns (int256);
-
-    function getLpBalance(uint256 idx, address account) external view returns (int256);
 }
