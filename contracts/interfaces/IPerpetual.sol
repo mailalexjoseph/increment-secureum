@@ -58,6 +58,20 @@ interface IPerpetual {
 
     function indexPrice() external view returns (int256);
 
+    function totalLiquidityProvided() external view returns (uint256);
+
+    function oracleCumulativeAmount() external view returns (int256);
+
+    function oracleCumulativeAmountAtBeginningOfPeriod() external view returns (int256);
+
+    function oracleTwap() external view returns (int256);
+
+    function marketCumulativeAmount() external view returns (int256);
+
+    function marketCumulativeAmountAtBeginningOfPeriod() external view returns (int256);
+
+    function marketTwap() external view returns (int256);
+
     /* ****************** */
     /*  State modifying   */
     /* ****************** */

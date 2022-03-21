@@ -38,16 +38,16 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     // global state
     LibPerpetual.GlobalPosition internal globalPosition;
-    uint256 internal totalLiquidityProvided;
+    uint256 public override totalLiquidityProvided;
 
-    int256 public oracleCumulativeAmount;
-    int256 public oracleCumulativeAmountAtBeginningOfPeriod;
-    int256 public oracleTwap;
+    int256 public override oracleCumulativeAmount;
+    int256 public override oracleCumulativeAmountAtBeginningOfPeriod;
+    int256 public override oracleTwap;
 
-    int256 public marketCumulativeAmount;
+    int256 public override marketCumulativeAmount;
     // slither-disable-next-line similar-names
-    int256 public marketCumulativeAmountAtBeginningOfPeriod;
-    int256 public marketTwap;
+    int256 public override marketCumulativeAmountAtBeginningOfPeriod;
+    int256 public override marketTwap;
 
     // user state
     mapping(address => LibPerpetual.UserPosition) internal traderPosition;
@@ -568,6 +568,21 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         int256 positionSize,
         uint256 proposedAmount
     ) internal view returns (bool) {
+        /*
+        Question: Why do we have to make use the proposedAmount parameters in our function?
+        Answer: There is no equivalent to an swapForExact function in the CryptoSwap contract.
+                https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
+                This means we in case of someone closing a short position (positionSize < 0)
+                we can not calculate in our contract how many quoteTokens we have to swap with
+                the curve Pool to pay pack the debt. Instead this is done outside of the contract.
+                (see: TEST_get_exactOutputSwap() for an typescript implementation of a binary search
+                to find the correct input amount).
+                We only verify inside of the contract that our proposed amount is close enough
+                to the initial estimate. All base tokens exceeding the positionSize are either swapped
+                back for quoteTokens (dust is donated to the protocol)
+                See: _reducePositionOnMarket for reference
+        */
+
         if (isLong) {
             // proposedAmount is a vBase denominated amount
             // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
@@ -681,6 +696,35 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             uint256 positivePositionSize = (-positionSize).toUint256();
             uint256 vBaseProceeds = _quoteForBase(proposedAmount, minAmount);
 
+            /*
+            Question: Why do we make up to two swap when closing a short position?
+            Answer: We calculate the amount of quoteTokens needed to close the position off-chain.
+                    Results can be deviate when market conditions change.
+
+            *******************************
+            * positionSize < 0 (short)    *
+            *******************************
+
+            Example:
+                pay back 100 base debt (positionSize = -100)
+
+            1) calculate how much quote you have to sell to pay back 100 base debt (positionSize = -100)
+                i.e. proposedAmount ~ 100 * EUR_USD ~ 110 (has to fulfill the _checkProposedAmount() check)
+
+
+            2) Swap 'proposedAmount' for 'baseTokensReceived' base tokens
+                Case I) baseTokensReceived > positionSize
+                    swap (baseTokensReceived - positionSize) for quoteTokens
+                    Case I)
+                    swap succesfull?
+                        Case I
+                        yes, continue
+                        no, dontate (baseTokenReceived - positionSize)
+
+                Case II) baseTokensReceived < positionSize
+                    fail
+
+            */
             uint256 additionalProceeds = 0;
             uint256 baseRemaining = 0;
             if (vBaseProceeds > positivePositionSize) {
