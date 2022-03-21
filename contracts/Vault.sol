@@ -95,38 +95,40 @@ contract Vault is IVault, Context, IncreOwnable {
         emit MaxTVLChanged(newMaxTVL);
     }
 
-    /**
-     * @notice Deposit reserveTokens to account
-     * @param  amount  Amount of reserveTokens with token decimals
-     * @param  depositToken Token address deposited (used for backwards compatibility)
-     */
-    // toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
+    /// @notice Deposit reserveTokens to account
+    /// @param idx Index of the perpetual market
+    /// @param user Account to deposit to
+    /// @param tokenAmount Amount to be used as the collateral of the position. Might not be 18 decimals
+    /// @param depositToken Token to be used for the collateral of the position
+    /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
+    /// @return Deposited Amount with 18 decimals precision
+    /// toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
     function deposit(
         uint256 idx,
         address user,
-        uint256 amount,
+        uint256 tokenAmount,
         IERC20 depositToken,
         bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
         require(depositToken == reserveToken, "Wrong token");
 
-        uint256 convertedWadAmount = LibReserve.tokenToWad(reserveTokenDecimals, amount);
+        uint256 wadAmount = LibReserve.tokenToWad(reserveTokenDecimals, tokenAmount);
 
         // deposit must exceed 10
-        require(convertedWadAmount.toInt256() >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
+        require(wadAmount.toInt256() >= MIN_DEPOSIT_AMOUNT, "MIN_DEPOSIT_AMOUNT");
 
         // increment balance
-        _changeBalance(idx, user, convertedWadAmount.toInt256(), isTrader);
-        totalReserveToken += convertedWadAmount;
+        _changeBalance(idx, user, wadAmount.toInt256(), isTrader);
+        totalReserveToken += wadAmount;
 
         require(totalReserveToken <= maxTVL, "MAX_TVL");
 
         // deposit reserveTokens to contract
-        IERC20(depositToken).safeTransferFrom(user, address(this), amount);
+        IERC20(depositToken).safeTransferFrom(user, address(this), tokenAmount);
 
         emit ValueLockedChanged(totalReserveToken);
 
-        return convertedWadAmount;
+        return wadAmount;
     }
 
     function _changeBalance(
@@ -142,10 +144,12 @@ contract Vault is IVault, Context, IncreOwnable {
         }
     }
 
-    /**
-     * @notice Withdraw all ERC20 reserveToken from margin of the contract account.
-     * @param withdrawToken ERC20 reserveToken address
-     */
+    /// @notice Withdraw all tokens from account
+    /// @param idx Index of the perpetual market
+    /// @param user Account to withdraw from
+    /// @param withdrawToken Token to be withdrawn from the vault
+    /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
+    /// @return Withdrawn Amount with token precision
     function withdrawAll(
         uint256 idx,
         address user,
@@ -156,6 +160,13 @@ contract Vault is IVault, Context, IncreOwnable {
         return withdraw(idx, user, fullAmount.toUint256(), withdrawToken, isTrader);
     }
 
+    /// @notice Withdraw share of tokens from account
+    /// @param idx Index of the perpetual market
+    /// @param user Account to withdraw from
+    /// @param withdrawToken Token to be withdrawn from the vault
+    /// @param reductionRatio Share of collateral to be withdrawn [0, 1e18]
+    /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
+    /// @return Withdrawn Amount with token precision
     function withdrawPartial(
         uint256 idx,
         address user,
@@ -163,42 +174,45 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 reductionRatio,
         bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
+        require(0 <= reductionRatio && reductionRatio <= 1e18, "ReductionRatio must be in [0, 1e18]");
         int256 fullAmount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
         int256 partialAmount = fullAmount.wadMul(reductionRatio.toInt256());
         return withdraw(idx, user, partialAmount.toUint256(), withdrawToken, isTrader);
     }
 
-    /**
-     * @notice Withdraw ERC20 reserveToken from margin of the contract account.
-     * @param withdrawToken ERC20 reserveToken address
-     * @param amount Collateral amount to withdraw. Must be 18 decimals
-     */
+    /// @notice Withdraw tokens from account
+    /// @param idx Index of the perpetual market
+    /// @param user Account to withdraw from
+    /// @param wadAmount Amount to withdraw from the vault (18 decimals)
+    /// @param withdrawToken Token to be withdrawn from the vault
+    /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
+    /// @return Withdrawn Amount with token precision
     function withdraw(
         uint256 idx,
         address user,
-        uint256 amount,
+        uint256 wadAmount,
         IERC20 withdrawToken,
         bool isTrader
     ) public override onlyClearingHouse returns (uint256) {
         int256 balance = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
-        require(amount.toInt256() <= balance, "Not enough balance");
+        require(wadAmount.toInt256() <= balance, "Not enough balance");
         require(withdrawToken == reserveToken, "Wrong token address");
 
         // decrement balance
-        _changeBalance(idx, user, -amount.toInt256(), isTrader);
+        _changeBalance(idx, user, -wadAmount.toInt256(), isTrader);
 
-        // Safemath will throw if tvl < amount
-        totalReserveToken -= amount;
+        // Safemath will throw if tvl < wadAmount
+        totalReserveToken -= wadAmount;
 
         // perform transfer
-        uint256 rawTokenAmount = LibReserve.wadToToken(reserveTokenDecimals, amount);
-        if (withdrawToken.balanceOf(address(this)) < rawTokenAmount) {
-            uint256 borrowedAmount = rawTokenAmount - withdrawToken.balanceOf(address(this));
+        uint256 tokenAmount = LibReserve.wadToToken(reserveTokenDecimals, wadAmount);
+        if (withdrawToken.balanceOf(address(this)) < tokenAmount) {
+            uint256 borrowedAmount = tokenAmount - withdrawToken.balanceOf(address(this));
             insurance.settleDebt(borrowedAmount);
             badDebt += borrowedAmount;
             emit BadDebtGenerated(idx, user, borrowedAmount);
         }
-        IERC20(withdrawToken).safeTransfer(user, rawTokenAmount);
+        IERC20(withdrawToken).safeTransfer(user, tokenAmount);
 
         // deposit must exceed 10
         int256 balanceAfter = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
@@ -208,17 +222,21 @@ contract Vault is IVault, Context, IncreOwnable {
 
         emit ValueLockedChanged(totalReserveToken);
 
-        return rawTokenAmount;
+        return tokenAmount;
     }
 
-    /// @param amount Must be 18 decimals
+    /// @notice Withdraw tokens from account
+    /// @param idx Index of the perpetual market
+    /// @param user Account to withdraw from
+    /// @param wadAmount Amount to withdraw from the vault (18 decimals)
+    /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
     function settleProfit(
         uint256 idx,
         address user,
-        int256 amount,
+        int256 wadAmount,
         bool isTrader
     ) external override onlyClearingHouse {
-        int256 settlement = amount.wadDiv(getAssetPrice());
+        int256 settlement = wadAmount.wadDiv(getAssetPrice());
         _changeBalance(idx, user, settlement, isTrader);
     }
 
