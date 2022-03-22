@@ -179,13 +179,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param minAmount Minimum amount that the user is willing to accept. 18 decimals
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
     /// @dev No checks are done if bought amount exceeds allowance
-    /// @return TODO: add return description
+    /// @return addedOpenNotional Additional quote asset / liabilities accrued
+    /// @return addedPositionSize Additional base asset / liabilities accrued
     function extendPosition(
         uint256 idx,
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) public override whenNotPaused returns (int256, int256) {
+    ) public override whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
         /*
             if direction = Long
 
@@ -208,7 +209,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         */
         require(amount > 0, "The amount can't be null");
 
-        (int256 addedOpenNotional, int256 addedPositionSize, int256 fundingPayments) = perpetuals[idx].extendPosition(
+        int256 fundingPayments = 0;
+        (addedOpenNotional, addedPositionSize, fundingPayments) = perpetuals[idx].extendPosition(
             msg.sender,
             amount,
             direction,
@@ -361,18 +363,21 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount of token to be added to the pool. Might not have 18 decimals
     /// @param token Token to be added to the pool
-    /// @return Amount of quoteTokens and baseTokens that were added to the pool
+    /// @return wadAmount Amount of quoteTokens added to the pool
+    /// @return baseAmount Amount of baseTokens added to the pool
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external override whenNotPaused returns (uint256, uint256) {
+    ) external override whenNotPaused returns (uint256 wadAmount, uint256 baseAmount) {
         require(amount != 0, "Zero amount");
 
         // split liquidity between long and short
-        uint256 wadAmount = vault.deposit(idx, msg.sender, amount, token, false);
 
-        (uint256 baseAmount, int256 fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
+        wadAmount = vault.deposit(idx, msg.sender, amount, token, false);
+
+        int256 fundingPayments = 0;
+        (baseAmount, fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
 
         if (fundingPayments != 0) {
             vault.settleProfit(idx, msg.sender, fundingPayments, false);
