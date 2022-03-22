@@ -25,8 +25,8 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     // dependencies
     IClearingHouse public clearingHouse;
 
-    uint256 constant VQUOTE_INDEX = 0;
-    uint256 constant VBASE_INDEX = 1;
+    uint256 private constant VQUOTE_INDEX = 0;
+    uint256 private constant VBASE_INDEX = 1;
 
     constructor(IClearingHouse _clearingHouse) {
         require(address(_clearingHouse) != address(0), "ClearingHouse address cannot be 0");
@@ -35,6 +35,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
 
     /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
+    /// @dev TODO: store market address to avoid second call
     /// @param idx Index of the perpetual market
     /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
     function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) public view override returns (uint256) {
@@ -43,6 +44,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
 
     /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
     /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
+    /// @dev TODO: store market address to avoid second call
     /// @param idx Index of the perpetual market
     /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
     function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) public view override returns (uint256) {
