@@ -52,8 +52,6 @@ interface IPerpetual {
 
     function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view returns (uint256);
 
-    function marketPriceOracle() external view returns (uint256);
-
     function marketPrice() external view returns (uint256);
 
     function indexPrice() external view returns (int256);

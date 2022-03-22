@@ -8,7 +8,7 @@ library LibReserve {
     using LibMath for int256;
     using LibMath for uint256;
 
-    uint256 public constant MAX_DECIMALS = 18;
+    uint256 internal constant MAX_DECIMALS = 18;
 
     /// @notice Convert amount from 'tokenDecimals' to 18 decimals precision
     /// @param tokenDecimals Decimals of the token
