@@ -236,7 +236,7 @@ contract Vault is IVault, Context, IncreOwnable {
         int256 wadAmount,
         bool isTrader
     ) external override onlyClearingHouse {
-        int256 settlement = wadAmount.wadDiv(getAssetPrice());
+        int256 settlement = wadAmount.wadDiv(_getAssetPrice());
         _changeBalance(idx, user, settlement, isTrader);
     }
 
@@ -268,7 +268,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @return Trader balance in USD
 
     function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return traderBalances[idx][account].wadMul(getAssetPrice());
+        return traderBalances[idx][account].wadMul(_getAssetPrice());
     }
 
     /// @notice Get the collateral value of a liquidity provider, accounted for in USD (with 18 decimals)
