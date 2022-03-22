@@ -128,30 +128,6 @@ interface IClearingHouse {
 
     function marginRatio(uint256 idx, address account) external view returns (int256);
 
-    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view returns (uint256);
-
-    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view returns (uint256);
-
-    function getFundingPayments(uint256 idx, address account) external view returns (int256 upcomingFundingPayment);
-
-    function getUnrealizedPnL(uint256 idx, address account) external view returns (int256);
-
-    function getTraderReserveValue(uint256 idx, address account) external view returns (int256);
-
-    function getLpReserveValue(uint256 idx, address account) external view returns (int256);
-
-    function marketPriceOracle(uint256 idx) external view returns (uint256);
-
-    function marketPrice(uint256 idx) external view returns (uint256);
-
-    function indexPrice(uint256 idx) external view returns (int256);
-
-    function getGlobalPosition(uint256 idx) external view returns (LibPerpetual.GlobalPosition memory);
-
-    function getTraderPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory);
-
-    function getLpPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory);
-
     /* ****************** */
     /*  State modifying   */
     /* ****************** */

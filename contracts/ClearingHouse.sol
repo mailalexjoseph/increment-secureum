@@ -277,6 +277,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
     /// @param ratio Proposed ratio to compare the position against
+    /// @return True if the position exceeds margin ratio, false otherwise
     function marginIsValid(
         uint256 idx,
         address account,
@@ -288,19 +289,20 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
+    /// @return Margin ratio of the position (in 1e18)
     function marginRatio(uint256 idx, address account) public view override returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
-        int256 openNotional = getTraderPosition(idx, account).openNotional;
+        int256 openNotional = _getTraderPosition(idx, account).openNotional;
 
         // when no position open, margin ratio is 100%
         if (openNotional == 0) {
             return 1e18;
         }
 
-        int256 collateral = getTraderReserveValue(idx, account);
-        int256 fundingPayments = getFundingPayments(idx, account);
-        int256 unrealizedPositionPnl = getUnrealizedPnL(idx, account);
+        int256 collateral = _getTraderReserveValue(idx, account);
+        int256 fundingPayments = _getFundingPayments(idx, account);
+        int256 unrealizedPositionPnl = _getUnrealizedPnL(idx, account);
 
         return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
     }
@@ -325,7 +327,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused {
         address liquidator = msg.sender;
 
-        uint256 positiveOpenNotional = uint256(perpetuals[idx].getTraderPosition(liquidatee).openNotional.abs());
+        uint256 positiveOpenNotional = uint256(_getTraderPosition(idx, liquidatee).openNotional.abs());
 
         require(positiveOpenNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
@@ -334,7 +336,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         // traders are allowed to reduce their positions partially, but liquidators have to close positions in full
         require(
-            getTraderPosition(idx, liquidatee).openNotional == 0,
+            _getTraderPosition(idx, liquidatee).openNotional == 0,
             "Proposed amount insufficient to liquidate the position in its entirety"
         );
 
@@ -359,6 +361,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param idx Index of the perpetual market
     /// @param amount Amount of token to be added to the pool. Might not have 18 decimals
     /// @param token Token to be added to the pool
+    /// @return Amount of quoteTokens and baseTokens that were added to the pool
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
@@ -423,106 +426,29 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /*   Market viewer    */
     /* ****************** */
 
+    /// @notice Return the number of active markets
+    /// @return Number of active markets
     function getNumMarkets() external view override returns (uint256) {
         return perpetuals.length;
     }
 
-    /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` in a select market (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
-    /// @param idx Index of the perpetual market
-    /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
-    function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) external view override returns (uint256) {
-        return perpetuals[idx].getExpectedVBaseAmount(vQuoteAmountToSpend);
-    }
-
-    /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
-    /// @param idx Index of the perpetual market
-    /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
-    function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) external view override returns (uint256) {
-        return perpetuals[idx].getExpectedVQuoteAmount(vBaseAmountToSpend);
-    }
-
-    /// @notice Return the curve price oracle
-    /// @param idx Index of the perpetual market
-    function marketPriceOracle(uint256 idx) external view override returns (uint256) {
-        return perpetuals[idx].marketPriceOracle();
-    }
-
-    /// @notice Return the last traded price (used for TWAP)
-    /// @param idx Index of the perpetual market
-    function marketPrice(uint256 idx) external view override returns (uint256) {
-        return perpetuals[idx].marketPrice();
-    }
-
-    /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    /// @param idx Index of the perpetual market
-    function indexPrice(uint256 idx) external view override returns (int256) {
-        return perpetuals[idx].indexPrice();
-    }
-
-    /// @param idx Index of the perpetual market
-    function getGlobalPosition(uint256 idx) external view override returns (LibPerpetual.GlobalPosition memory) {
-        return perpetuals[idx].getGlobalPosition();
-    }
-
     /* ****************** */
-    /*   User viewer      */
+    /*   User getter      */
     /* ****************** */
 
-    /// @notice Calculate missed funding payments
-    /// @param idx Index of the perpetual market
-    /// @param account Trader to get the funding payments
-    function getFundingPayments(uint256 idx, address account)
-        public
-        view
-        override
-        returns (int256 upcomingFundingPayment)
-    {
+    function _getFundingPayments(uint256 idx, address account) internal view returns (int256 upcomingFundingPayment) {
         return perpetuals[idx].getFundingPayments(account);
     }
 
-    /// @param idx Index of the perpetual market
-    /// @param account Trader to get the unrealized PnL from
-    function getUnrealizedPnL(uint256 idx, address account) public view override returns (int256) {
+    function _getUnrealizedPnL(uint256 idx, address account) internal view returns (int256) {
         return perpetuals[idx].getUnrealizedPnL(account);
     }
 
-    /// @notice Get the portfolio value of a trader
-    /// @param idx Index of the perpetual market
-    /// @param account Address to get the portfolio value from
-    function getTraderReserveValue(uint256 idx, address account) public view override returns (int256) {
+    function _getTraderReserveValue(uint256 idx, address account) internal view returns (int256) {
         return vault.getTraderReserveValue(idx, account);
     }
 
-    /// @notice Get the portfolio value of an Lp
-    /// @param idx Index of the perpetual market
-    /// @param account Address to get the portfolio value from
-    function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return vault.getLpReserveValue(idx, account);
-    }
-
-    /// @notice Get trader position
-    /// @param idx Index of the perpetual market
-    /// @param account Address to get the trading position from
-    function getTraderPosition(uint256 idx, address account)
-        public
-        view
-        override
-        returns (LibPerpetual.UserPosition memory)
-    {
+    function _getTraderPosition(uint256 idx, address account) internal view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getTraderPosition(account);
-    }
-
-    /// @notice Get Lp position
-    /// @param idx Index of the perpetual market
-    /// @param account Address to get the LP position from
-    function getLpPosition(uint256 idx, address account)
-        external
-        view
-        override
-        returns (LibPerpetual.UserPosition memory)
-    {
-        return perpetuals[idx].getLpPosition(account);
     }
 }

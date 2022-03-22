@@ -146,10 +146,8 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
 
-    const expectedVBase = await alice.clearingHouse.getExpectedVBaseAmount(
-      0,
-      depositAmount
-    );
+    const expectedVBase =
+      await alice.clearingHouseViewer.getExpectedVBaseAmount(0, depositAmount);
     const minVBaseAmount = rMul(expectedVBase, ethers.utils.parseEther('0.99'));
 
     // slippage is significant as Alice exchanges 10% of the liquidity of the pool
@@ -162,10 +160,8 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
     await alice.clearingHouse.deposit(0, depositAmountUSDC, alice.usdc.address);
 
-    const expectedVQuote = await alice.clearingHouse.getExpectedVQuoteAmount(
-      0,
-      depositAmount
-    );
+    const expectedVQuote =
+      await alice.clearingHouseViewer.getExpectedVQuoteAmount(0, depositAmount);
     const minVQuoteAmount = rMul(
       expectedVQuote,
       ethers.utils.parseEther('0.99')
@@ -230,7 +226,7 @@ describe('Increment: open/close long/short trading positions', () => {
       0
     );
 
-    const alicePosition = await alice.clearingHouse.getTraderPosition(
+    const alicePosition = await alice.clearingHouseViewer.getTraderPosition(
       0,
       alice.address
     );
@@ -267,7 +263,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 
     const traderPositionBeforeFirstTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     expect(traderPositionBeforeFirstTrade.openNotional).to.eq(0);
     expect(traderPositionBeforeFirstTrade.positionSize).to.eq(0);
@@ -286,7 +282,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterFirstTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     if (direction === Side.Long) {
       expect(traderPositionAfterFirstTrade.positionSize).to.gt(0);
@@ -328,7 +324,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterSecondTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     if (direction === Side.Long) {
       expect(traderPositionAfterSecondTrade.positionSize).to.gt(
@@ -413,7 +409,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterClosingPosition =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     expect(traderPositionAfterClosingPosition.openNotional).to.eq(0);
     expect(traderPositionAfterClosingPosition.positionSize).to.eq(0);
@@ -684,7 +680,7 @@ describe('Increment: open/close long/short trading positions', () => {
     await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
 
     const traderPositionBeforeFirstTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     expect(traderPositionBeforeFirstTrade.openNotional).to.eq(0);
     expect(traderPositionBeforeFirstTrade.positionSize).to.eq(0);
@@ -704,7 +700,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterFirstTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     if (direction === Side.Long) {
       expect(traderPositionAfterFirstTrade.positionSize).to.gt(0);
@@ -744,7 +740,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterSecondTrade =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     if (direction === Side.Long) {
       expect(traderPositionAfterSecondTrade.positionSize).to.lt(
@@ -788,7 +784,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
     // CHECK TRADER POSITION
     const traderPositionAfterClosingPosition =
-      await alice.clearingHouse.getTraderPosition(0, alice.address);
+      await alice.clearingHouseViewer.getTraderPosition(0, alice.address);
 
     expect(traderPositionAfterClosingPosition.openNotional).to.eq(0);
     expect(traderPositionAfterClosingPosition.positionSize).to.eq(0);

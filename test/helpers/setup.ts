@@ -25,6 +25,7 @@ import {
   VirtualToken,
   Insurance,
   ClearingHouse,
+  ClearingHouseViewer,
 } from '../../typechain';
 
 import {BigNumber} from '../../helpers/types';
@@ -42,6 +43,7 @@ export type User = {address: string} & {
   vQuote: VirtualToken;
   market: CurveCryptoSwap2ETH;
   clearingHouse: ClearingHouse;
+  clearingHouseViewer: ClearingHouseViewer;
   insurance: Insurance;
   factory: Factory;
   curveToken: CurveTokenV5;
@@ -84,6 +86,9 @@ export const getContracts = async (deployAccount: string): Promise<any> => {
     ),
     clearingHouse: <ClearingHouse>(
       await ethers.getContract('ClearingHouse', deployAccount)
+    ),
+    clearingHouseViewer: <ClearingHouseViewer>(
+      await ethers.getContract('ClearingHouseViewer', deployAccount)
     ),
   };
 };

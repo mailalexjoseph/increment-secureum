@@ -6,7 +6,7 @@ import {ethers} from 'hardhat';
 import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
 import {Side} from './utils/types';
-import {UserPositionStructOutput} from '../../typechain/ClearingHouse';
+import {UserPositionStructOutput} from '../../typechain/Perpetual';
 
 export async function setUpPoolLiquidity(
   lp: User,

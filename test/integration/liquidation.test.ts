@@ -343,7 +343,7 @@ describe('Increment: liquidation', () => {
     // eq (1)
     const funding = rMul(MIN_MARGIN, positionOpenNotional.abs())
       .sub(aliceVaultBalanceBeforeClosingPosition)
-      .sub(await alice.clearingHouse.getUnrealizedPnL(0, alice.address));
+      .sub(await alice.clearingHouseViewer.getUnrealizedPnL(0, alice.address));
 
     // eq (2)
     const fundingRate = rDiv(funding, tradeAmount).sub(1); // 1 subtracted to make position liquidable
