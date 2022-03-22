@@ -99,7 +99,13 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     ///// TRADING FLOW OPERATIONS \\\\\
 
     /// @notice Open or increase a position, either long or short
+    /// @param account Address of the trader
     /// @param amount to be sold, in vQuote (if long) or vBase (if short)
+    /// @param direction Long or Short
+    /// @param minAmount Minimum amount received back, in vBase (if long) or vQuote (if short)
+    /// @return openNotional Additional quote asset / liabilities accrued
+    /// @return positionSize Additional base asset / liabilities accrued
+    /// @return fundingPayments Settled funding payments
     /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
     /// @dev No checks are done if bought amount exceeds allowance
     function extendPosition(
@@ -112,9 +118,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         override
         onlyClearingHouse
         returns (
-            int256,
-            int256,
-            int256
+            int256 openNotional,
+            int256 positionSize,
+            int256 fundingPayments
         )
     {
         /*
@@ -160,7 +166,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         updateTwapAndFundingRate();
 
         // open position
-        (int256 openNotional, int256 positionSize) = _extendPosition(amount, isLong, minAmount);
+        (openNotional, positionSize) = _extendPosition(amount, isLong, minAmount);
 
         // check max deviation
         require(
@@ -169,7 +175,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // apply funding rate on existing positionSize
-        int256 fundingPayments = _getFundingPayments(
+        fundingPayments = _getFundingPayments(
             isLong,
             trader.cumFundingRate,
             global.cumFundingRate,
@@ -211,6 +217,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @return vQuoteProceeds Realized quote proceeds from closing the position
+    /// @return vBaseAmount Position size reduction
+    /// @return profit Profit realized
     function reducePosition(
         address account,
         uint256 reductionRatio,
@@ -220,9 +229,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         external
         override
         returns (
-            int256,
-            int256,
-            int256
+            int256 vQuoteProceeds,
+            int256 vBaseAmount,
+            int256 profit
         )
     {
         /*
@@ -258,7 +267,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // update state
         updateTwapAndFundingRate();
 
-        (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
+        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(
             trader,
             global,
             reductionRatio,
@@ -309,20 +318,22 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
 
     /// @notice Provide liquidity to the pool
-    /// @param account liquidity provider
-    /// @param  wadAmount amount of vQuote provided with 1e18 precision
+    /// @param account Liquidity provider
+    /// @param  wadAmount Amount of vQuote provided with 1e18 precision
+    /// @return baseAmount Amount of vBase provided with 1e18 precision
+    /// @return fundingPayments Settled funding payments
     function provideLiquidity(address account, uint256 wadAmount)
         external
         override
         onlyClearingHouse
-        returns (uint256, int256)
+        returns (uint256 baseAmount, int256 fundingPayments)
     {
         updateTwapAndFundingRate();
 
         // reflect the added liquidity on the LP position
         LibPerpetual.UserPosition storage lp = lpPosition[account];
 
-        int256 fundingPayments = 0;
+        fundingPayments = 0;
         if (lp.cumFundingRate != globalPosition.cumFundingRate && lp.cumFundingRate != 0) {
             bool isLong = _getPositionDirection(lp);
 
@@ -340,7 +351,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         } else {
             basePrice = market.balances(0).wadDiv(market.balances(1));
         }
-        uint256 baseAmount = wadAmount.wadDiv(basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
+        baseAmount = wadAmount.wadDiv(basePrice); // vQuote / vBase/vQuote  <=> 1 / 1.2 = 0.83
 
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
@@ -364,6 +375,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @return vQuoteProceeds Realized quote proceeds from removing liquidity
+    /// @return vBaseAmount Removed base amount
+    /// @return profit Profit realized
     function removeLiquidity(
         address account,
         uint256 liquidityAmountToRemove,
@@ -375,9 +389,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         override
         onlyClearingHouse
         returns (
-            int256,
-            int256,
-            int256
+            int256 vQuoteProceeds,
+            int256 vBaseAmount,
+            int256 profit
         )
     {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
@@ -419,7 +433,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         lp.positionSize += baseAmount.toInt256();
 
         // profit = pnl + fundingPayments
-        (int256 vBaseAmount, int256 vQuoteProceeds, int256 profit) = _reducePosition(
+        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(
             lp,
             globalPosition,
             reductionRatio,
@@ -466,7 +480,11 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         global.timeOfLastTrade = uint128(currentTime);
     }
 
-    function getFundingPayments(address account) external view override returns (int256) {
+    /// @notice Get the missed funding payments for a trader
+    /// @param account Trader
+    /// @return upcomingFundingPayment Funding payment (1e18)
+
+    function getFundingPayments(address account) external view override returns (int256 upcomingFundingPayment) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
         bool isLong = _getPositionDirection(user);
@@ -567,7 +585,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         bool isLong,
         int256 positionSize,
         uint256 proposedAmount
-    ) internal view returns (bool) {
+    ) internal view returns (bool isValid) {
         /*
         Question: Why do we have to make use the proposedAmount parameters in our function?
         Answer: There is no equivalent to an swapForExact function in the CryptoSwap contract.
@@ -677,10 +695,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    function getBaseDust() external view returns (uint256) {
-        return traderPosition[address(clearingHouse)].positionSize.toUint256();
-    }
-
     /// @notice Returns vBaseAmount and vQuoteProceeds to reflect how much the position has been reduced
     function _reducePositionOnMarket(
         bool isLong,
@@ -698,18 +712,15 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             /*
             Question: Why do we make up to two swap when closing a short position?
-            Answer: We calculate the amount of quoteTokens needed to close the position off-chain.
-                    Results can be deviate when market conditions change.
-
-            *******************************
-            * positionSize < 0 (short)    *
-            *******************************
+            Answer: We calculate have to calculate the amount of quoteTokens needed
+                    to close the position off-chain. (No exact-output-swap function).
+                    Results can deviate from the expected amount.
 
             Example:
                 pay back 100 base debt (positionSize = -100)
 
             1) calculate how much quote you have to sell to pay back 100 base debt (positionSize = -100)
-                i.e. proposedAmount ~ 100 * EUR_USD ~ 110 (has to fulfill the _checkProposedAmount() check)
+                i.e. proposedAmount ~ 100 * EUR_USD ~ 110
 
 
             2) Swap 'proposedAmount' for 'baseTokensReceived' base tokens
@@ -749,65 +760,60 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
     }
 
-    function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256) {
+    function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256 vBaseReceived) {
         // slither-disable-next-line unused-return
         vQuote.mint(quoteAmount);
-        uint256 vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
+        vBaseReceived = market.exchange(VQUOTE_INDEX, VBASE_INDEX, quoteAmount, minAmount);
         vBase.burn(vBaseReceived);
-        return vBaseReceived;
     }
 
-    function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256) {
+    function _baseForQuote(uint256 baseAmount, uint256 minAmount) internal returns (uint256 vQuoteReceived) {
         // slither-disable-next-line unused-return
         vBase.mint(baseAmount);
-        uint256 vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
+        vQuoteReceived = market.exchange(VBASE_INDEX, VQUOTE_INDEX, baseAmount, minAmount);
         vQuote.burn(vQuoteReceived);
-        return vQuoteReceived;
     }
 
-    /// @notice Return amount for vBase one would receive for exchanging `vQuoteAmountToSpend` (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
-    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view override returns (uint256) {
-        return market.get_dy(VQUOTE_INDEX, VBASE_INDEX, vQuoteAmountToSpend);
-    }
-
-    /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` (excluding slippage)
-    /// @dev It's up to the client to apply a reduction of this amount (e.g. -1%) to then use it as `minAmount` in `extendPosition`
-    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view override returns (uint256) {
-        return market.get_dy(VBASE_INDEX, VQUOTE_INDEX, vBaseAmountToSpend);
-    }
-
-    /// @notice Return the curve price oracle
-    function marketPriceOracle() external view override returns (uint256) {
-        return market.price_oracle();
-    }
-
-    /// @notice Return the last traded price (used for TWAP)
-    function marketPrice() public view override returns (uint256) {
-        return market.last_prices();
-    }
-
-    /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    function indexPrice() public view override returns (int256) {
-        return vBase.getIndexPrice();
-    }
-
+    /// @notice Get global market position
+    /// @return Global position
     function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
         return globalPosition;
     }
 
+    /// @notice Get the position of a trader
+    /// @param account Address to get the trading position from
+    /// @return Trader position
     function getTraderPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return traderPosition[account];
     }
 
+    /// @notice Get the position of a liquidity provider
+    /// @param account Address to get the LP position from
+    /// @return Liquidity Provider position
     function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
         return lpPosition[account];
     }
 
+    /// @notice Return the last traded price (used for TWAP)
+    /// @return lastPrice Last traded price
+    function marketPrice() public view override returns (uint256 lastPrice) {
+        return market.last_prices();
+    }
+
+    /// @notice Return the current off-chain exchange rate for vBase/vQuote
+    /// @return Index price
+    function indexPrice() public view override returns (int256) {
+        return vBase.getIndexPrice();
+    }
+
+    /// @notice Get the oracle Time-weighted-average-price
+    /// @return oracle twap (1e18)
     function getOracleTwap() public view override returns (int256) {
         return oracleTwap;
     }
 
+    /// @notice Get the market Time-weighted-average-price
+    /// @return market twap (1e18)
     function getMarketTwap() public view override returns (int256) {
         return marketTwap;
     }

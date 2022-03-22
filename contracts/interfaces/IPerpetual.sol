@@ -48,10 +48,6 @@ interface IPerpetual {
 
     function getFundingPayments(address account) external view returns (int256);
 
-    function getExpectedVBaseAmount(uint256 vQuoteAmountToSpend) external view returns (uint256);
-
-    function getExpectedVQuoteAmount(uint256 vBaseAmountToSpend) external view returns (uint256);
-
     function marketPrice() external view returns (uint256);
 
     function indexPrice() external view returns (int256);
