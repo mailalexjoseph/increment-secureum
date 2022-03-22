@@ -241,55 +241,64 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /************************* getter *************************/
+    /// @notice get the price of an asset
 
+    function _getAssetPrice() internal pure returns (int256) {
+        return 1e18;
+    }
+
+    /// @notice Get the balance of a trader, accounted for in USD (with 18 decimals)
+    /// @param idx Perpetual market index
+    /// @param user Trader address
+    /// @return Trader balance in USDC
     function getTraderBalance(uint256 idx, address user) external view override returns (int256) {
         return traderBalances[idx][user];
     }
 
+    /// @notice Get the balance of a liquidity provider,  accounted for in USD (with 18 decimals)
+    /// @param idx Perpetual market index
+    /// @return LP balance in USDC
     function getLpBalance(uint256 idx, address user) external view override returns (int256) {
         return lpBalances[idx][user];
     }
 
-    /**
-     * @notice Get the value of a balance, accounted for in USD (with 18 decimals)
-     * @param idx Perpetual market index
-     * @param account Account address
-     */
+    /// @notice Get the collateral value of a trader, accounted for in USD (with 18 decimals)
+    /// @param idx Perpetual market index
+    /// @param account Trader address
+    /// @return Trader balance in USD
+
     function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
         return traderBalances[idx][account].wadMul(getAssetPrice());
     }
 
-    /**
-     * @notice Get the value of a balance, accounted for in USD (with 18 decimals)
-     * @param idx Perpetual market index
-     * @param account Account address
-     */
+    /// @notice Get the collateral value of a liquidity provider, accounted for in USD (with 18 decimals)
+    /// @param idx Perpetual market index
+    /// @param account Lp address
+    /// @return Lp balance in USD
     function getLpReserveValue(uint256 idx, address account) external view override returns (int256) {
-        return lpBalances[idx][account].wadMul(getAssetPrice());
+        return lpBalances[idx][account].wadMul(_getAssetPrice());
     }
 
-    /**
-     * @notice get the number of decimals of the ERC20 token used in the vault
-     */
+    /// @notice Get the number of decimals of the ERC20 token used in the vault
+    /// @return Number of decimals of the ERC20 token used in the vault
     function getReserveTokenDecimals() external view override returns (uint256) {
         return reserveTokenDecimals;
     }
 
-    /**
-     * @notice get the price of an asset
-     */
-    function getAssetPrice() public pure returns (int256) {
-        return 1e18;
-    }
-
+    /// @notice Get the amount of tokens borrowed by insurance (bad debt)
+    /// @return Amount of tokens borrowed by insurance (1e18)
     function getBadDebt() external view override returns (uint256) {
         return badDebt;
     }
 
+    /// @notice Get the total amount of tokens in the vault
+    /// @return Total amount of USDC deposited (1e18)
     function getTotalReserveToken() external view override returns (uint256) {
         return totalReserveToken;
     }
 
+    /// @notice Get the maximum TVL set for the vault
+    /// @return Maximum TVL set (1e18)
     function getMaxTVL() external view override returns (uint256) {
         return maxTVL;
     }
