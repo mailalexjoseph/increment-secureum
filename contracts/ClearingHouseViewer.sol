@@ -14,8 +14,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
-/// @title Clearing house helper
-/// @notice Access the perpetual market through this contract
+/// @title Clearing House Helper Contract
+/// @notice Access vault / perpetual / market getters through this contract
 contract ClearingHouseViewer is IClearingHouseViewer {
     using SafeCast for uint256;
     using SafeCast for int256;

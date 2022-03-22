@@ -20,6 +20,8 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
 import "hardhat/console.sol";
 
+/// @title Perpetual Contract
+/// @notice Handles all the trading logic. Interact with the CryptoSwap pool
 contract Perpetual is IPerpetual, ITwapOracle, Context {
     using LibMath for int256;
     using LibMath for uint256;

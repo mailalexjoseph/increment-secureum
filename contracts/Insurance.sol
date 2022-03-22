@@ -10,6 +10,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 
+/// @title Insurance Contract
+/// @notice Pays out Vault in case of default
 contract Insurance is IInsurance, IncreOwnable {
     using SafeERC20 for IERC20;
 
