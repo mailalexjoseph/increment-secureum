@@ -9,7 +9,6 @@
   "author": "increment",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
-    "@aave/protocol-v2": "^1.0.1",
     "@chainlink/contracts": "^0.2.1",
     "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.10",
     "@nomiclabs/hardhat-etherscan": "^2.1.4",
@@ -23,7 +22,6 @@
     "@types/node": "^15.12.2",
     "@typescript-eslint/eslint-plugin": "^4.26.1",
     "@typescript-eslint/parser": "^4.26.1",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "chai": "^4.2.0",
     "cross-env": "^7.0.2",
     "dotenv": "^10.0.0",
@@ -73,19 +71,10 @@
     "execute": "node ./_scripts.js run",
     "deploy": "node ./_scripts.js deploy",
     "export": "node ./_scripts.js export",
-    "fork:execute": "node ./_scripts.js fork:run",
-    "fork:deploy": "node ./_scripts.js fork:deploy",
-    "prefork:dev": "rm -rf deployments/mainnet/* deployments/localhost/*",
-    "fork:dev": "node ./_scripts.js fork:dev",
-    "fork:node": "node ./_scripts.js fork:node",
-    "fork:test": "node ./_scripts.js fork:test",
     "deployment:kovan": "yarn deploy kovan && yarn hardhat run scripts/scenario-testnet.ts --network kovan && yarn hardhat etherscan-verify --network kovan",
     "contract:size": "echo 'maximum contract size is 24KB' && yarn run hardhat size-contracts",
     "compile:vyper": "rm ./typechain -r & yarn hardhat clean && yarn hardhat compile-vyper --directory contracts-vyper",
     "prerun:scenario": "mkdir deployments/mainnet || cp -r deployments/localhost/* deployments/mainnet",
     "run:scenario": "hardhat run scripts/scenario.ts --network localhost"
-  },
-  "resolutions": {
-    "@typescript-eslint/typescript-estree": "5.9.0"
   }
 }
