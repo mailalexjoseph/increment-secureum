@@ -25,6 +25,9 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     // dependencies
     IClearingHouse public clearingHouse;
 
+    uint256 constant VQUOTE_INDEX = 0;
+    uint256 constant VBASE_INDEX = 1;
+
     constructor(IClearingHouse _clearingHouse) {
         require(address(_clearingHouse) != address(0), "ClearingHouse address cannot be 0");
         clearingHouse = _clearingHouse;
@@ -35,7 +38,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     /// @param idx Index of the perpetual market
     /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
     function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) public view override returns (uint256) {
-        return clearingHouse.perpetuals(idx).getExpectedVBaseAmount(vQuoteAmountToSpend);
+        return clearingHouse.perpetuals(idx).market().get_dy(VQUOTE_INDEX, VBASE_INDEX, vQuoteAmountToSpend);
     }
 
     /// @notice Return amount for vQuote one would receive for exchanging `vBaseAmountToSpend` in a select market (excluding slippage)
@@ -43,7 +46,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     /// @param idx Index of the perpetual market
     /// @param vBaseAmountToSpend Amount of vBase to be exchanged against some vQuote. 18 decimals
     function getExpectedVQuoteAmount(uint256 idx, uint256 vBaseAmountToSpend) public view override returns (uint256) {
-        return clearingHouse.perpetuals(idx).getExpectedVQuoteAmount(vBaseAmountToSpend);
+        return clearingHouse.perpetuals(idx).market().get_dy(VBASE_INDEX, VQUOTE_INDEX, vBaseAmountToSpend);
     }
 
     /// @notice Return the last traded price (used for TWAP)
