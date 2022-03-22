@@ -156,7 +156,11 @@ describe('Increment Protocol: Governance', function () {
           await lp.perpetual.getGlobalPosition()
         ).cumFundingRate
       );
-      expect(await user.perpetual.getBaseDust()).to.eq(dustAmount);
+      expect(
+        await (
+          await user.perpetual.getTraderPosition(user.clearingHouse.address)
+        ).positionSize
+      ).to.eq(dustAmount);
 
       // withdraw dust
       const eProfit = await deployer.market.get_dy(1, 0, dustAmount);

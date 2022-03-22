@@ -123,6 +123,12 @@ contract ClearingHouseViewer is IClearingHouseViewer {
         return clearingHouse.perpetuals(idx).getLpPosition(account);
     }
 
+    /// @notice Get the current (base) dust balance
+    /// @return Base balance of Governance (1e18)
+    function getBaseDust(uint256 idx) external view override returns (uint256) {
+        return clearingHouse.perpetuals(idx).getTraderPosition(address(clearingHouse)).positionSize.toUint256();
+    }
+
     /// @notice Get the proposed amount needed to close a position
     /// @dev Solidity implementation to minimize the node calls once has to make when finding proposed amount
     /// @param idx Index of the perpetual market

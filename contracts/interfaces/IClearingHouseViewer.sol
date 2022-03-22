@@ -24,6 +24,8 @@ interface IClearingHouseViewer {
 
     function getGlobalPosition(uint256 idx) external view returns (LibPerpetual.GlobalPosition memory);
 
+    function getBaseDust(uint256 idx) external view returns (uint256);
+
     // user getter
     function getTraderPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory);
 

@@ -540,7 +540,11 @@ describe('Increment App: Liquidity', function () {
         .to.emit(trader.perpetual, 'DustGenerated')
         .withArgs(eBaseDust);
 
-      expect(await lp.perpetual.getBaseDust()).to.be.eq(eBaseDust);
+      expect(await lp.clearingHouseViewer.getBaseDust(0)).to.be.eq(
+        (await lp.perpetual.getTraderPosition(lp.clearingHouse.address))
+          .positionSize
+      );
+      expect(await lp.clearingHouseViewer.getBaseDust(0)).to.be.eq(eBaseDust);
     });
 
     // Unrealistic because pool/market should never be empty
