@@ -60,6 +60,11 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /*     Events         */
     /* ****************** */
 
+    /// @notice Emitted when twap is updated
+    /// @param newOracleTwap Latest oracle Time-weighted-average-price
+    /// @param newMarketTwap Latest market Time-weighted-average-price
+    event TwapUpdated(int256 newOracleTwap, int256 newMarketTwap);
+
     /// @notice Emitted when swap with cryptoswap pool fails
     /// @param errorMessage Return error message
     event Log(string errorMessage);
