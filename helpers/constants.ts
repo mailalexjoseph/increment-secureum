@@ -20,3 +20,6 @@ export const WAD = utils.parseUnits('1.0', 18);
 export const RAY = utils.parseUnits('1.0', 27);
 
 export const FULL_REDUCTION_RATIO = ethers.utils.parseEther('1');
+
+export const VQUOTE_INDEX = 0;
+export const VBASE_INDEX = 1;

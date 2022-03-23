@@ -27,10 +27,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     using LibMath for uint256;
 
     // parameterization
-    uint256 public constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
-    uint256 public constant VQUOTE_INDEX = 0;
-    uint256 public constant VBASE_INDEX = 1;
-    int256 public constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
+    uint256 internal constant VQUOTE_INDEX = 0;
+    uint256 internal constant VBASE_INDEX = 1;
+    uint256 internal constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
+    int256 internal constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
 
     // dependencies
     IVBase public override vBase;
@@ -39,21 +39,34 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     ICryptoSwap public override market;
 
     // global state
+    uint256 internal totalLiquidityProvided;
+
     LibPerpetual.GlobalPosition internal globalPosition;
-    uint256 public override totalLiquidityProvided;
 
-    int256 public override oracleCumulativeAmount;
-    int256 public override oracleCumulativeAmountAtBeginningOfPeriod;
-    int256 public override oracleTwap;
+    int256 internal oracleCumulativeAmount;
+    int256 internal oracleCumulativeAmountAtBeginningOfPeriod;
+    int256 internal oracleTwap;
 
-    int256 public override marketCumulativeAmount;
+    int256 internal marketCumulativeAmount;
     // slither-disable-next-line similar-names
-    int256 public override marketCumulativeAmountAtBeginningOfPeriod;
-    int256 public override marketTwap;
+    int256 internal marketCumulativeAmountAtBeginningOfPeriod;
+    int256 internal marketTwap;
 
     // user state
     mapping(address => LibPerpetual.UserPosition) internal traderPosition;
     mapping(address => LibPerpetual.UserPosition) internal lpPosition;
+
+    /* ****************** */
+    /*     Events         */
+    /* ****************** */
+
+    /// @notice Emitted when swap with cryptoswap pool fails
+    /// @param errorMessage Return error message
+    event Log(string errorMessage);
+
+    /// @notice Emitted when (base) dust is generated
+    /// @param vBaseAmount Amount of dust
+    event DustGenerated(uint256 vBaseAmount);
 
     constructor(
         IVBase _vBase,
@@ -818,5 +831,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @return market twap (1e18)
     function getMarketTwap() public view override returns (int256) {
         return marketTwap;
+    }
+
+    function getTotalLiquidityProvided() public view override returns (uint256) {
+        return totalLiquidityProvided;
     }
 }

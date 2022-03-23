@@ -1,5 +1,5 @@
 import {expect} from 'chai';
-import {utils, BigNumber, ethers} from 'ethers';
+import {utils, BigNumber} from 'ethers';
 
 import {rDiv, rMul} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';

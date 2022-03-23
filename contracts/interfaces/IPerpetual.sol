@@ -15,18 +15,6 @@ import {LibPerpetual} from "../lib/LibPerpetual.sol";
 
 interface IPerpetual {
     /* ****************** */
-    /*     Events         */
-    /* ****************** */
-
-    /// @notice Emitted when swap with cryptoswap pool fails
-    /// @param errorMessage Return error message
-    event Log(string errorMessage);
-
-    /// @notice Emitted when (base) dust is generated
-    /// @param vBaseAmount Amount of dust
-    event DustGenerated(uint256 vBaseAmount);
-
-    /* ****************** */
     /*     Viewer         */
     /* ****************** */
 
@@ -52,19 +40,7 @@ interface IPerpetual {
 
     function indexPrice() external view returns (int256);
 
-    function totalLiquidityProvided() external view returns (uint256);
-
-    function oracleCumulativeAmount() external view returns (int256);
-
-    function oracleCumulativeAmountAtBeginningOfPeriod() external view returns (int256);
-
-    function oracleTwap() external view returns (int256);
-
-    function marketCumulativeAmount() external view returns (int256);
-
-    function marketCumulativeAmountAtBeginningOfPeriod() external view returns (int256);
-
-    function marketTwap() external view returns (int256);
+    function getTotalLiquidityProvided() external view returns (uint256);
 
     /* ****************** */
     /*  State modifying   */

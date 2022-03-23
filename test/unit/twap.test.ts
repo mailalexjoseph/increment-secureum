@@ -14,6 +14,7 @@ import VBase from '../../artifacts/contracts/tokens/VBase.sol/VBase.json';
 import VQuote from '../../artifacts/contracts/tokens/VQuote.sol/VQuote.json';
 import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
 import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
+import {minutes} from '../helpers/utils/time';
 
 let nextBlockTimestamp: BigNumber = ethers.BigNumber.from(2100000000);
 
@@ -137,7 +138,7 @@ describe('TwapOracle', async function () {
 
     // user = await setup();
     user = await _deploy_perpetual();
-    PERIOD = await user.perpetual.TWAP_FREQUENCY();
+    PERIOD = BigNumber.from(minutes(15));
 
     // take snapshot
     snapshotId = await env.network.provider.send('evm_snapshot', []);
@@ -171,9 +172,9 @@ describe('TwapOracle', async function () {
       expect(await user.perpetual.getOracleTwap()).to.eq(INIT_PRICE);
 
       const cumulativeAmountAtStart =
-        await user.perpetual.oracleCumulativeAmount();
+        await user.perpetual.getOracleCumulativeAmount();
       expect(
-        await user.perpetual.oracleCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getOracleCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart);
 
       // price of 2 for 1/4 th of the period
@@ -194,11 +195,11 @@ describe('TwapOracle', async function () {
       const expectedCumulativeAmountFirstUpdate =
         cumulativeAmountAtStart.add(productPriceTime);
 
-      expect(await user.perpetual.oracleCumulativeAmount()).to.eq(
+      expect(await user.perpetual.getOracleCumulativeAmount()).to.eq(
         expectedCumulativeAmountFirstUpdate
       );
       expect(
-        await user.perpetual.oracleCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getOracleCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart);
 
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(
@@ -250,9 +251,9 @@ describe('TwapOracle', async function () {
       expect(await user.perpetual.getOracleTwap()).to.eq(eTwapOracle);
 
       expect(
-        await user.perpetual.oracleCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getOracleCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart.add(weightedPrice));
-      expect(await user.perpetual.oracleCumulativeAmount()).to.eq(
+      expect(await user.perpetual.getOracleCumulativeAmount()).to.eq(
         cumulativeAmountAtStart.add(weightedPrice)
       );
     });
@@ -280,9 +281,9 @@ describe('TwapOracle', async function () {
       expect(await user.perpetual.getMarketTwap()).to.eq(INIT_PRICE);
 
       const cumulativeAmountAtStart =
-        await user.perpetual.marketCumulativeAmount();
+        await user.perpetual.getMarketCumulativeAmount();
       expect(
-        await user.perpetual.marketCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getMarketCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart);
 
       // price of 2 for 1/4 th of the period
@@ -303,11 +304,11 @@ describe('TwapOracle', async function () {
       const expectedCumulativeAmountFirstUpdate =
         cumulativeAmountAtStart.add(productPriceTime);
 
-      expect(await user.perpetual.marketCumulativeAmount()).to.eq(
+      expect(await user.perpetual.getMarketCumulativeAmount()).to.eq(
         expectedCumulativeAmountFirstUpdate
       );
       expect(
-        await user.perpetual.marketCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getMarketCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart);
 
       expect((await user.perpetual.getGlobalPosition()).timeOfLastTrade).to.eq(
@@ -359,9 +360,9 @@ describe('TwapOracle', async function () {
       expect(await user.perpetual.getMarketTwap()).to.eq(eTwapOracle);
 
       expect(
-        await user.perpetual.marketCumulativeAmountAtBeginningOfPeriod()
+        await user.perpetual.getMarketCumulativeAmountAtBeginningOfPeriod()
       ).to.eq(cumulativeAmountAtStart.add(weightedPrice));
-      expect(await user.perpetual.marketCumulativeAmount()).to.eq(
+      expect(await user.perpetual.getMarketCumulativeAmount()).to.eq(
         cumulativeAmountAtStart.add(weightedPrice)
       );
     });

@@ -1,14 +1,16 @@
-import {BigNumber} from 'ethers';
-import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
-import {ERC20, IERC20Metadata} from '../../typechain';
 import {User} from './setup';
 import {ethers} from 'hardhat';
+
+import {UserPositionStructOutput} from '../../typechain/Perpetual';
+import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
+import {ERC20, IERC20Metadata} from '../../typechain';
+
 import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
-import {Side} from './utils/types';
-import {UserPositionStructOutput} from '../../typechain/Perpetual';
-import {asBigNumber, rMul} from './utils/calculations';
+import {rMul} from './utils/calculations';
 
+import {BigNumber} from 'ethers';
+import {Side} from './utils/types';
 import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
 
 /* ********************************* */

@@ -491,7 +491,7 @@ describe('Increment App: Liquidity', function () {
         await (
           await user.perpetual.__TestPerpetual_setTWAP(
             marketPrice,
-            await user.perpetual.oracleTwap()
+            await user.perpetual.getOracleTwap()
           )
         ).wait();
       }

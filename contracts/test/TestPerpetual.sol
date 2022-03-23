@@ -84,4 +84,20 @@ contract TestPerpetual is Perpetual {
     function __TestPerpetual_setBlockStartPrice(uint256 blockStartPrice) external {
         globalPosition.blockStartPrice = int256(blockStartPrice);
     }
+
+    function getOracleCumulativeAmount() external view returns (int256) {
+        return oracleCumulativeAmount;
+    }
+
+    function getOracleCumulativeAmountAtBeginningOfPeriod() external view returns (int256) {
+        return oracleCumulativeAmountAtBeginningOfPeriod;
+    }
+
+    function getMarketCumulativeAmount() external view returns (int256) {
+        return marketCumulativeAmount;
+    }
+
+    function getMarketCumulativeAmountAtBeginningOfPeriod() external view returns (int256) {
+        return marketCumulativeAmountAtBeginningOfPeriod;
+    }
 }

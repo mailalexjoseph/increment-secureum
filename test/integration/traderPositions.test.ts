@@ -9,6 +9,7 @@ import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
 import {Side} from '../helpers/utils/types';
 import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
+import {VQUOTE_INDEX} from '../../helpers/constants';
 
 describe('Increment: open/close long/short trading positions', () => {
   let alice: User;
@@ -21,13 +22,11 @@ describe('Increment: open/close long/short trading positions', () => {
 
   // protocol constants
   let INSURANCE_FEE: BigNumber;
-  let VQUOTE_INDEX: BigNumber;
 
   before('Get protocol constants', async () => {
     const {deployer} = await setup();
 
     INSURANCE_FEE = await deployer.clearingHouse.INSURANCE_FEE();
-    VQUOTE_INDEX = await deployer.perpetual.VQUOTE_INDEX();
   });
 
   beforeEach(
