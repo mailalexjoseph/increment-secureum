@@ -9,6 +9,7 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IVBase} from "../interfaces/IVBase.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+/// @notice ERC20 token traded on the CryptoSwap pool
 /// @dev VBase must be called right after Perpetual is deployed to set Perpetual as the owner of the contract
 contract VBase is IVBase, VirtualToken {
     uint8 constant PRECISION = 18;

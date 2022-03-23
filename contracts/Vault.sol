@@ -20,7 +20,6 @@ import {LibMath} from "./lib/LibMath.sol";
 
 import "hardhat/console.sol";
 
-/// @title Vault Contract
 /// @notice Keeps track of all token reserves for all market
 /// @dev Vault must be called right after Perpetual is deployed to set Perpetual as the owner of the contract
 contract Vault is IVault, Context, IncreOwnable {

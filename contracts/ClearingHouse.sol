@@ -23,7 +23,6 @@ import {LibReserve} from "./lib/LibReserve.sol";
 
 import "hardhat/console.sol";
 
-/// @title Clearing House contract
 /// @notice Entry point for users to vault and perpetual markets
 contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     using LibMath for int256;
