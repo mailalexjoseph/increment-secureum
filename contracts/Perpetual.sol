@@ -39,8 +39,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     ICryptoSwap public override market;
 
     // global state
-    uint256 internal totalLiquidityProvided;
-
     LibPerpetual.GlobalPosition internal globalPosition;
 
     int256 internal oracleCumulativeAmount;
@@ -366,7 +364,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
 
         uint256 basePrice;
-        if (totalLiquidityProvided == 0) {
+        if (getTotalLiquidityProvided() == 0) {
             basePrice = marketPrice();
         } else {
             basePrice = market.balances(0).wadDiv(market.balances(1));
@@ -383,8 +381,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         lp.positionSize -= baseAmount.toInt256();
         lp.cumFundingRate = globalPosition.cumFundingRate;
         lp.liquidityBalance += liquidity;
-
-        totalLiquidityProvided += liquidity;
 
         return (baseAmount, fundingPayments);
     }
@@ -423,7 +419,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         // lower balances
         lp.liquidityBalance -= liquidityAmountToRemove;
-        totalLiquidityProvided -= liquidityAmountToRemove;
 
         // remove liquidity from curve pool
         uint256 baseAmount;
@@ -648,7 +643,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             // LP position
             // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
             int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
-                (((market.balances(VBASE_INDEX) * user.liquidityBalance) / totalLiquidityProvided) - 1).toInt256();
+                ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided() - 1).toInt256();
 
             return vBasePositionAfterVirtualWithdrawal > 0;
         } else {
@@ -838,7 +833,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return marketTwap;
     }
 
-    function getTotalLiquidityProvided() external view override returns (uint256) {
-        return totalLiquidityProvided;
+    /// @notice Get the market Total Liquidity provided to the Crypto Swap pool
+    /// @return market twap (1e18)
+    function getTotalLiquidityProvided() public view override returns (uint256) {
+        return IERC20(market.token()).totalSupply();
     }
 }

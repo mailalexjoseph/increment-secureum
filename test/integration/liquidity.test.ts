@@ -98,36 +98,51 @@ describe('Increment App: Liquidity', function () {
       expect(vQuoteBefore).to.be.equal(vQuotelpBalance);
 
       // deposit
-      await lpTwo.clearingHouse.provideLiquidity(
+      await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
-        lpTwo.usdc.address
+        lp.usdc.address
       );
 
       // after you deposit
       /* relative price should not change */
-      expect(await lpTwo.perpetual.marketPrice()).to.be.equal(price);
+      expect(await lp.perpetual.marketPrice()).to.be.equal(price);
+
       /* balances should increment */
-      expect(await lpTwo.vQuote.balanceOf(lpTwo.market.address)).to.be.equal(
+      expect(await lp.vQuote.balanceOf(lp.market.address)).to.be.equal(
         vQuoteBefore.add(liquidityWadAmount)
       );
-      expect(await lpTwo.vBase.balanceOf(lpTwo.market.address)).to.be.equal(
+      expect(await lp.vBase.balanceOf(lp.market.address)).to.be.equal(
         vBaseBefore.add(rDiv(liquidityWadAmount, price))
       );
-      expect(await lpTwo.market.balances(0)).to.be.equal(
+      expect(await lp.market.balances(0)).to.be.equal(
         vQuotelpBalance.add(liquidityWadAmount)
       );
-      expect(await lpTwo.market.balances(1)).to.be.equal(
+      expect(await lp.market.balances(1)).to.be.equal(
         vBaselpBalance.add(rDiv(liquidityWadAmount, price))
+      );
+
+      /* should have correct balance in perpetual */
+      const lpBalance = await lp.perpetual.getLpPosition(lp.address);
+      expect(lpBalance.openNotional.mul(-1)).to.be.equal(liquidityWadAmount);
+      expect(lpBalance.positionSize.mul(-1)).to.be.equal(
+        rDiv(liquidityWadAmount, price)
+      );
+
+      expect(lpBalance.liquidityBalance).to.be.equal(
+        await lp.curveToken.balanceOf(lp.perpetual.address)
+      );
+      expect(await lp.perpetual.getTotalLiquidityProvided()).to.be.equal(
+        await lp.curveToken.balanceOf(lp.perpetual.address)
       );
     });
 
-    it('Should allow multiple deposits from one account', async function () {
+    it.only('Should allow multiple deposits from one account', async function () {
       // set global.cumFundingRate
       let anteriorTimestamp = (await getLatestTimestamp(env)) - 15;
       await lp.perpetual.__TestPerpetual_setGlobalPosition(
         anteriorTimestamp,
-        ethers.utils.parseEther('100') // set any cumFundingRate != 0
+        asBigNumber('100') // set any cumFundingRate != 0
       );
 
       // lp deposits some assets
@@ -145,6 +160,9 @@ describe('Increment App: Liquidity', function () {
         depositAmount.mul(2),
         Side.Long,
         0
+      );
+      const traderBalance = await trader.perpetual.getTraderPosition(
+        trader.address
       );
 
       // before depositing more liquidity
@@ -165,7 +183,7 @@ describe('Increment App: Liquidity', function () {
       anteriorTimestamp += 10;
       await lp.perpetual.__TestPerpetual_setGlobalPosition(
         anteriorTimestamp,
-        ethers.utils.parseEther('200').mul(-1) // set any cumFundingRate different than the one before
+        asBigNumber('200').mul(-1) // set any cumFundingRate different than the one before
       );
 
       // deposit more liquidity
@@ -187,6 +205,24 @@ describe('Increment App: Liquidity', function () {
       );
       expect(await lp.market.balances(0)).to.be.equal(
         vQuotelpBalance.add(liquidityWadAmount)
+      );
+
+      /* should have correct balance in perpetual */
+      const lpBalance = await lp.perpetual.getLpPosition(lp.address);
+      expect(lpBalance.openNotional.mul(-1)).to.be.equal(
+        vQuoteBefore.add(liquidityWadAmount).add(traderBalance.openNotional)
+      );
+      expect(lpBalance.positionSize.mul(-1)).to.be.equal(
+        vBaseBefore
+          .add(rDiv(liquidityWadAmount, priceBefore))
+          .add(traderBalance.positionSize)
+      );
+
+      expect(lpBalance.liquidityBalance).to.be.equal(
+        await lp.curveToken.balanceOf(lp.perpetual.address)
+      );
+      expect(await lp.perpetual.getTotalLiquidityProvided()).to.be.equal(
+        await lp.curveToken.balanceOf(lp.perpetual.address)
       );
     });
 
