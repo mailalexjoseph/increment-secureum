@@ -501,7 +501,57 @@ describe('Increment App: Liquidity', function () {
       expect(positionAfterSecondWithdrawal.openNotional).to.be.equal(0);
     });
 
-    it('Liquidity provider can generate a loss', async function () {
+    async function setPrice(user: User, price: BigNumber) {
+      await (
+        await user.perpetual.__TestPerpetual_setBlockStartPrice(price)
+      ).wait();
+      await (
+        await user.perpetual.__TestPerpetual_setTWAP(
+          price,
+          await user.perpetual.getOracleTwap()
+        )
+      ).wait();
+    }
+
+    async function driveDownMarketPrice(user: User) {
+      // drive down market price (to change ratios in the pool)
+      await user.perpetual.__TestPerpetual_manipulate_market(
+        1,
+        0,
+        asBigNumber('11000')
+      );
+
+      // important: set new blockLastPrice / twap to circumvent trade restrictions
+      await setPrice(user, await user.perpetual.marketPrice());
+
+      // make a small trade (TODO: not sure why that has to be done)
+      await user.perpetual.__TestPerpetual_manipulate_market(
+        1,
+        0,
+        asBigNumber('1')
+      );
+    }
+
+    async function driveUpMarketPrice(user: User) {
+      // drive up market price (to change ratios in the pool)
+      await user.perpetual.__TestPerpetual_manipulate_market(
+        0,
+        1,
+        asBigNumber('11000')
+      );
+
+      // important: set new blockLastPrice / twap to circumvent trade restrictions
+      await setPrice(user, await user.perpetual.marketPrice());
+
+      // make a small trade (TODO: not sure why that has to be done)
+      await user.perpetual.__TestPerpetual_manipulate_market(
+        0,
+        1,
+        asBigNumber('1')
+      );
+    }
+
+    it('Liquidity provider can generate a profit when EUR/USD goes up', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -509,28 +559,6 @@ describe('Increment App: Liquidity', function () {
       const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
       await provideLiquidity(lp, lp.usdc, liquidityAmount);
       await provideLiquidity(trader, trader.usdc, liquidityAmount);
-
-      async function driveUpMarketPrice(user: User) {
-        // drive up market price (to change ratios in the pool)
-        await user.perpetual.__TestPerpetual_manipulate_market(
-          1,
-          0,
-          asBigNumber('11000')
-        );
-
-        const marketPrice = await user.perpetual.marketPrice();
-
-        // important: set new blockLastPrice / twap to circumvent trade restrictions
-        await (
-          await user.perpetual.__TestPerpetual_setBlockStartPrice(marketPrice)
-        ).wait();
-        await (
-          await user.perpetual.__TestPerpetual_setTWAP(
-            marketPrice,
-            await user.perpetual.getOracleTwap()
-          )
-        ).wait();
-      }
 
       // deposit initial liquidity
       const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
@@ -544,11 +572,45 @@ describe('Increment App: Liquidity', function () {
       // change market prices
       await driveUpMarketPrice(lpTwo);
 
-      await lpTwo.perpetual.__TestPerpetual_manipulate_market(
-        1,
+      // withdraw liquidity
+      const lpTwoPosition = await lpTwo.perpetual.getLpPosition(lpTwo.address);
+      await lpTwo.clearingHouse.removeLiquidity(
         0,
-        asBigNumber('1')
+        rMul(FULL_REDUCTION_RATIO, lpTwoPosition.liquidityBalance),
+        FULL_REDUCTION_RATIO,
+        (
+          await removeLiquidityProposedAmount(
+            lpTwoPosition,
+            FULL_REDUCTION_RATIO,
+            lpTwo.market
+          )
+        ).sub(1), // since prbMath subtracts one wei
+        0,
+        lpTwo.usdc.address
       );
+      const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
+      expect(lpBalanceAfter).to.be.gt(lpBalanceBefore.add(vaultBalanceBefore));
+    });
+    it('Liquidity provider can generate a loss when EUR/USD goes down', async function () {
+      /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
+               is most likely easier with fuzzing
+      */
+      // init
+      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+      await provideLiquidity(trader, trader.usdc, liquidityAmount);
+
+      // deposit initial liquidity
+      const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
+      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
+      const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
+      const vaultBalanceBefore = await wadToToken(
+        6,
+        await lpTwo.vault.getLpBalance(0, lpTwo.address)
+      ); // with 6 decimals
+
+      // change market prices
+      await driveDownMarketPrice(lpTwo);
 
       // withdraw liquidity
       const lpTwoPosition = await lpTwo.perpetual.getLpPosition(lpTwo.address);
