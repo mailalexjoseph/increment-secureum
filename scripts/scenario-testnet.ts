@@ -74,7 +74,7 @@ async function fundAccounts(
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function closeExistingPosition(user: User) {
   // We force traders / lps to close their position before opening a new one
-  const traderPosition = await user.clearingHouse.getTraderPosition(
+  const traderPosition = await user.clearingHouseViewer.getTraderPosition(
     0,
     user.address
   );
@@ -85,7 +85,7 @@ async function closeExistingPosition(user: User) {
     console.log('Closing existing position');
     await closePosition(user, user.usdc);
   }
-  const reserveValue = await user.clearingHouse.getTraderReserveValue(
+  const reserveValue = await user.clearingHouseViewer.getTraderReserveValue(
     0,
     user.address
   );
