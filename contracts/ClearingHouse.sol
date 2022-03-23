@@ -34,15 +34,39 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     uint256 internal constant FULL_REDUCTION_RATIO = 1e18; // reduce position by 100%
 
     // parameterization
-    int256 public constant MIN_MARGIN = 25e15; // 2.5%
-    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + 55e15; // initial margin is 2.5% + 5.5% = 8%
-    uint256 public constant LIQUIDATION_REWARD = 15e15; // 1.5% (important: LIQUIDATION_REWARD >> MIN_MARGIN or liquidations will result in protocol losses)
-    int256 public constant INSURANCE_FEE = 1e15; // 0.1%
-    uint256 public constant INSURANCE_RATIO = 1e17; // 10%
+
+    /// @notice minimum maintenance margin
+    /// @dev 2.5%
+    int256 public constant MIN_MARGIN = 25e15;
+
+    /// @notice minimum margin when opening a position
+    /// @dev 2.5% (maintenance margin) + 5.5% = 8%
+    int256 public constant MIN_MARGIN_AT_CREATION = MIN_MARGIN + 55e15;
+
+    /// @notice minimum maintenance margin
+    /// @dev Paid on dollar value of an trader position. important: LIQUIDATION_REWARD >> MIN_MARGIN or liquidations will result in protocol losses
+    /// @dev (1.5%)
+    uint256 public constant LIQUIDATION_REWARD = 15e15;
+
+    /// @notice Insurance fee
+    /// @dev Paid on dollar value of an opened position
+    /// @dev (0.1%)
+    int256 public constant INSURANCE_FEE = 1e15;
+
+    /// @notice Insurance ratio
+    /// @dev Once the insurance reserve exceed 10% of the tvl, governance can withdraw the insurance fee
+    /// @dev (10%)
+    uint256 public constant INSURANCE_RATIO = 1e17;
 
     // dependencies
+
+    /// @notice Vault contract
     IVault public override vault;
+
+    /// @notice Insurance contract
     IInsurance public override insurance;
+
+    /// @notice Allowlisted Perpetual contracts
     IPerpetual[] public override perpetuals;
 
     /* ****************** */

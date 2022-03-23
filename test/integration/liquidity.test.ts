@@ -137,7 +137,7 @@ describe('Increment App: Liquidity', function () {
       );
     });
 
-    it.only('Should allow multiple deposits from one account', async function () {
+    it('Should allow multiple deposits from one account', async function () {
       // set global.cumFundingRate
       let anteriorTimestamp = (await getLatestTimestamp(env)) - 15;
       await lp.perpetual.__TestPerpetual_setGlobalPosition(

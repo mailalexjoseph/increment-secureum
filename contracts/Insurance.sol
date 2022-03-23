@@ -15,7 +15,10 @@ import {IInsurance} from "./interfaces/IInsurance.sol";
 contract Insurance is IInsurance, IncreOwnable {
     using SafeERC20 for IERC20;
 
+    /// @notice Insurance token
     IERC20 public token;
+
+    /// @notice Vault contract
     IVault public vault;
 
     constructor(IERC20 _token, IVault _vault) {

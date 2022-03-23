@@ -31,11 +31,20 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     uint256 internal constant VBASE_INDEX = 1;
     uint256 internal constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 internal constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
+    int256 internal constant MAX_PRICE_DEVIATION = 2e16; // max price change per block
 
     // dependencies
+
+    /// @notice vBase token (traded on CryptoSwap pool)
     IVBase public override vBase;
+
+    /// @notice vQuote token (traded on CryptoSwap pool)
     IVQuote public override vQuote;
+
+    /// @notice Clearing House contract
     IClearingHouse public override clearingHouse;
+
+    /// @notice Curve CryptoSwap pool
     ICryptoSwap public override market;
 
     // global state
@@ -320,7 +329,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
 
         // slither-disable-next-line incorrect-equality
-        return (2e16 * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
+        return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
     }
 
     function getUnrealizedPnL(address account) external view override returns (int256) {
