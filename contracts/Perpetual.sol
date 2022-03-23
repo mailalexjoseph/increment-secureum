@@ -104,26 +104,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         _initGlobalState(IVBase(_vBase).getIndexPrice(), ICryptoSwap(_market).last_prices().toInt256());
     }
 
-    function _initGlobalState(int256 lastChainlinkPrice, int256 lastMarketPrice) internal {
-        // initialize twap
-        oracleTwap = lastChainlinkPrice;
-        marketTwap = lastMarketPrice;
-
-        // initialize funding
-        globalPosition = LibPerpetual.GlobalPosition({
-            timeOfLastTrade: uint128(block.timestamp),
-            timeOfLastTwapUpdate: uint128(block.timestamp),
-            cumFundingRate: 0,
-            blockStartPrice: lastMarketPrice
-        });
-    }
-
     modifier onlyClearingHouse() {
         require(msg.sender == address(clearingHouse), "Only clearing house can call this function");
         _;
     }
 
-    ///// TRADING FLOW OPERATIONS \\\\\
+    /* ****************** */
+    /*   Trader flow      */
+    /* ****************** */
 
     /// @notice Open or increase a position, either long or short
     /// @param account Address of the trader
@@ -217,28 +205,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (openNotional, positionSize, fundingPayments);
     }
 
-    function _extendPosition(
-        uint256 amount,
-        bool isLong,
-        uint256 minAmount
-    ) internal returns (int256 openNotional, int256 positionSize) {
-        /*  if long:
-                openNotional = vQuote traded   to market   (or "- vQuote")
-                positionSize = vBase  received from market (or "+ vBase")
-            if short:
-                openNotional = vQuote received from market (or "+ vQuote")
-                positionSize = vBase  traded   to market   (or "- vBase")
-        */
-
-        if (isLong) {
-            openNotional = -amount.toInt256();
-            positionSize = _quoteForBase(amount, minAmount).toInt256();
-        } else {
-            openNotional = _baseForQuote(amount, minAmount).toInt256();
-            positionSize = -amount.toInt256();
-        }
-    }
-
     /// @notice Closes position from account holder
     /// @param account Trader account to close position for.
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
@@ -320,29 +286,9 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (vQuoteProceeds, vBaseAmount, profit);
     }
 
-    // TODO: write test for function
-    function _checkPriceDeviation(int256 currentPrice, int256 startBlockPrice) internal pure returns (bool) {
-        // check if market price has changed more than by 2% in this block
-
-        // price deviations of a given block does not exceed 2%
-        // <=> 2% > (currentPrice - startBlockPrice) / currentPrice
-        // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
-
-        // slither-disable-next-line incorrect-equality
-        return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
-    }
-
-    function getUnrealizedPnL(address account) external view override returns (int256) {
-        LibPerpetual.UserPosition memory trader = traderPosition[account];
-        int256 poolEURUSDTWAP = getMarketTwap();
-        int256 vQuoteVirtualProceeds = trader.positionSize.wadMul(poolEURUSDTWAP);
-
-        // in the case of a LONG, trader.openNotional is negative but vQuoteVirtualProceeds is positive
-        // in the case of a SHORT, trader.openNotional is positive while vQuoteVirtualProceeds is negative
-        return trader.openNotional + vQuoteVirtualProceeds;
-    }
-
-    ///// LIQUIDITY PROVISIONING FLOW OPERATIONS \\\\\
+    /* ******************************/
+    /*     Liquidity provider flow  */
+    /* ******************************/
 
     /// @notice Provide liquidity to the pool
     /// @param account Liquidity provider
@@ -486,63 +432,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
     ///// COMMON OPERATIONS \\\\\
 
-    function _updateFundingRate() internal {
-        LibPerpetual.GlobalPosition storage global = globalPosition;
-        uint256 currentTime = block.timestamp;
-
-        int256 marketTWAP = getMarketTwap();
-        int256 indexTWAP = getOracleTwap();
-
-        int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
-        int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
-        int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
-
-        global.cumFundingRate +=
-            (SENSITIVITY.wadMul(weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
-            1 days;
-
-        global.timeOfLastTrade = uint128(currentTime);
-    }
-
-    /// @notice Get the missed funding payments for a trader
-    /// @param account Trader
-    /// @return upcomingFundingPayment Funding payment (1e18)
-
-    function getFundingPayments(address account) external view override returns (int256 upcomingFundingPayment) {
-        LibPerpetual.UserPosition memory user = traderPosition[account];
-        LibPerpetual.GlobalPosition memory global = globalPosition;
-        bool isLong = _getPositionDirection(user);
-
-        return _getFundingPayments(isLong, user.cumFundingRate, global.cumFundingRate, user.positionSize.abs());
-    }
-
-    /// @notice Calculate missed funding payments
-    // slither-disable-next-line timestamp
-    function _getFundingPayments(
-        bool isLong,
-        int256 userCumFundingRate,
-        int256 globalCumFundingRate,
-        int256 vBaseAmountToSettle
-    ) internal pure returns (int256 upcomingFundingPayment) {
-        /* Funding rates (as defined in our protocol) are paid from longs to shorts
-
-            case 1: user is long  => has missed making funding payments (positive or negative)
-            case 2: user is short => has missed receiving funding payments (positive or negative)
-
-            comment: Making an negative funding payment is equivalent to receiving a positive one.
-        */
-        if (userCumFundingRate != globalCumFundingRate) {
-            int256 upcomingFundingRate;
-            if (isLong) {
-                upcomingFundingRate = userCumFundingRate - globalCumFundingRate;
-            } else {
-                upcomingFundingRate = globalCumFundingRate - userCumFundingRate;
-            }
-            // fundingPayments = fundingRate * vBaseAmountToSettle
-            upcomingFundingPayment = upcomingFundingRate.wadMul(vBaseAmountToSettle);
-        }
-    }
-
     function updateTwapAndFundingRate() public override {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
@@ -557,107 +446,127 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    function _recordMarketPrice() internal {
-        globalPosition.blockStartPrice = marketPrice().toInt256();
+    /* ****************** */
+    /*   Global getter    */
+    /* ****************** */
+
+    /// @notice Get global market position
+    /// @return Global position
+    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
+        return globalPosition;
     }
 
-    function _updateTwap() internal {
-        uint256 currentTime = block.timestamp;
-        int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
-
-        /*
-            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
-        */
-
-        // will overflow in ~3000 years
-        // update cumulative chainlink price feed
-        int256 latestChainlinkPrice = indexPrice();
-        oracleCumulativeAmount += latestChainlinkPrice * timeElapsed;
-
-        // update cumulative market price feed
-        int256 latestMarketPrice = marketPrice().toInt256();
-        marketCumulativeAmount += latestMarketPrice * timeElapsed;
-
-        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastTwapUpdate;
-
-        // slither-disable-next-line timestamp
-        if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
-            /*
-                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
-            */
-
-            // calculate chainlink twap
-            oracleTwap =
-                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
-                timeElapsedSinceBeginningOfPeriod.toInt256();
-
-            // calculate market twap
-            marketTwap =
-                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
-                timeElapsedSinceBeginningOfPeriod.toInt256();
-
-            // reset cumulative amount and timestamp
-            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
-            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
-            globalPosition.timeOfLastTwapUpdate = uint128(block.timestamp);
-
-            emit TwapUpdated(oracleTwap, marketTwap);
-        }
+    /// @notice Return the current off-chain exchange rate for vBase/vQuote
+    /// @return Index price
+    function indexPrice() public view override returns (int256) {
+        return vBase.getIndexPrice();
     }
 
-    function _checkProposedAmount(
+    /// @notice Return the last traded price (used for TWAP)
+    /// @return lastPrice Last traded price
+    function marketPrice() public view override returns (uint256 lastPrice) {
+        return market.last_prices();
+    }
+
+    /// @notice Get the oracle Time-weighted-average-price
+    /// @return oracle twap (1e18)
+    function getOracleTwap() public view override returns (int256) {
+        return oracleTwap;
+    }
+
+    /// @notice Get the market Time-weighted-average-price
+    /// @return market twap (1e18)
+    function getMarketTwap() public view override returns (int256) {
+        return marketTwap;
+    }
+
+    /// @notice Get the market Total Liquidity provided to the Crypto Swap pool
+    /// @return market twap (1e18)
+    function getTotalLiquidityProvided() public view override returns (uint256) {
+        return IERC20(market.token()).totalSupply();
+    }
+
+    /* ****************** */
+    /*   User getter      */
+    /* ****************** */
+
+    /// @notice Get the missed funding payments for a trader
+    /// @param account Trader
+    /// @return upcomingFundingPayment Funding payment (1e18)
+
+    function getFundingPayments(address account) external view override returns (int256 upcomingFundingPayment) {
+        LibPerpetual.UserPosition memory user = traderPosition[account];
+        LibPerpetual.GlobalPosition memory global = globalPosition;
+        bool isLong = _getPositionDirection(user);
+
+        return _getFundingPayments(isLong, user.cumFundingRate, global.cumFundingRate, user.positionSize.abs());
+    }
+
+    function getUnrealizedPnL(address account) external view override returns (int256) {
+        LibPerpetual.UserPosition memory trader = traderPosition[account];
+        int256 poolEURUSDTWAP = getMarketTwap();
+        int256 vQuoteVirtualProceeds = trader.positionSize.wadMul(poolEURUSDTWAP);
+
+        // in the case of a LONG, trader.openNotional is negative but vQuoteVirtualProceeds is positive
+        // in the case of a SHORT, trader.openNotional is positive while vQuoteVirtualProceeds is negative
+        return trader.openNotional + vQuoteVirtualProceeds;
+    }
+
+    /// @notice Get the position of a trader
+    /// @param account Address to get the trading position from
+    /// @return Trader position
+    function getTraderPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
+        return traderPosition[account];
+    }
+
+    /// @notice Get the position of a liquidity provider
+    /// @param account Address to get the LP position from
+    /// @return Liquidity Provider position
+    function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
+        return lpPosition[account];
+    }
+
+    /* ****************** */
+    /*   Internal (Gov)   */
+    /* ****************** */
+
+    function _initGlobalState(int256 lastChainlinkPrice, int256 lastMarketPrice) internal {
+        // initialize twap
+        oracleTwap = lastChainlinkPrice;
+        marketTwap = lastMarketPrice;
+
+        // initialize funding
+        globalPosition = LibPerpetual.GlobalPosition({
+            timeOfLastTrade: uint128(block.timestamp),
+            timeOfLastTwapUpdate: uint128(block.timestamp),
+            cumFundingRate: 0,
+            blockStartPrice: lastMarketPrice
+        });
+    }
+
+    /* ****************** */
+    /*  Internal (Market) */
+    /* ****************** */
+
+    function _extendPosition(
+        uint256 amount,
         bool isLong,
-        int256 positionSize,
-        uint256 proposedAmount
-    ) internal view returns (bool isValid) {
-        /*
-        Question: Why do we have to make use the proposedAmount parameters in our function?
-        Answer: There is no equivalent to an swapForExact function in the CryptoSwap contract.
-                https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
-                This means we in case of someone closing a short position (positionSize < 0)
-                we can not calculate in our contract how many quoteTokens we have to swap with
-                the curve Pool to pay pack the debt. Instead this is done outside of the contract.
-                (see: TEST_get_exactOutputSwap() for an typescript implementation of a binary search
-                to find the correct input amount).
-                We only verify inside of the contract that our proposed amount is close enough
-                to the initial estimate. All base tokens exceeding the positionSize are either swapped
-                back for quoteTokens (dust is donated to the protocol)
-                See: _reducePositionOnMarket for reference
+        uint256 minAmount
+    ) internal returns (int256 openNotional, int256 positionSize) {
+        /*  if long:
+                openNotional = vQuote traded   to market   (or "- vQuote")
+                positionSize = vBase  received from market (or "+ vBase")
+            if short:
+                openNotional = vQuote received from market (or "+ vQuote")
+                positionSize = vBase  traded   to market   (or "- vBase")
         */
 
         if (isLong) {
-            // proposedAmount is a vBase denominated amount
-            // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
-            return proposedAmount <= positionSize.abs().toUint256();
+            openNotional = -amount.toInt256();
+            positionSize = _quoteForBase(amount, minAmount).toInt256();
         } else {
-            // Check that `proposedAmount` isn't too far from the value in the market
-            // to avoid creating large swings in the market (even though these swings would be cancelled out
-            // by the fact that we sell any extra vBase bought)
-
-            // USD_amount = EUR_USD * EUR_amount
-            int256 positivePositionSize = -positionSize;
-            int256 reasonableVQuoteAmount = marketTwap.wadMul(positivePositionSize);
-
-            int256 deviation = (proposedAmount.toInt256() - reasonableVQuoteAmount).abs().wadDiv(
-                reasonableVQuoteAmount
-            );
-
-            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
-            return deviation < 5e17;
-        }
-    }
-
-    function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool isLong) {
-        if (user.liquidityBalance > 0) {
-            // LP position
-            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
-            int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
-                ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided() - 1).toInt256();
-
-            return vBasePositionAfterVirtualWithdrawal > 0;
-        } else {
-            // trader position
-            return user.positionSize > 0;
+            openNotional = _baseForQuote(amount, minAmount).toInt256();
+            positionSize = -amount.toInt256();
         }
     }
 
@@ -706,17 +615,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         profit = vQuoteProceeds + fundingPayment + openNotionalToReduce;
-    }
-
-    function _canSellBase(uint256 sellAmount) internal returns (bool) {
-        // slither-disable-next-line unused-return
-        try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, sellAmount) {
-            return true;
-        } catch {
-            emit Log("Swap impossible");
-
-            return false;
-        }
     }
 
     /// @notice Returns vBaseAmount and vQuoteProceeds to reflect how much the position has been reduced
@@ -780,10 +678,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    function _donate(uint256 baseAmount) internal {
-        traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
-    }
-
     function _quoteForBase(uint256 quoteAmount, uint256 minAmount) internal returns (uint256 vBaseReceived) {
         // slither-disable-next-line unused-return
         vQuote.mint(quoteAmount);
@@ -798,53 +692,185 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         vQuote.burn(vQuoteReceived);
     }
 
-    /// @notice Get global market position
-    /// @return Global position
-    function getGlobalPosition() external view override returns (LibPerpetual.GlobalPosition memory) {
-        return globalPosition;
+    // @notice Donate base tokens ("dust") to governance
+    function _donate(uint256 baseAmount) internal {
+        traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
     }
 
-    /// @notice Get the position of a trader
-    /// @param account Address to get the trading position from
-    /// @return Trader position
-    function getTraderPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
-        return traderPosition[account];
+    /**************** TWAP ****************/
+    function _updateFundingRate() internal {
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+        uint256 currentTime = block.timestamp;
+
+        int256 marketTWAP = getMarketTwap();
+        int256 indexTWAP = getOracleTwap();
+
+        int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
+        int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
+        int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
+
+        global.cumFundingRate +=
+            (SENSITIVITY.wadMul(weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
+            1 days;
+
+        global.timeOfLastTrade = uint128(currentTime);
     }
 
-    /// @notice Get the position of a liquidity provider
-    /// @param account Address to get the LP position from
-    /// @return Liquidity Provider position
-    function getLpPosition(address account) external view override returns (LibPerpetual.UserPosition memory) {
-        return lpPosition[account];
+    function _recordMarketPrice() internal {
+        globalPosition.blockStartPrice = marketPrice().toInt256();
     }
 
-    /// @notice Return the last traded price (used for TWAP)
-    /// @return lastPrice Last traded price
-    function marketPrice() public view override returns (uint256 lastPrice) {
-        return market.last_prices();
+    function _updateTwap() internal {
+        uint256 currentTime = block.timestamp;
+        int256 timeElapsed = (currentTime - globalPosition.timeOfLastTrade).toInt256();
+
+        /*
+            priceCumulative1 = priceCumulative0 + price1 * timeElapsed
+        */
+
+        // will overflow in ~3000 years
+        // update cumulative chainlink price feed
+        int256 latestChainlinkPrice = indexPrice();
+        oracleCumulativeAmount += latestChainlinkPrice * timeElapsed;
+
+        // update cumulative market price feed
+        int256 latestMarketPrice = marketPrice().toInt256();
+        marketCumulativeAmount += latestMarketPrice * timeElapsed;
+
+        uint256 timeElapsedSinceBeginningOfPeriod = block.timestamp - globalPosition.timeOfLastTwapUpdate;
+
+        // slither-disable-next-line timestamp
+        if (timeElapsedSinceBeginningOfPeriod >= TWAP_FREQUENCY) {
+            /*
+                TWAP = (priceCumulative1 - priceCumulative0) / timeElapsed
+            */
+
+            // calculate chainlink twap
+            oracleTwap =
+                (oracleCumulativeAmount - oracleCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // calculate market twap
+            marketTwap =
+                (marketCumulativeAmount - marketCumulativeAmountAtBeginningOfPeriod) /
+                timeElapsedSinceBeginningOfPeriod.toInt256();
+
+            // reset cumulative amount and timestamp
+            oracleCumulativeAmountAtBeginningOfPeriod = oracleCumulativeAmount;
+            marketCumulativeAmountAtBeginningOfPeriod = marketCumulativeAmount;
+            globalPosition.timeOfLastTwapUpdate = uint128(block.timestamp);
+
+            emit TwapUpdated(oracleTwap, marketTwap);
+        }
     }
 
-    /// @notice Return the current off-chain exchange rate for vBase/vQuote
-    /// @return Index price
-    function indexPrice() public view override returns (int256) {
-        return vBase.getIndexPrice();
+    /************************** */
+    /* Internal Viewer (Market) */
+    /************************** */
+
+    function _checkProposedAmount(
+        bool isLong,
+        int256 positionSize,
+        uint256 proposedAmount
+    ) internal view returns (bool isValid) {
+        /*
+        Question: Why do we have to make use the proposedAmount parameters in our function?
+        Answer: There is no equivalent to an swapForExact function in the CryptoSwap contract.
+                https://docs.uniswap.org/protocol/guides/swaps/single-swaps#exact-output-swaps
+                This means we in case of someone closing a short position (positionSize < 0)
+                we can not calculate in our contract how many quoteTokens we have to swap with
+                the curve Pool to pay pack the debt. Instead this is done outside of the contract.
+                (see: TEST_get_exactOutputSwap() for an typescript implementation of a binary search
+                to find the correct input amount).
+                We only verify inside of the contract that our proposed amount is close enough
+                to the initial estimate. All base tokens exceeding the positionSize are either swapped
+                back for quoteTokens (dust is donated to the protocol)
+                See: _reducePositionOnMarket for reference
+        */
+
+        if (isLong) {
+            // proposedAmount is a vBase denominated amount
+            // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
+            return proposedAmount <= positionSize.abs().toUint256();
+        } else {
+            // Check that `proposedAmount` isn't too far from the value in the market
+            // to avoid creating large swings in the market (even though these swings would be cancelled out
+            // by the fact that we sell any extra vBase bought)
+
+            // USD_amount = EUR_USD * EUR_amount
+            int256 positivePositionSize = -positionSize;
+            int256 reasonableVQuoteAmount = marketTwap.wadMul(positivePositionSize);
+
+            int256 deviation = (proposedAmount.toInt256() - reasonableVQuoteAmount).abs().wadDiv(
+                reasonableVQuoteAmount
+            );
+
+            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
+            return deviation < 5e17;
+        }
     }
 
-    /// @notice Get the oracle Time-weighted-average-price
-    /// @return oracle twap (1e18)
-    function getOracleTwap() public view override returns (int256) {
-        return oracleTwap;
+    function _canSellBase(uint256 sellAmount) internal returns (bool) {
+        // slither-disable-next-line unused-return
+        try market.get_dy(VBASE_INDEX, VQUOTE_INDEX, sellAmount) {
+            return true;
+        } catch {
+            emit Log("Swap impossible");
+
+            return false;
+        }
     }
 
-    /// @notice Get the market Time-weighted-average-price
-    /// @return market twap (1e18)
-    function getMarketTwap() public view override returns (int256) {
-        return marketTwap;
+    /// @notice Calculate missed funding payments
+    // slither-disable-next-line timestamp
+    function _getFundingPayments(
+        bool isLong,
+        int256 userCumFundingRate,
+        int256 globalCumFundingRate,
+        int256 vBaseAmountToSettle
+    ) internal pure returns (int256 upcomingFundingPayment) {
+        /* Funding rates (as defined in our protocol) are paid from longs to shorts
+
+            case 1: user is long  => has missed making funding payments (positive or negative)
+            case 2: user is short => has missed receiving funding payments (positive or negative)
+
+            comment: Making an negative funding payment is equivalent to receiving a positive one.
+        */
+        if (userCumFundingRate != globalCumFundingRate) {
+            int256 upcomingFundingRate;
+            if (isLong) {
+                upcomingFundingRate = userCumFundingRate - globalCumFundingRate;
+            } else {
+                upcomingFundingRate = globalCumFundingRate - userCumFundingRate;
+            }
+            // fundingPayments = fundingRate * vBaseAmountToSettle
+            upcomingFundingPayment = upcomingFundingRate.wadMul(vBaseAmountToSettle);
+        }
     }
 
-    /// @notice Get the market Total Liquidity provided to the Crypto Swap pool
-    /// @return market twap (1e18)
-    function getTotalLiquidityProvided() public view override returns (uint256) {
-        return IERC20(market.token()).totalSupply();
+    // TODO: write test for function
+    function _checkPriceDeviation(int256 currentPrice, int256 startBlockPrice) internal pure returns (bool) {
+        // check if market price has changed more than by 2% in this block
+
+        // price deviations of a given block does not exceed 2%
+        // <=> 2% > (currentPrice - startBlockPrice) / currentPrice
+        // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
+
+        // slither-disable-next-line incorrect-equality
+        return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
+    }
+
+    function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool isLong) {
+        if (user.liquidityBalance > 0) {
+            // LP position
+            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
+            int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
+                ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided() - 1).toInt256();
+
+            return vBasePositionAfterVirtualWithdrawal > 0;
+        } else {
+            // trader position
+            return user.positionSize > 0;
+        }
     }
 }

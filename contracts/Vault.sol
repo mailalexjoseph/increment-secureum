@@ -29,17 +29,23 @@ contract Vault is IVault, Context, IncreOwnable {
     using LibMath for int256;
 
     // constants
-    int256 internal constant MIN_DEPOSIT_AMOUNT = 10e18; // min deposit of 10
     uint256 internal constant MAX_DECIMALS = 18;
     uint256 internal immutable reserveTokenDecimals;
 
-    // state
+    // parameterization
+    int256 internal constant MIN_DEPOSIT_AMOUNT = 10e18; // min deposit of 10
+
+    // dependencies
     IERC20 public immutable override reserveToken;
     IClearingHouse public override clearingHouse;
     IInsurance public override insurance;
 
+    // global state
     uint256 internal badDebt;
     uint256 internal maxTVL;
+    uint256 internal totalReserveToken;
+
+    // user state
 
     /* Balances of users and liquidity providers
 
@@ -55,8 +61,6 @@ contract Vault is IVault, Context, IncreOwnable {
     mapping(uint256 => mapping(address => int256)) private traderBalances;
     mapping(uint256 => mapping(address => int256)) private lpBalances;
 
-    uint256 internal totalReserveToken;
-
     constructor(IERC20 _reserveToken) {
         require(address(_reserveToken) != address(0), "Token can not be zero address");
         require(
@@ -71,31 +75,14 @@ contract Vault is IVault, Context, IncreOwnable {
         reserveTokenDecimals = IERC20Decimals(address(_reserveToken)).decimals();
     }
 
-    /************************* governance *************************/
-
     modifier onlyClearingHouse() {
         require(msg.sender == address(clearingHouse), "NO CLEARINGHOUSE");
         _;
     }
 
-    // TODO: Only set once
-    function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
-        require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
-        clearingHouse = newClearingHouse;
-        emit ClearingHouseChanged(newClearingHouse);
-    }
-
-    function setInsurance(IInsurance newInsurance) external onlyOwner {
-        require(address(newInsurance) != address(0), "Insurance can not be zero address");
-        insurance = newInsurance;
-        emit InsuranceChanged(newInsurance);
-    }
-
-    function setMaxTVL(uint256 newMaxTVL) external onlyOwner {
-        require(newMaxTVL > 0, "MaxTVL must be greater than 0");
-        maxTVL = newMaxTVL;
-        emit MaxTVLChanged(newMaxTVL);
-    }
+    /* ****************** */
+    /*     User flow      */
+    /* ****************** */
 
     /// @notice Deposit reserveTokens to account
     /// @param idx Index of the perpetual market
@@ -131,19 +118,6 @@ contract Vault is IVault, Context, IncreOwnable {
         emit ValueLockedChanged(totalReserveToken);
 
         return wadAmount;
-    }
-
-    function _changeBalance(
-        uint256 idx,
-        address user,
-        int256 amount,
-        bool isTrader
-    ) internal {
-        if (isTrader) {
-            traderBalances[idx][user] += amount;
-        } else {
-            lpBalances[idx][user] += amount;
-        }
     }
 
     /// @notice Withdraw all tokens from account
@@ -242,12 +216,32 @@ contract Vault is IVault, Context, IncreOwnable {
         _changeBalance(idx, user, settlement, isTrader);
     }
 
-    /************************* getter *************************/
-    /// @notice get the price of an asset
+    /* ****************** */
+    /*     Governance     */
+    /* ****************** */
 
-    function _getAssetPrice() internal pure returns (int256) {
-        return 1e18;
+    // TODO: Only set once
+    function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
+        require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
+        clearingHouse = newClearingHouse;
+        emit ClearingHouseChanged(newClearingHouse);
     }
+
+    function setInsurance(IInsurance newInsurance) external onlyOwner {
+        require(address(newInsurance) != address(0), "Insurance can not be zero address");
+        insurance = newInsurance;
+        emit InsuranceChanged(newInsurance);
+    }
+
+    function setMaxTVL(uint256 newMaxTVL) external onlyOwner {
+        require(newMaxTVL > 0, "MaxTVL must be greater than 0");
+        maxTVL = newMaxTVL;
+        emit MaxTVLChanged(newMaxTVL);
+    }
+
+    /* ****************** */
+    /*   User getter      */
+    /* ****************** */
 
     /// @notice Get the balance of a trader, accounted for in USD (with 18 decimals)
     /// @param idx Perpetual market index
@@ -281,6 +275,10 @@ contract Vault is IVault, Context, IncreOwnable {
         return lpBalances[idx][account].wadMul(_getAssetPrice());
     }
 
+    /* ****************** */
+    /*   Global getter    */
+    /* ****************** */
+
     /// @notice Get the number of decimals of the ERC20 token used in the vault
     /// @return Number of decimals of the ERC20 token used in the vault
     function getReserveTokenDecimals() external view override returns (uint256) {
@@ -303,5 +301,27 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @return Maximum TVL set (1e18)
     function getMaxTVL() external view override returns (uint256) {
         return maxTVL;
+    }
+
+    /* ****************** */
+    /*   Internal Fcts    */
+    /* ****************** */
+
+    /// @notice get the price of an asset
+    function _getAssetPrice() internal pure returns (int256) {
+        return 1e18;
+    }
+
+    function _changeBalance(
+        uint256 idx,
+        address user,
+        int256 amount,
+        bool isTrader
+    ) internal {
+        if (isTrader) {
+            traderBalances[idx][user] += amount;
+        } else {
+            lpBalances[idx][user] += amount;
+        }
     }
 }

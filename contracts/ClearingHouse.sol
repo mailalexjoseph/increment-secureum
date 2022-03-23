@@ -173,71 +173,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /* ****************** */
-    /*     Governance     */
-    /* ****************** */
-
-    /// @notice Add one perpetual market to the list of markets
-    /// @param perp Market to add to the list of supported market
-    function allowListPerpetual(IPerpetual perp) external override onlyOwner {
-        perpetuals.push(perp);
-        emit MarketAdded(perp, perpetuals.length);
-    }
-
-    /// @notice Pause the contract
-    function pause() external override onlyOwner {
-        _pause();
-    }
-
-    /// @notice Unpause the contract
-    function unpause() external override onlyOwner {
-        _unpause();
-    }
-
-    /// @notice Sell dust in market idx
-    /// @param idx Index of the perpetual market
-    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
-    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
-    /// @param token Token of the collateral
-    function sellDust(
-        uint256 idx,
-        uint256 proposedAmount,
-        uint256 minAmount,
-        IERC20 token
-    ) external override onlyOwner {
-        (, , int256 profit) = perpetuals[idx].reducePosition(
-            address(this),
-            FULL_REDUCTION_RATIO,
-            proposedAmount,
-            minAmount
-        );
-
-        // apply changes to collateral
-        vault.settleProfit(1, address(this), profit, true);
-
-        // withdraw
-        require(vault.withdrawAll(1, address(this), token, true) > 0);
-        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
-
-        emit DustSold(idx, profit);
-    }
-
-    /// @notice Remove insurance fees exceeding 10% of the TVL from the vault
-    /// @param amount Token withdrawn. 18 decimals
-    /// @param token Token to be withdrawn from the vault
-    function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner {
-        uint256 tvl = vault.getTotalReserveToken();
-
-        require(vault.withdraw(0, address(this), amount, token, true) > 0, "Unsuccessful withdrawal");
-        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
-
-        uint256 lockedInsurance = vault.getTraderBalance(0, address(this)).toUint256();
-
-        require(lockedInsurance >= tvl.wadMul(INSURANCE_RATIO), "Insurance is not enough");
-
-        emit InsuranceRemoved(amount);
-    }
-
-    /* ****************** */
     /*   Trader flow      */
     /* ****************** */
 
@@ -395,6 +330,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         emit ReducePosition(idx, msg.sender, reducedOpenNotional, reducedPositionSize);
     }
 
+    /* ****************** */
+    /*  Liquidation flow  */
+    /* ****************** */
+
     /// @notice Determines whether or not a position is valid for a given margin ratio
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
@@ -427,15 +366,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         int256 unrealizedPositionPnl = _getUnrealizedPnL(idx, account);
 
         return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
-    }
-
-    function _marginRatio(
-        int256 collateral,
-        int256 fundingPayments,
-        int256 unrealizedPositionPnl,
-        int256 openNotional
-    ) internal pure returns (int256) {
-        return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(openNotional.abs());
     }
 
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
@@ -548,6 +478,71 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /* ****************** */
+    /*     Governance     */
+    /* ****************** */
+
+    /// @notice Add one perpetual market to the list of markets
+    /// @param perp Market to add to the list of supported market
+    function allowListPerpetual(IPerpetual perp) external override onlyOwner {
+        perpetuals.push(perp);
+        emit MarketAdded(perp, perpetuals.length);
+    }
+
+    /// @notice Pause the contract
+    function pause() external override onlyOwner {
+        _pause();
+    }
+
+    /// @notice Unpause the contract
+    function unpause() external override onlyOwner {
+        _unpause();
+    }
+
+    /// @notice Sell dust in market idx
+    /// @param idx Index of the perpetual market
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @param token Token of the collateral
+    function sellDust(
+        uint256 idx,
+        uint256 proposedAmount,
+        uint256 minAmount,
+        IERC20 token
+    ) external override onlyOwner {
+        (, , int256 profit) = perpetuals[idx].reducePosition(
+            address(this),
+            FULL_REDUCTION_RATIO,
+            proposedAmount,
+            minAmount
+        );
+
+        // apply changes to collateral
+        vault.settleProfit(1, address(this), profit, true);
+
+        // withdraw
+        require(vault.withdrawAll(1, address(this), token, true) > 0);
+        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
+
+        emit DustSold(idx, profit);
+    }
+
+    /// @notice Remove insurance fees exceeding 10% of the TVL from the vault
+    /// @param amount Token withdrawn. 18 decimals
+    /// @param token Token to be withdrawn from the vault
+    function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner {
+        uint256 tvl = vault.getTotalReserveToken();
+
+        require(vault.withdraw(0, address(this), amount, token, true) > 0, "Unsuccessful withdrawal");
+        IERC20(token).safeTransfer(msg.sender, IERC20(token).balanceOf(address(this)));
+
+        uint256 lockedInsurance = vault.getTraderBalance(0, address(this)).toUint256();
+
+        require(lockedInsurance >= tvl.wadMul(INSURANCE_RATIO), "Insurance is not enough");
+
+        emit InsuranceRemoved(amount);
+    }
+
+    /* ****************** */
     /*   Market viewer    */
     /* ****************** */
 
@@ -575,5 +570,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
     function _getTraderPosition(uint256 idx, address account) internal view returns (LibPerpetual.UserPosition memory) {
         return perpetuals[idx].getTraderPosition(account);
+    }
+
+    function _marginRatio(
+        int256 collateral,
+        int256 fundingPayments,
+        int256 unrealizedPositionPnl,
+        int256 openNotional
+    ) internal pure returns (int256) {
+        return (collateral + unrealizedPositionPnl + fundingPayments).wadDiv(openNotional.abs());
     }
 }
