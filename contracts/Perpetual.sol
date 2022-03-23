@@ -833,7 +833,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return marketTwap;
     }
 
-    function getTotalLiquidityProvided() public view override returns (uint256) {
+    function getTotalLiquidityProvided() external view override returns (uint256) {
         return totalLiquidityProvided;
     }
 }

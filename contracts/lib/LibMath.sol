@@ -25,8 +25,6 @@ import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
  * where `WAY` represents the number of decimals
  */
 library LibMath {
-    uint256 internal constant POSITIVE_INT256_MAX = uint256(type(int256).max);
-
     // safe casting
     function toInt256(uint256 x) internal pure returns (int256) {
         return SafeCast.toInt256(x);

@@ -76,7 +76,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the funding payments
     function getFundingPayments(uint256 idx, address account)
-        public
+        external
         view
         override
         returns (int256 upcomingFundingPayment)
@@ -86,14 +86,14 @@ contract ClearingHouseViewer is IClearingHouseViewer {
 
     /// @param idx Index of the perpetual market
     /// @param account Trader to get the unrealized PnL from
-    function getUnrealizedPnL(uint256 idx, address account) public view override returns (int256) {
+    function getUnrealizedPnL(uint256 idx, address account) external view override returns (int256) {
         return clearingHouse.perpetuals(idx).getUnrealizedPnL(account);
     }
 
     /// @notice Get the portfolio value of a trader
     /// @param idx Index of the perpetual market
     /// @param account Address to get the portfolio value from
-    function getTraderReserveValue(uint256 idx, address account) public view override returns (int256) {
+    function getTraderReserveValue(uint256 idx, address account) external view override returns (int256) {
         return clearingHouse.vault().getTraderReserveValue(idx, account);
     }
 

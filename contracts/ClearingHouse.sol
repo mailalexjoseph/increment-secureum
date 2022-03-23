@@ -259,7 +259,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) public override whenNotPaused {
+    ) external override whenNotPaused {
         // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
         uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
 
@@ -509,8 +509,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
 
         vault.settleProfit(idx, msg.sender, profit, false);
 
-        // remove the liquidity provider from the list
-        vault.withdrawPartial(idx, msg.sender, token, reductionRatio, false);
+        // remove the part of the reserve
+        require(vault.withdrawPartial(idx, msg.sender, token, reductionRatio, false) > 0, "Insufficient funds");
 
         emit LiquidityRemoved(
             idx,

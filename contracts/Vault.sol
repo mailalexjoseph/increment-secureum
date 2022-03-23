@@ -176,7 +176,7 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 reductionRatio,
         bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
-        require(0 <= reductionRatio && reductionRatio <= 1e18, "ReductionRatio must be in [0, 1e18]");
+        require(reductionRatio <= 1e18, "ReductionRatio must be in [0, 1e18]");
         int256 fullAmount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
         int256 partialAmount = fullAmount.wadMul(reductionRatio.toInt256());
         return withdraw(idx, user, partialAmount.toUint256(), withdrawToken, isTrader);
