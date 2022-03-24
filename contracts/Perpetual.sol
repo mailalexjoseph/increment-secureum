@@ -710,11 +710,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
         int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
         int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
-        int256 weightedTradePremiumOverLastPeriod = timePassedSinceLastTrade * currentTraderPremium;
 
-        global.cumFundingRate +=
-            (SENSITIVITY.wadMul(weightedTradePremiumOverLastPeriod) * timePassedSinceLastTrade) /
-            1 days;
+        global.cumFundingRate += (SENSITIVITY.wadMul(currentTraderPremium) * timePassedSinceLastTrade) / 1 days;
 
         global.timeOfLastTrade = uint128(currentTime);
     }

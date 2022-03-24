@@ -36,11 +36,6 @@ const calcCurrentTraderPremium = (
   indexPrice: BigNumber
 ) => rDiv(marketPrice.sub(indexPrice), indexPrice);
 
-const calcWeightedTradePremiumOverLastPeriod = (
-  timePassedSinceLastTrade: BigNumber,
-  currentTraderPremium: BigNumber
-) => timePassedSinceLastTrade.mul(currentTraderPremium);
-
 const calcFundingRate = (
   sensitivity: BigNumber,
   weightedTradePremiumOverLastPeriod: BigNumber,
@@ -151,15 +146,9 @@ describe('Funding rate', async function () {
 
     const eTimePassedInFirstTransaction = timeFirstTransaction.sub(START_TIME);
 
-    const eWeightedTradePremiumOverLastPeriodFirstTransac =
-      calcWeightedTradePremiumOverLastPeriod(
-        eTimePassedInFirstTransaction,
-        eCurrentTraderPremiumFirstTransac
-      );
-
     const eFundingRateFirstTransac = calcFundingRate(
       SENSITIVITY,
-      eWeightedTradePremiumOverLastPeriodFirstTransac,
+      eCurrentTraderPremiumFirstTransac,
       eTimePassedInFirstTransaction
     );
 
@@ -183,18 +172,12 @@ describe('Funding rate', async function () {
     const eTimePassedSinceLastTrade =
       timeSecondTransaction.sub(timeFirstTransaction);
 
-    const eWeightedTradePremiumOverLastPeriodSecondTransac =
-      calcWeightedTradePremiumOverLastPeriod(
-        ethers.BigNumber.from(eTimePassedSinceLastTrade.toString()),
-        eCurrentTraderPremiumSecondTransac
-      );
-
     const position = await user.perpetual.getGlobalPosition();
     expect(position.timeOfLastTrade).to.be.equal(timeSecondTransaction);
 
     const eFundingRateSecondTrans = calcFundingRate(
       SENSITIVITY,
-      eWeightedTradePremiumOverLastPeriodSecondTransac,
+      eCurrentTraderPremiumSecondTransac,
       eTimePassedSinceLastTrade
     ).add(eFundingRateFirstTransac);
 
