@@ -633,7 +633,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
             /*
             Question: Why do we make up to two swap when closing a short position?
-            Answer: We calculate have to calculate the amount of quoteTokens needed
+            Answer: We have to calculate the amount of quoteTokens needed
                     to close the position off-chain. (No exact-output-swap function).
                     Results can deviate from the expected amount.
 
@@ -645,15 +645,19 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
 
 
             2) Swap 'proposedAmount' for 'baseTokensReceived' base tokens
+
                 Case I) baseTokensReceived > positionSize
+
                     swap (baseTokensReceived - positionSize) for quoteTokens
-                    Case I)
-                    swap succesfull?
-                        Case I
-                        yes, continue
-                        no, dontate (baseTokenReceived - positionSize)
+
+                        swap successful?
+
+                            Case I) yes, continue
+
+                            Case 2) no, donate (baseTokenReceived - positionSize)
 
                 Case II) baseTokensReceived < positionSize
+
                     fail
 
             */
@@ -859,17 +863,17 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
     }
 
-    function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool isLong) {
-        if (user.liquidityBalance > 0) {
+    function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool _isLong) {
+        if (user.liquidityBalance == 0) {
+            // trader position
+            return user.positionSize > 0;
+        } else {
             // LP position
             // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
             int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
                 ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided() - 1).toInt256();
 
             return vBasePositionAfterVirtualWithdrawal > 0;
-        } else {
-            // trader position
-            return user.positionSize > 0;
         }
     }
 }
