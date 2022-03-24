@@ -71,6 +71,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @param newMarketTwap Latest market Time-weighted-average-price
     event TwapUpdated(int256 newOracleTwap, int256 newMarketTwap);
 
+    /// @notice Emitted when funding rate is updated
+    /// @param cumulativeFundingRate Cumulative sum of all funding rate updates
+    /// @param fundingRate Latest fundingRate update
+    /// @param currentTime Timestamp of update
+    event FundingRateUpdated(int256 cumulativeFundingRate, int256 fundingRate, uint256 currentTime);
+
     /// @notice Emitted when swap with cryptoswap pool fails
     /// @param errorMessage Return error message
     event Log(string errorMessage);
@@ -189,12 +195,15 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         );
 
         // apply funding rate on existing positionSize
-        fundingPayments = _getFundingPayments(
-            isLong,
-            trader.cumFundingRate,
-            global.cumFundingRate,
-            trader.positionSize.abs()
-        );
+        fundingPayments = 0;
+        if (trader.positionSize != 0) {
+            fundingPayments = _getFundingPayments(
+                isLong,
+                trader.cumFundingRate,
+                global.cumFundingRate,
+                trader.positionSize.abs()
+            );
+        }
 
         // update position
         trader.openNotional += openNotional;
@@ -711,9 +720,12 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         int256 currentTraderPremium = (marketTWAP - indexTWAP).wadDiv(indexTWAP);
         int256 timePassedSinceLastTrade = (currentTime - global.timeOfLastTrade).toInt256();
 
-        global.cumFundingRate += (SENSITIVITY.wadMul(currentTraderPremium) * timePassedSinceLastTrade) / 1 days;
+        int256 fundingRate = (SENSITIVITY.wadMul(currentTraderPremium) * timePassedSinceLastTrade) / 1 days;
 
+        global.cumFundingRate += fundingRate;
         global.timeOfLastTrade = uint128(currentTime);
+
+        emit FundingRateUpdated(global.cumFundingRate, fundingRate, currentTime);
     }
 
     function _recordMarketPrice() internal {
@@ -837,12 +849,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             comment: Making an negative funding payment is equivalent to receiving a positive one.
         */
         if (userCumFundingRate != globalCumFundingRate) {
-            int256 upcomingFundingRate;
-            if (isLong) {
-                upcomingFundingRate = userCumFundingRate - globalCumFundingRate;
-            } else {
-                upcomingFundingRate = globalCumFundingRate - userCumFundingRate;
-            }
+            int256 upcomingFundingRate = isLong
+                ? userCumFundingRate - globalCumFundingRate
+                : globalCumFundingRate - userCumFundingRate;
+
             // fundingPayments = fundingRate * vBaseAmountToSettle
             upcomingFundingPayment = upcomingFundingRate.wadMul(vBaseAmountToSettle);
         }
