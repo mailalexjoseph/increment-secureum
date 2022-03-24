@@ -15,6 +15,7 @@ import VQuote from '../../artifacts/contracts/tokens/VQuote.sol/VQuote.json';
 import Vault from '../../artifacts/contracts/Vault.sol/Vault.json';
 import CurveCryptoSwap2ETH from '../../contracts-vyper/artifacts/CurveCryptoSwap2ETH.vy/CurveCryptoSwap2ETH.json';
 import {minutes} from '../helpers/utils/time';
+import {TWAP_FREQUENCY} from '../../helpers/constants';
 
 let nextBlockTimestamp: BigNumber = ethers.BigNumber.from(2100000000);
 
@@ -138,7 +139,7 @@ describe('TwapOracle', async function () {
 
     // user = await setup();
     user = await _deploy_perpetual();
-    PERIOD = BigNumber.from(minutes(15));
+    PERIOD = TWAP_FREQUENCY;
 
     // take snapshot
     snapshotId = await env.network.provider.send('evm_snapshot', []);
