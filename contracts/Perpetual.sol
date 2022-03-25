@@ -801,12 +801,10 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         */
 
         if (isLong) {
-            console.log("Lp has an long position");
             // proposedAmount is a vBase denominated amount
             // positionSize needs to be positive to allow LP positions looking like longs to be partially sold
             return proposedAmount <= positionSize.abs().toUint256();
         } else {
-            console.log("Lp has an short position");
             // Check that `proposedAmount` isn't too far from the value in the market
             // to avoid creating large swings in the market (even though these swings would be cancelled out
             // by the fact that we sell any extra vBase bought)

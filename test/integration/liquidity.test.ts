@@ -551,7 +551,7 @@ describe('Increment App: Liquidity', function () {
       );
     }
 
-    it.only('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
+    it('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -569,18 +569,6 @@ describe('Increment App: Liquidity', function () {
       );
 
       await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
-
-      console.log(
-        'LP USDC-Balance (denoted in USD) before providing liquidity ',
-        ethers.utils.formatUnits(lpBalanceBefore, 6)
-      );
-      console.log(
-        'LP USDC-Balance (denoted in EUR) before providing liquidity ',
-        ethers.utils.formatUnits(
-          rDiv(lpBalanceBefore, await lp.perpetual.marketPrice()),
-          6
-        )
-      );
 
       // change market prices
       await driveUpMarketPrice(lpTwo);
@@ -612,20 +600,8 @@ describe('Increment App: Liquidity', function () {
         await lp.perpetual.marketPrice()
       );
       expect(lpBalanceAfterEUR).to.be.lt(lpBalanceBeforeEUR);
-
-      console.log(
-        'LP USDC-Balance (denoted in USD) after withdrawing liquidity',
-        ethers.utils.formatUnits(lpBalanceAfter, 6)
-      );
-      console.log(
-        'LP USDC-Balance (denoted in EUR) after withdrawing liquidity',
-        ethers.utils.formatUnits(
-          rDiv(lpBalanceAfter, await lp.perpetual.marketPrice()),
-          6
-        )
-      );
     });
-    it.only('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
+    it('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -645,18 +621,6 @@ describe('Increment App: Liquidity', function () {
       );
 
       await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
-
-      console.log(
-        'LP USDC-Balance (denoted in USD) before providing liquidity ',
-        ethers.utils.formatUnits(lpBalanceBefore, 6)
-      );
-      console.log(
-        'LP USDC-Balance (denoted in EUR) before providing liquidity ',
-        ethers.utils.formatUnits(
-          rDiv(lpBalanceBefore, await lp.perpetual.marketPrice()),
-          6
-        )
-      );
 
       // change market prices
       await driveDownMarketPrice(lpTwo);
@@ -687,18 +651,6 @@ describe('Increment App: Liquidity', function () {
         await lp.perpetual.marketPrice()
       );
       expect(lpBalanceAfterEUR).to.be.gt(lpBalanceBeforeEUR);
-
-      console.log(
-        'LP USDC-Balance (denoted in USD) after withdrawing liquidity',
-        ethers.utils.formatUnits(lpBalanceAfter, 6)
-      );
-      console.log(
-        'LP USDC-Balance (denoted in EUR) after withdrawing liquidity',
-        ethers.utils.formatUnits(
-          rDiv(lpBalanceAfter, await lp.perpetual.marketPrice()),
-          6
-        )
-      );
     });
   });
 
