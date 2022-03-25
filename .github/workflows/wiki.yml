@@ -27,6 +27,13 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.DOCS_PK }}
 
+      - name: Get commit variables
+        id: vars
+        shell: bash
+        run: |
+          echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+          echo "::set-output name=sha_short::$(git rev-parse --short HEAD)"
+
       - name: Init Yarn
         run: yarn install --frozen-lockfile
 
@@ -37,7 +44,7 @@ jobs:
           git config --global user.name "Increment Bot"
           cd ./docs
           cp -r ../wiki/* ./core-contracts/
-          git commit -am "Sync contracts from ${{steps.vars.outputs.sha_short}} @ ${{ steps.vars.outputs.branch }}"
+          git commit -am "Sync contracts from ${{ steps.vars.outputs.sha_short }} @ ${{ steps.vars.outputs.branch }}"
           git push
 
       # - uses: ineshbose/wiki-action@v1
