@@ -1,12 +1,12 @@
-name: Update Wiki
+name: Update Docs
 
 on:
   push:
-    paths:
-      - 'contracts/**'
+    # paths:
+    #   - 'contracts/**'
     branches:
       - main
-      - 'feat/docs-repo-sync'
+      - feat/docs-repo-sync
 
 jobs:
   update-wiki:
