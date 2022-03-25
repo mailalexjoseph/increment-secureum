@@ -31,6 +31,23 @@ export const cryptoSwapConfig: ICryptoSwapConfig = {
       ma_half_time: BigNumber.from(600),
       initial_price: utils.parseEther('0'),
     },
+    JPY_USD: {
+      _name: 'vJPY/vUSD',
+      _symbol: 'JPYUSD',
+      _coins: ['', ''],
+      A: BigNumber.from(5000)
+        .mul(2 ** 2)
+        .mul(10000),
+      gamma: utils.parseEther('0.0001'),
+      mid_fee: utils.parseUnits('0.0005', 10),
+      out_fee: utils.parseUnits('0.0045', 10),
+      allowed_extra_profit: utils.parseUnits('10', 10),
+      fee_gamma: utils.parseEther('0.005'),
+      adjustment_step: utils.parseEther('0.0000055'),
+      admin_fee: utils.parseUnits('5', 9),
+      ma_half_time: BigNumber.from(600),
+      initial_price: utils.parseEther('0'),
+    },
   },
 };
 
