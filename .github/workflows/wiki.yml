@@ -12,6 +12,8 @@ jobs:
   update-wiki:
     runs-on: ubuntu-latest
     name: Update wiki
+    env:
+      DOCS_REPO: ssh://git@github.com/Increment-Finance/docs.git
     steps:
       - uses: actions/checkout@v2
 
@@ -30,7 +32,7 @@ jobs:
 
       - name: Clone Docs
         run: |
-          git clone ${{secrets.DOCS_REPO}}
+          git clone ${DOCS_REPO}
           cd ./docs
           cp -r ../wiki/* ./core-contracts/
           git commit -m "Sync contracts from ${{steps.vars.outputs.sha_short}} @ ${{ steps.vars.outputs.branch }}"
