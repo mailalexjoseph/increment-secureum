@@ -551,7 +551,7 @@ describe('Increment App: Liquidity', function () {
       );
     }
 
-    it('Liquidity provider can generate a profit when EUR/USD goes up', async function () {
+    it.only('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -562,12 +562,25 @@ describe('Increment App: Liquidity', function () {
 
       // deposit initial liquidity
       const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
-      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
       const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
-      const vaultBalanceBefore = await wadToToken(
-        6,
-        await lpTwo.vault.getLpBalance(0, lpTwo.address)
-      ); // with 6 decimals
+      const lpBalanceBeforeEUR = rDiv(
+        lpBalanceBefore,
+        await lp.perpetual.marketPrice()
+      );
+
+      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
+
+      console.log(
+        'LP USDC-Balance (denoted in USD) before providing liquidity ',
+        ethers.utils.formatUnits(lpBalanceBefore, 6)
+      );
+      console.log(
+        'LP USDC-Balance (denoted in EUR) before providing liquidity ',
+        ethers.utils.formatUnits(
+          rDiv(lpBalanceBefore, await lp.perpetual.marketPrice()),
+          6
+        )
+      );
 
       // change market prices
       await driveUpMarketPrice(lpTwo);
@@ -588,26 +601,62 @@ describe('Increment App: Liquidity', function () {
         0,
         lpTwo.usdc.address
       );
+
+      // USD profit
       const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
-      expect(lpBalanceAfter).to.be.gt(lpBalanceBefore.add(vaultBalanceBefore));
+      expect(lpBalanceAfter).to.be.gt(lpBalanceBefore);
+
+      // EUR loss
+      const lpBalanceAfterEUR = rDiv(
+        lpBalanceAfter,
+        await lp.perpetual.marketPrice()
+      );
+      expect(lpBalanceAfterEUR).to.be.lt(lpBalanceBeforeEUR);
+
+      console.log(
+        'LP USDC-Balance (denoted in USD) after withdrawing liquidity',
+        ethers.utils.formatUnits(lpBalanceAfter, 6)
+      );
+      console.log(
+        'LP USDC-Balance (denoted in EUR) after withdrawing liquidity',
+        ethers.utils.formatUnits(
+          rDiv(lpBalanceAfter, await lp.perpetual.marketPrice()),
+          6
+        )
+      );
     });
-    it('Liquidity provider can generate a loss when EUR/USD goes down', async function () {
+    it.only('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
       // init
+
       const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
       await provideLiquidity(lp, lp.usdc, liquidityAmount);
       await provideLiquidity(trader, trader.usdc, liquidityAmount);
 
       // deposit initial liquidity
       const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
-      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
       const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
-      const vaultBalanceBefore = await wadToToken(
-        6,
-        await lpTwo.vault.getLpBalance(0, lpTwo.address)
-      ); // with 6 decimals
+
+      const lpBalanceBeforeEUR = rDiv(
+        lpBalanceBefore,
+        await lp.perpetual.marketPrice()
+      );
+
+      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
+
+      console.log(
+        'LP USDC-Balance (denoted in USD) before providing liquidity ',
+        ethers.utils.formatUnits(lpBalanceBefore, 6)
+      );
+      console.log(
+        'LP USDC-Balance (denoted in EUR) before providing liquidity ',
+        ethers.utils.formatUnits(
+          rDiv(lpBalanceBefore, await lp.perpetual.marketPrice()),
+          6
+        )
+      );
 
       // change market prices
       await driveDownMarketPrice(lpTwo);
@@ -628,8 +677,28 @@ describe('Increment App: Liquidity', function () {
         0,
         lpTwo.usdc.address
       );
+      // USD profit
       const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
-      expect(lpBalanceAfter).to.be.lt(lpBalanceBefore.add(vaultBalanceBefore));
+      expect(lpBalanceAfter).to.be.lt(lpBalanceBefore);
+
+      // EUR loss
+      const lpBalanceAfterEUR = rDiv(
+        lpBalanceAfter,
+        await lp.perpetual.marketPrice()
+      );
+      expect(lpBalanceAfterEUR).to.be.gt(lpBalanceBeforeEUR);
+
+      console.log(
+        'LP USDC-Balance (denoted in USD) after withdrawing liquidity',
+        ethers.utils.formatUnits(lpBalanceAfter, 6)
+      );
+      console.log(
+        'LP USDC-Balance (denoted in EUR) after withdrawing liquidity',
+        ethers.utils.formatUnits(
+          rDiv(lpBalanceAfter, await lp.perpetual.marketPrice()),
+          6
+        )
+      );
     });
   });
 
