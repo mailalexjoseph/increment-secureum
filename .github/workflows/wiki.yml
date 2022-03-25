@@ -46,7 +46,7 @@ jobs:
           rm -rf ./core-contracts
           cp -r ../wiki/* ./core-contracts/
           git add -A
-          git commit -m "Sync contracts from ${{ steps.vars.outputs.sha_short }} @ ${{ steps.vars.outputs.branch }}"
+          git commit -m "Sync with increment-protocol [${{ steps.vars.outputs.branch }} ${{ steps.vars.outputs.sha_short }}]"
           git push
 
       # - uses: ineshbose/wiki-action@v1
