@@ -33,6 +33,8 @@ jobs:
       - name: Clone Docs
         run: |
           git clone ${DOCS_REPO}
+          git config --global user.email "build@increment.finance"
+          git config --global user.name "Increment Bot"
           cd ./docs
           cp -r ../wiki/* ./core-contracts/
           git commit -m "Sync contracts from ${{steps.vars.outputs.sha_short}} @ ${{ steps.vars.outputs.branch }}"
