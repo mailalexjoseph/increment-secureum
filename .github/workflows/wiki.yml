@@ -6,7 +6,7 @@ on:
       - 'contracts/**'
     branches:
       - main
-      - feat/docs-repo-sync
+      - 'feat/docs-repo-sync'
 
 jobs:
   update-wiki:
