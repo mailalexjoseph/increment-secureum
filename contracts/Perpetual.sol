@@ -858,7 +858,6 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         }
     }
 
-    // TODO: write test for function
     function _checkPriceDeviation(int256 currentPrice, int256 startBlockPrice) internal pure returns (bool) {
         // check if market price has changed more than by 2% in this block
 
@@ -867,7 +866,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
 
         // slither-disable-next-line incorrect-equality
-        return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 10e18);
+        return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 1e18);
     }
 
     function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool _isLong) {

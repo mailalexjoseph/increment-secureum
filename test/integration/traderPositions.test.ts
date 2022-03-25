@@ -2,7 +2,7 @@ import {expect} from 'chai';
 import {BigNumber} from 'ethers';
 import env, {ethers} from 'hardhat';
 
-import {rMul} from '../helpers/utils/calculations';
+import {asBigNumber, rMul} from '../helpers/utils/calculations';
 import {setup, funding, User} from '../helpers/setup';
 import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
@@ -823,6 +823,47 @@ describe('Increment: open/close long/short trading positions', () => {
     ).to.be.revertedWith('Price impact too large');
   });
 
+  it('Should correctly calculate the price impact', async () => {
+    // init
+    const MAX_PRICE_DEVIATION = asBigNumber('0.02');
+    const startPrice = asBigNumber('1');
+
+    const largePriceInvalid = startPrice.add(
+      rMul(startPrice, MAX_PRICE_DEVIATION)
+    );
+    expect(
+      await alice.perpetual.__TEST__checkPriceDeviation(
+        startPrice,
+        largePriceInvalid
+      )
+    ).to.be.false;
+
+    const largePriceValid = largePriceInvalid.sub(1);
+    expect(
+      await alice.perpetual.__TEST__checkPriceDeviation(
+        startPrice,
+        largePriceValid
+      )
+    ).to.be.true;
+
+    const smallPriceInvalid = startPrice.sub(
+      rMul(startPrice, MAX_PRICE_DEVIATION)
+    );
+    expect(
+      await alice.perpetual.__TEST__checkPriceDeviation(
+        startPrice,
+        smallPriceInvalid
+      )
+    ).to.be.false;
+
+    const smallPriceValid = smallPriceInvalid.add(1);
+    expect(
+      await alice.perpetual.__TEST__checkPriceDeviation(
+        startPrice,
+        smallPriceValid
+      )
+    ).to.be.true;
+  });
   //TODO: add tests to assert the impact of the funding rate on the profit
 });
 
