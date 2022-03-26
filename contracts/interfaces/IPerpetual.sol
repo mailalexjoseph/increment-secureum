@@ -83,6 +83,7 @@ interface IPerpetual {
         uint256 liquidityAmountToRemove,
         uint256 reductionRatio,
         uint256 proposedAmount,
+        uint256[2] calldata minVTokenAmounts,
         uint256 minAmount
     )
         external

@@ -113,7 +113,15 @@ describe('Increment Protocol: Governance', function () {
         user.clearingHouse.provideLiquidity(0, 1, 0, user.usdc.address)
       ).to.be.revertedWith('Pausable: paused');
       await expect(
-        user.clearingHouse.removeLiquidity(0, 1, 1, 0, 0, user.usdc.address)
+        user.clearingHouse.removeLiquidity(
+          0,
+          1,
+          1,
+          0,
+          [0, 0],
+          0,
+          user.usdc.address
+        )
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(

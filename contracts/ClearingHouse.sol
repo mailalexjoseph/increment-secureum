@@ -444,6 +444,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param liquidityAmountToRemove Amount of liquidity (in LP tokens) to be removed from the pool. 18 decimals
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
+    /// @param minVTokenAmounts Minimum amount of virtual tokens [vQuote, vBase] withdrawn from the curve pool. 18 decimals
+
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token in which to perform the funds withdrawal
     function removeLiquidity(
@@ -451,6 +453,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 liquidityAmountToRemove,
         uint256 reductionRatio,
         uint256 proposedAmount,
+        uint256[2] calldata minVTokenAmounts,
         uint256 minAmount,
         IERC20 token
     ) external override whenNotPaused {
@@ -459,6 +462,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
             liquidityAmountToRemove,
             reductionRatio,
             proposedAmount,
+            minVTokenAmounts,
             minAmount
         );
 

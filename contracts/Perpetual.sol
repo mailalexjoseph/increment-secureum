@@ -353,6 +353,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @param liquidityAmountToRemove Amount of liquidity to be removed from the pool. 18 decimals
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minVTokenAmounts Minimum amount of virtual tokens [vQuote, vBase] withdrawn from the curve pool. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @return vQuoteProceeds Realized quote proceeds from removing liquidity
     /// @return vBaseAmount Removed base amount
@@ -362,6 +363,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         uint256 liquidityAmountToRemove,
         uint256 reductionRatio,
         uint256 proposedAmount,
+        uint256[2] calldata minVTokenAmounts,
         uint256 minAmount
     )
         external
@@ -391,7 +393,7 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
             uint256 vBaseBalanceBefore = vBase.balanceOf(address(this));
 
-            market.remove_liquidity(liquidityAmountToRemove, [uint256(0), uint256(0)]);
+            market.remove_liquidity(liquidityAmountToRemove, minVTokenAmounts);
 
             require(vQuote.balanceOf(address(market)) > 0, "You broke the market");
             require(vBase.balanceOf(address(market)) > 0, "You broke the market");

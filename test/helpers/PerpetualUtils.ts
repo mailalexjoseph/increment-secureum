@@ -103,6 +103,7 @@ export async function withdrawLiquidityAndSettle(
     userLpPosition.liquidityBalance,
     closeProposedAmount,
     proposedAmount,
+    [0, 0],
     0,
     token.address
   );

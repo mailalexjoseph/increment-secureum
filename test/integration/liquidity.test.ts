@@ -298,6 +298,7 @@ describe('Increment App: Liquidity', function () {
           asBigNumber('1'),
           FULL_REDUCTION_RATIO,
           0,
+          [0, 0],
           0,
           lp.usdc.address
         )
@@ -323,6 +324,7 @@ describe('Increment App: Liquidity', function () {
           providedLiquidity.add(BigNumber.from('1')),
           FULL_REDUCTION_RATIO,
           0,
+          [0, 0],
           0,
           lp.usdc.address
         )
@@ -361,6 +363,7 @@ describe('Increment App: Liquidity', function () {
           liquidityAmountUSDC,
           FULL_REDUCTION_RATIO,
           0,
+          [0, 0],
           0,
           lp.usdc.address
         )
@@ -401,6 +404,7 @@ describe('Increment App: Liquidity', function () {
         lpBalance.liquidityBalance,
         FULL_REDUCTION_RATIO,
         proposedAmount,
+        [0, 0],
         0,
         lp.usdc.address
       );
@@ -445,6 +449,7 @@ describe('Increment App: Liquidity', function () {
         lpPosition.liquidityBalance,
         FULL_REDUCTION_RATIO,
         proposedAmount,
+        [0, 0],
         0,
         lp.usdc.address
       );
@@ -486,6 +491,7 @@ describe('Increment App: Liquidity', function () {
         initialLpPosition.liquidityBalance.div(2),
         FULL_REDUCTION_RATIO.div(2),
         firstProposedAmountToClosePosition.div(2),
+        [0, 0],
         0,
         lp.usdc.address
       );
@@ -502,6 +508,7 @@ describe('Increment App: Liquidity', function () {
         secondLpPosition.liquidityBalance,
         FULL_REDUCTION_RATIO,
         secondProposedAmountToClosePosition,
+        [0, 0],
         0,
         lp.usdc.address
       );
@@ -602,6 +609,7 @@ describe('Increment App: Liquidity', function () {
             lpTwo.market
           )
         ).sub(1), // since prbMath subtracts one wei
+        [0, 0],
         0,
         lpTwo.usdc.address
       );
@@ -654,6 +662,7 @@ describe('Increment App: Liquidity', function () {
             lpTwo.market
           )
         ).sub(1), // since prbMath subtracts one wei
+        [0, 0],
         0,
         lpTwo.usdc.address
       );
