@@ -378,6 +378,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused {
         address liquidator = msg.sender;
 
+        // update funding rate, so that the marginRatio is correct
         perpetuals[idx].updateTwapAndFundingRate();
 
         uint256 positiveOpenNotional = uint256(_getTraderPosition(idx, liquidatee).openNotional.abs());
