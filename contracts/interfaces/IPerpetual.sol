@@ -42,6 +42,10 @@ interface IPerpetual {
 
     function getTotalLiquidityProvided() external view returns (uint256);
 
+    function getOracleTwap() external view returns (int256);
+
+    function getMarketTwap() external view returns (int256);
+
     /* ****************** */
     /*  State modifying   */
     /* ****************** */
@@ -92,4 +96,6 @@ interface IPerpetual {
             int256 vBaseAmount,
             int256 profit
         );
+
+    function updateTwapAndFundingRate() external;
 }

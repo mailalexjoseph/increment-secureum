@@ -8,7 +8,6 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // interfaces
 import {IPerpetual} from "./interfaces/IPerpetual.sol";
-import {ITwapOracle} from "./interfaces/ITwapOracle.sol";
 import {IVBase} from "./interfaces/IVBase.sol";
 import {IVQuote} from "./interfaces/IVQuote.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
@@ -21,7 +20,7 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import "hardhat/console.sol";
 
 /// @notice Handles all the trading logic. Interact with the CryptoSwap pool
-contract Perpetual is IPerpetual, ITwapOracle, Context {
+contract Perpetual is IPerpetual, Context {
     using LibMath for int256;
     using LibMath for uint256;
 
