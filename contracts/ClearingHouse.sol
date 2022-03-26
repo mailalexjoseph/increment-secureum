@@ -378,6 +378,8 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     ) external override whenNotPaused {
         address liquidator = msg.sender;
 
+        perpetuals[idx].updateTwapAndFundingRate();
+
         uint256 positiveOpenNotional = uint256(_getTraderPosition(idx, liquidatee).openNotional.abs());
 
         require(positiveOpenNotional != 0, "No position currently opened");
