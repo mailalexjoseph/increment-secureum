@@ -85,7 +85,7 @@ contract TestPerpetual is Perpetual {
         globalPosition.blockStartPrice = int256(blockStartPrice);
     }
 
-    function __TEST__checkPriceDeviation(int256 _marketPrice, int256 _oraclePrice) external view returns (bool) {
+    function __TEST__checkPriceDeviation(int256 _marketPrice, int256 _oraclePrice) external pure returns (bool) {
         return _checkPriceDeviation(_marketPrice, _oraclePrice);
     }
 
