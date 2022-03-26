@@ -103,6 +103,7 @@ interface IClearingHouse {
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
+        uint256 minLpAmount,
         IERC20 token
     ) external returns (uint256, uint256);
 

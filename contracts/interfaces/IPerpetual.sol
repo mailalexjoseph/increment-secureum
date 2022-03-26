@@ -72,7 +72,11 @@ interface IPerpetual {
             int256 profit
         );
 
-    function provideLiquidity(address account, uint256 wadAmount) external returns (uint256, int256);
+    function provideLiquidity(
+        address account,
+        uint256 wadAmount,
+        uint256 minLpAmount
+    ) external returns (uint256, int256);
 
     function removeLiquidity(
         address account,

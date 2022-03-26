@@ -42,7 +42,7 @@ describe('Increment App: Liquidity', function () {
   describe('Can deposit liquidity to the curve pool', async function () {
     it('Should not allow to deposit zero', async function () {
       await expect(
-        lp.clearingHouse.provideLiquidity(0, 0, lp.usdc.address)
+        lp.clearingHouse.provideLiquidity(0, 0, 0, lp.usdc.address)
       ).to.be.revertedWith('Zero amount');
     });
 
@@ -51,6 +51,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.provideLiquidity(
           0,
           liquidityAmountUSDC,
+          0,
           lp.usdc.address
         )
       )
@@ -68,6 +69,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC.div(2),
+        0,
         lp.usdc.address
       );
 
@@ -75,6 +77,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.provideLiquidity(
           0,
           liquidityAmountUSDC.div(2),
+          0,
           lp.usdc.address
         )
       ).to.not.be.reverted;
@@ -101,6 +104,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -149,6 +153,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC.div(2),
+        0,
         lp.usdc.address
       );
 
@@ -190,6 +195,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC.div(2),
+        0,
         lp.usdc.address
       );
 
@@ -231,6 +237,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -262,6 +269,7 @@ describe('Increment App: Liquidity', function () {
       await lpTwo.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lpTwo.usdc.address
       );
 
@@ -301,6 +309,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -325,6 +334,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -362,6 +372,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -370,6 +381,7 @@ describe('Increment App: Liquidity', function () {
       await lpTwo.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lpTwo.usdc.address
       );
 
@@ -407,6 +419,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -415,6 +428,7 @@ describe('Increment App: Liquidity', function () {
       await lpTwo.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lpTwo.usdc.address
       );
 
@@ -448,6 +462,7 @@ describe('Increment App: Liquidity', function () {
       await lp.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lp.usdc.address
       );
 
@@ -456,6 +471,7 @@ describe('Increment App: Liquidity', function () {
       await lpTwo.clearingHouse.provideLiquidity(
         0,
         liquidityAmountUSDC,
+        0,
         lpTwo.usdc.address
       );
 
@@ -667,6 +683,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.provideLiquidity(
           0,
           liquidityAmountUSDC,
+          0,
           lp.usdc.address
         )
       )

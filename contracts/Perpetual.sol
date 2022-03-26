@@ -301,14 +301,14 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
     /// @notice Provide liquidity to the pool
     /// @param account Liquidity provider
     /// @param  wadAmount Amount of vQuote provided with 1e18 precision
+    /// @param  minLpAmount Minimum amount of Lp tokens minted with 1e18 precision
     /// @return baseAmount Amount of vBase provided with 1e18 precision
     /// @return fundingPayments Settled funding payments
-    function provideLiquidity(address account, uint256 wadAmount)
-        external
-        override
-        onlyClearingHouse
-        returns (uint256 baseAmount, int256 fundingPayments)
-    {
+    function provideLiquidity(
+        address account,
+        uint256 wadAmount,
+        uint256 minLpAmount
+    ) external override onlyClearingHouse returns (uint256 baseAmount, int256 fundingPayments) {
         updateTwapAndFundingRate();
 
         // reflect the added liquidity on the LP position
@@ -337,8 +337,8 @@ contract Perpetual is IPerpetual, ITwapOracle, Context {
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
         vBase.mint(baseAmount);
-        //uint256 min_mint_amount = 0; // set to zero for now (TODO: use min_mint_amount from LP)
-        uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], 0); //  first token in curve pool is vQuote & second token is vBase
+        //uint256 min_mint_amount = 0; // set to zero for now
+        uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], minLpAmount); //  first token in curve pool is vQuote & second token is vBase
 
         lp.openNotional -= wadAmount.toInt256();
         lp.positionSize -= baseAmount.toInt256();

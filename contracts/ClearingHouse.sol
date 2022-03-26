@@ -411,12 +411,14 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Provide liquidity to the pool
     /// @param idx Index of the perpetual market
     /// @param amount Amount of token to be added to the pool. Might not have 18 decimals
+    /// @param minLpAmount Minimum amount of Lp tokens minted with 1e18 precision
     /// @param token Token to be added to the pool
     /// @return wadAmount Amount of quoteTokens added to the pool
     /// @return baseAmount Amount of baseTokens added to the pool
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
+        uint256 minLpAmount,
         IERC20 token
     ) external override whenNotPaused returns (uint256 wadAmount, uint256 baseAmount) {
         require(amount != 0, "Zero amount");
@@ -426,7 +428,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         wadAmount = vault.deposit(idx, msg.sender, amount, token, false);
 
         int256 fundingPayments = 0;
-        (baseAmount, fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount);
+        (baseAmount, fundingPayments) = perpetuals[idx].provideLiquidity(msg.sender, wadAmount, minLpAmount);
 
         if (fundingPayments != 0) {
             vault.settleProfit(idx, msg.sender, fundingPayments, false);

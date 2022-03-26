@@ -22,7 +22,7 @@ export async function setUpPoolLiquidity(
   depositAmount: BigNumber
 ): Promise<void> {
   await lp.usdc.approve(lp.vault.address, depositAmount);
-  await lp.clearingHouse.provideLiquidity(0, depositAmount, lp.usdc.address);
+  await lp.clearingHouse.provideLiquidity(0, depositAmount, 0, lp.usdc.address);
 }
 
 // Returns a proposed amount precise enough to close LP position
@@ -81,7 +81,7 @@ export async function provideLiquidity(
 
   await (await token.approve(user.vault.address, tokenAmount)).wait();
   await (
-    await user.clearingHouse.provideLiquidity(0, tokenAmount, token.address)
+    await user.clearingHouse.provideLiquidity(0, tokenAmount, 0, token.address)
   ).wait();
 }
 
