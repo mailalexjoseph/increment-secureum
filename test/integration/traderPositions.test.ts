@@ -864,6 +864,45 @@ describe('Increment: open/close long/short trading positions', () => {
       )
     ).to.be.true;
   });
+
+  it('Should fail when minAmount is not reached', async () => {
+    // set-up
+    await setUpPoolLiquidity(bob, depositAmountUSDC.mul(200));
+
+    await alice.usdc.approve(alice.vault.address, depositAmountUSDC);
+
+    const tradeAmount = depositAmount.mul(5);
+    const eVBase = await alice.clearingHouseViewer.getExpectedVBaseAmount(
+      0,
+      tradeAmount
+    );
+
+    await expect(
+      alice.clearingHouse.extendPositionWithCollateral(
+        0,
+        depositAmountUSDC,
+        alice.usdc.address,
+        tradeAmount,
+        Side.Long,
+        eVBase.add(1)
+      )
+    ).to.be.revertedWith('');
+    await expect(
+      alice.clearingHouse.extendPositionWithCollateral(
+        0,
+        depositAmountUSDC,
+        alice.usdc.address,
+        tradeAmount,
+        Side.Long,
+        eVBase
+      )
+    ).not.to.be.reverted;
+
+    expect(
+      (await alice.perpetual.getTraderPosition(alice.address)).positionSize
+    ).to.be.eq(eVBase);
+  });
+
   //TODO: add tests to assert the impact of the funding rate on the profit
 });
 
