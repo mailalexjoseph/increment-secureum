@@ -97,11 +97,10 @@ export async function withdrawLiquidityAndSettle(
     user.market
   );
 
-  const closeProposedAmount = ethers.utils.parseEther('1');
   await user.clearingHouse.removeLiquidity(
     0,
     userLpPosition.liquidityBalance,
-    closeProposedAmount,
+    FULL_REDUCTION_RATIO,
     proposedAmount,
     [0, 0],
     0,
@@ -189,11 +188,10 @@ export async function closePosition(
     );
   }
 
-  const fullReductionRatio = ethers.utils.parseEther('1');
   await (
     await user.clearingHouse.reducePosition(
       0,
-      fullReductionRatio,
+      FULL_REDUCTION_RATIO,
       proposedAmount,
       0
     )

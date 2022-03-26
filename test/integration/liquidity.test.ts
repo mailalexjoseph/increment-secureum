@@ -677,6 +677,83 @@ describe('Increment App: Liquidity', function () {
       );
       expect(lpBalanceAfterEUR).to.be.gt(lpBalanceBeforeEUR);
     });
+    it('Should revert when not enough liquidity tokens are minted', async function () {
+      // init
+      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+
+      // provide liquidity uses minAmount
+      const eLpTokens = await lp.market.calc_token_amount([
+        liquidityAmount,
+        rDiv(liquidityAmount, await lp.market.last_prices()),
+      ]);
+      await lpTwo.usdc.approve(lpTwo.vault.address, liquidityAmountUSDC);
+
+      await expect(
+        lpTwo.clearingHouse.provideLiquidity(
+          0,
+          liquidityAmountUSDC,
+          eLpTokens.add(1).add(1), // add 1 wei since one wei is subtracted inside curve
+          lpTwo.usdc.address
+        )
+      ).to.be.revertedWith('');
+
+      await expect(
+        lpTwo.clearingHouse.provideLiquidity(
+          0,
+          liquidityAmountUSDC,
+          eLpTokens,
+          lpTwo.usdc.address
+        )
+      ).to.not.be.reverted;
+    });
+    it('Should revert when not enough virtual tokens are released', async function () {
+      // init
+      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+      await provideLiquidity(lpTwo, lpTwo.usdc, liquidityAmount);
+      await provideLiquidity(lp, lp.usdc, liquidityAmount);
+
+      // attempt withdrawal
+      const lpPosition = await lp.perpetual.getLpPosition(lp.address);
+
+      const eWithdrawnQuoteTokens = (await lp.market.balances(0))
+        .mul(lpPosition.liquidityBalance)
+        .div(await lp.perpetual.getTotalLiquidityProvided())
+        .sub(1);
+      const eWithdrawnBaseTokens = (await lp.market.balances(1))
+        .mul(lpPosition.liquidityBalance)
+        .div(await lp.perpetual.getTotalLiquidityProvided())
+        .sub(1);
+
+      const proposedAmount = await liquidityProviderProposedAmount(
+        lpPosition,
+        lp.market
+      );
+
+      await expect(
+        lp.clearingHouse.removeLiquidity(
+          0,
+          lpPosition.liquidityBalance,
+          FULL_REDUCTION_RATIO,
+          proposedAmount,
+          [eWithdrawnQuoteTokens.add(1), eWithdrawnBaseTokens.add(1)],
+          0,
+          lp.usdc.address
+        )
+      ).to.be.revertedWith('');
+
+      await expect(
+        lp.clearingHouse.removeLiquidity(
+          0,
+          lpPosition.liquidityBalance,
+          FULL_REDUCTION_RATIO,
+          proposedAmount,
+          [eWithdrawnQuoteTokens, eWithdrawnBaseTokens],
+          0,
+          lp.usdc.address
+        )
+      ).to.not.be.reverted;
+    });
   });
 
   describe('Misc', async function () {
