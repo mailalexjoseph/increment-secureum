@@ -121,7 +121,7 @@ describe('Funding rate', async function () {
     expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
   });
 
-  it.only('Update funding rate correctly in subsequent calls', async () => {
+  it('Update funding rate correctly in subsequent calls', async () => {
     marketPrice = asBigNumber('1');
     indexPrice = asBigNumber('1.1');
     await user.perpetual.__TestPerpetual_setTWAP(marketPrice, indexPrice);
