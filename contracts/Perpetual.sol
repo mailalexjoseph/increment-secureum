@@ -73,8 +73,7 @@ contract Perpetual is IPerpetual, Context {
     /// @notice Emitted when funding rate is updated
     /// @param cumulativeFundingRate Cumulative sum of all funding rate updates
     /// @param fundingRate Latest fundingRate update
-    /// @param currentTime Timestamp of update
-    event FundingRateUpdated(int256 cumulativeFundingRate, int256 fundingRate, uint256 currentTime);
+    event FundingRateUpdated(int256 cumulativeFundingRate, int256 fundingRate);
 
     /// @notice Emitted when swap with cryptoswap pool fails
     /// @param errorMessage Return error message
@@ -726,7 +725,7 @@ contract Perpetual is IPerpetual, Context {
         global.cumFundingRate += fundingRate;
         global.timeOfLastTrade = uint128(currentTime);
 
-        emit FundingRateUpdated(global.cumFundingRate, fundingRate, currentTime);
+        emit FundingRateUpdated(global.cumFundingRate, fundingRate);
     }
 
     function _recordMarketPrice() internal {

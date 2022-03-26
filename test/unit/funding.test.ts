@@ -121,7 +121,7 @@ describe('Funding rate', async function () {
     expect(position.cumFundingRate).to.be.equal(asBigNumber('0'));
   });
 
-  it('Update funding rate correctly in subsequent calls', async () => {
+  it.only('Update funding rate correctly in subsequent calls', async () => {
     marketPrice = asBigNumber('1');
     indexPrice = asBigNumber('1.1');
     await user.perpetual.__TestPerpetual_setTWAP(marketPrice, indexPrice);
@@ -161,7 +161,6 @@ describe('Funding rate', async function () {
       env,
       minutes(5)
     );
-    await user.perpetual.__TestPerpetual_updateFunding();
 
     // expected values after second trade
     const eCurrentTraderPremiumSecondTransac = calcCurrentTraderPremium(
@@ -172,15 +171,21 @@ describe('Funding rate', async function () {
     const eTimePassedSinceLastTrade =
       timeSecondTransaction.sub(timeFirstTransaction);
 
-    const position = await user.perpetual.getGlobalPosition();
-    expect(position.timeOfLastTrade).to.be.equal(timeSecondTransaction);
-
-    const eFundingRateSecondTrans = calcFundingRate(
+    const fundingRate = calcFundingRate(
       SENSITIVITY,
       eCurrentTraderPremiumSecondTransac,
       eTimePassedSinceLastTrade
-    ).add(eFundingRateFirstTransac);
+    );
 
+    const eFundingRateSecondTrans = fundingRate.add(eFundingRateFirstTransac);
+
+    await expect(user.perpetual.__TestPerpetual_updateFunding())
+      .to.emit(user.perpetual, 'FundingRateUpdated')
+      .withArgs(eFundingRateSecondTrans, fundingRate);
+
+    const position = await user.perpetual.getGlobalPosition();
+
+    expect(position.timeOfLastTrade).to.be.equal(timeSecondTransaction);
     expect(position.cumFundingRate).to.be.equal(eFundingRateSecondTrans);
   });
 
