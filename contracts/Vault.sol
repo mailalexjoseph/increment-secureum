@@ -89,8 +89,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @param tokenAmount Amount to be used as the collateral of the position. Might not be 18 decimals
     /// @param depositToken Token to be used for the collateral of the position
     /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
-    /// @return Deposited Amount with 18 decimals precision
-    /// toDO: only check the amount which was deposited (https://youtu.be/6GaCt_lM_ak?t=1200)
+    /// @return Deposited Amount. 18 decimals
     function deposit(
         uint256 idx,
         address user,
@@ -124,7 +123,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @param user Account to withdraw from
     /// @param withdrawToken Token to be withdrawn from the vault
     /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
-    /// @return Withdrawn Amount with token precision
+    /// @return Withdrawn Amount. Might not be 18 decimals
     function withdrawAll(
         uint256 idx,
         address user,
@@ -139,9 +138,9 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @param idx Index of the perpetual market
     /// @param user Account to withdraw from
     /// @param withdrawToken Token to be withdrawn from the vault
-    /// @param reductionRatio Share of collateral to be withdrawn [0, 1e18]
+    /// @param reductionRatio Share of collateral to be withdrawn. Min: 0. Max: 1e18
     /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
-    /// @return Withdrawn Amount with token precision
+    /// @return Withdrawn Amount. Might not be 18 decimals
     function withdrawPartial(
         uint256 idx,
         address user,
@@ -149,7 +148,7 @@ contract Vault is IVault, Context, IncreOwnable {
         uint256 reductionRatio,
         bool isTrader
     ) external override onlyClearingHouse returns (uint256) {
-        require(reductionRatio <= 1e18, "ReductionRatio must be in [0, 1e18]");
+        require(reductionRatio <= 1e18, "ReductionRatio must smaller than 1e18");
         int256 fullAmount = isTrader ? traderBalances[idx][user] : lpBalances[idx][user];
         int256 partialAmount = fullAmount.wadMul(reductionRatio.toInt256());
         return withdraw(idx, user, partialAmount.toUint256(), withdrawToken, isTrader);
@@ -158,10 +157,10 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @notice Withdraw tokens from account
     /// @param idx Index of the perpetual market
     /// @param user Account to withdraw from
-    /// @param wadAmount Amount to withdraw from the vault (18 decimals)
+    /// @param wadAmount Amount to withdraw from the vault. 18 decimals
     /// @param withdrawToken Token to be withdrawn from the vault
     /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
-    /// @return Withdrawn Amount with token precision
+    /// @return Withdrawn Amount. Might not be 18 decimals
     function withdraw(
         uint256 idx,
         address user,
@@ -203,7 +202,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /// @notice Withdraw tokens from account
     /// @param idx Index of the perpetual market
     /// @param user Account to withdraw from
-    /// @param wadAmount Amount to withdraw from the vault (18 decimals)
+    /// @param wadAmount Amount to withdraw from the vault. 18 decimals
     /// @param isTrader True if the user is a trader, False if the user is a liquidity provider
     function settleProfit(
         uint256 idx,
@@ -242,7 +241,7 @@ contract Vault is IVault, Context, IncreOwnable {
     /*   User getter      */
     /* ****************** */
 
-    /// @notice Get the balance of a trader, accounted for in USD (with 18 decimals)
+    /// @notice Get the balance of a trader, accounted for in USD. 18 decimals
     /// @param idx Perpetual market index
     /// @param user Trader address
     /// @return Trader balance in USDC
@@ -250,14 +249,14 @@ contract Vault is IVault, Context, IncreOwnable {
         return traderBalances[idx][user];
     }
 
-    /// @notice Get the balance of a liquidity provider,  accounted for in USD (with 18 decimals)
+    /// @notice Get the balance of a liquidity provider,  accounted for in USD. 18 decimals
     /// @param idx Perpetual market index
     /// @return LP balance in USDC
     function getLpBalance(uint256 idx, address user) external view override returns (int256) {
         return lpBalances[idx][user];
     }
 
-    /// @notice Get the collateral value of a trader, accounted for in USD (with 18 decimals)
+    /// @notice Get the collateral value of a trader, accounted for in USD. 18 decimals
     /// @param idx Perpetual market index
     /// @param account Trader address
     /// @return Trader balance in USD
@@ -266,7 +265,7 @@ contract Vault is IVault, Context, IncreOwnable {
         return traderBalances[idx][account].wadMul(_getAssetPrice());
     }
 
-    /// @notice Get the collateral value of a liquidity provider, accounted for in USD (with 18 decimals)
+    /// @notice Get the collateral value of a liquidity provider, accounted for in USD. 18 decimals
     /// @param idx Perpetual market index
     /// @param account Lp address
     /// @return Lp balance in USD
@@ -285,19 +284,19 @@ contract Vault is IVault, Context, IncreOwnable {
     }
 
     /// @notice Get the amount of tokens borrowed by insurance (bad debt)
-    /// @return Amount of tokens borrowed by insurance (1e18)
+    /// @return Amount of tokens borrowed by insurance. 18 decimals
     function getBadDebt() external view override returns (uint256) {
         return badDebt;
     }
 
     /// @notice Get the total amount of tokens in the vault
-    /// @return Total amount of USDC deposited (1e18)
+    /// @return Total amount of USDC deposited. 18 decimals
     function getTotalReserveToken() external view override returns (uint256) {
         return totalReserveToken;
     }
 
     /// @notice Get the maximum TVL set for the vault
-    /// @return Maximum TVL set (1e18)
+    /// @return Maximum TVL set. 18 decimals
     function getMaxTVL() external view override returns (uint256) {
         return maxTVL;
     }

@@ -131,7 +131,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     }
 
     /// @notice Get the current (base) dust balance
-    /// @return Base balance of Governance (1e18)
+    /// @return Base balance of Governance. 18 decimals
     function getBaseDust(uint256 idx) external view override returns (uint256) {
         return clearingHouse.perpetuals(idx).getTraderPosition(address(clearingHouse)).positionSize.toUint256();
     }

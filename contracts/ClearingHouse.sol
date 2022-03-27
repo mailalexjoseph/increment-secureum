@@ -349,7 +349,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
     /// @param idx Index of the perpetual market
     /// @param account Account of the position to get the margin ratio from
-    /// @return Margin ratio of the position (in 1e18)
+    /// @return Margin ratio of the position. 18 decimals
     function marginRatio(uint256 idx, address account) public view override returns (int256) {
         // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
         // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
@@ -414,10 +414,10 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @notice Provide liquidity to the pool
     /// @param idx Index of the perpetual market
     /// @param amount Amount of token to be added to the pool. Might not have 18 decimals
-    /// @param minLpAmount Minimum amount of Lp tokens minted with 1e18 precision
+    /// @param minLpAmount Minimum amount of Lp tokens minted. 18 decimals
     /// @param token Token to be added to the pool
-    /// @return wadAmount Amount of quoteTokens added to the pool
-    /// @return baseAmount Amount of baseTokens added to the pool
+    /// @return wadAmount Amount of quoteTokens added to the pool. 18 decimals
+    /// @return baseAmount Amount of baseTokens added to the pool. 18 decimals
     function provideLiquidity(
         uint256 idx,
         uint256 amount,
@@ -448,7 +448,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     /// @param minVTokenAmounts Minimum amount of virtual tokens [vQuote, vBase] withdrawn from the curve pool. 18 decimals
-
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @param token Token in which to perform the funds withdrawal
     function removeLiquidity(

@@ -298,9 +298,9 @@ contract Perpetual is IPerpetual, Context {
 
     /// @notice Provide liquidity to the pool
     /// @param account Liquidity provider
-    /// @param  wadAmount Amount of vQuote provided with 1e18 precision
-    /// @param  minLpAmount Minimum amount of Lp tokens minted with 1e18 precision
-    /// @return baseAmount Amount of vBase provided with 1e18 precision
+    /// @param  wadAmount Amount of vQuote provided. 18 decimals
+    /// @param  minLpAmount Minimum amount of Lp tokens minted. 18 decimals
+    /// @return baseAmount Amount of vBase provided. 18 decimals
     /// @return fundingPayments Settled funding payments
     function provideLiquidity(
         address account,
@@ -477,19 +477,19 @@ contract Perpetual is IPerpetual, Context {
     }
 
     /// @notice Get the oracle Time-weighted-average-price
-    /// @return oracle twap (1e18)
+    /// @return oracle twap. 18 decimals
     function getOracleTwap() public view override returns (int256) {
         return oracleTwap;
     }
 
     /// @notice Get the market Time-weighted-average-price
-    /// @return market twap (1e18)
+    /// @return market twap. 18 decimals
     function getMarketTwap() public view override returns (int256) {
         return marketTwap;
     }
 
     /// @notice Get the market Total Liquidity provided to the Crypto Swap pool
-    /// @return market twap (1e18)
+    /// @return market twap. 18 decimals
     function getTotalLiquidityProvided() public view override returns (uint256) {
         return IERC20(market.token()).totalSupply();
     }
@@ -500,7 +500,7 @@ contract Perpetual is IPerpetual, Context {
 
     /// @notice Get the missed funding payments for a trader
     /// @param account Trader
-    /// @return upcomingFundingPayment Funding payment (1e18)
+    /// @return upcomingFundingPayment Funding payment. 18 decimals
 
     function getFundingPayments(address account) external view override returns (int256 upcomingFundingPayment) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
