@@ -2,11 +2,10 @@ name: Update Docs
 
 on:
   push:
-    # paths:
-    #   - 'contracts/**'
+    paths:
+      - 'contracts/**'
     branches:
       - main
-      - fix/docs-sync-workflow
 
 jobs:
   update-wiki:
