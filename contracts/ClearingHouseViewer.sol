@@ -138,6 +138,8 @@ contract ClearingHouseViewer is IClearingHouseViewer {
 
     /// @notice Get the proposed amount needed to close a position
     /// @dev Solidity implementation to minimize the node calls once has to make when finding proposed amount
+    /// @dev Should not be called from another contract
+    /// @dev TODO: use reductionRatio parameters
     /// @param idx Index of the perpetual market
     /// @param trader Account
     /// @param iter Maximum iterations
@@ -148,10 +150,10 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     ) external view override returns (uint256 amountIn, uint256 amountOut) {
         int256 positionSize = getTraderPosition(idx, trader).positionSize;
         if (positionSize > 0) {
-            amountIn = uint256(positionSize);
+            amountIn = positionSize.toUint256();
             amountOut = getExpectedVQuoteAmount(idx, amountIn);
         } else {
-            uint256 position = uint256(-positionSize);
+            uint256 position = (-positionSize).toUint256();
             amountOut = 0;
             amountIn = position.wadMul(marketPrice(idx));
             // binary search in [marketPrice * 0.7, marketPrice * 1.3]

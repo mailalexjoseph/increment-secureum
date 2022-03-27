@@ -381,7 +381,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         // update funding rate, so that the marginRatio is correct
         perpetuals[idx].updateTwapAndFundingRate();
 
-        uint256 positiveOpenNotional = uint256(_getTraderPosition(idx, liquidatee).openNotional.abs());
+        uint256 positiveOpenNotional = _getTraderPosition(idx, liquidatee).openNotional.abs().toUint256();
 
         require(positiveOpenNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
