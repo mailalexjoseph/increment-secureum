@@ -12,6 +12,26 @@ wighawag.
 
 Increment utilizes pooled virtual assets and Curve V2’s AMM trading engine to enable on-chain perpetual swaps, allowing traders to long or short global exchange rates with leverage. As the "virtual" part implies, there are only virtual balances in the Curve V2 AMM. Liquidity providers deposit real funds and the system mints the corresponding amount of virtual assets in the AMM as liquidity trading. Liquidity providers receive trading fees in exchange of taking the opposite side of traders.
 
+## Audit scope
+
+### main/
+
+- ClearingHouse
+- Insurance
+- Perpetual
+- Vault
+- ~~ClearingHouseViewer~~
+
+### tokens/
+
+- VBase
+- VQuote
+
+### lib/
+
+- LibPerpetual
+- LibReserve
+
 ## Documentation
 
 - documentation (link here)
@@ -45,7 +65,7 @@ Run unit tests:
 
 `yarn test:unit`
 
-Run integration tests:
+Run integration tests (require API key):
 
 `yarn test:integration`
 
