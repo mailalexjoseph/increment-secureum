@@ -14,6 +14,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {LibMath} from "./lib/LibMath.sol";
 import {LibPerpetual} from "./lib/LibPerpetual.sol";
 
+import "hardhat/console.sol";
+
 /// @title Clearing House Helper Contract
 /// @notice Access vault / perpetual / market getters through this contract
 contract ClearingHouseViewer is IClearingHouseViewer {
@@ -145,14 +147,13 @@ contract ClearingHouseViewer is IClearingHouseViewer {
         uint256 iter
     ) external view override returns (uint256 amountIn, uint256 amountOut) {
         int256 positionSize = getTraderPosition(idx, trader).positionSize;
-        uint256 position = uint256(positionSize);
         if (positionSize > 0) {
-            amountIn = position;
+            amountIn = uint256(positionSize);
             amountOut = getExpectedVQuoteAmount(idx, amountIn);
         } else {
+            uint256 position = uint256(-positionSize);
             amountOut = 0;
             amountIn = position.wadMul(marketPrice(idx));
-
             // binary search in [marketPrice * 0.7, marketPrice * 1.3]
             uint256 maxVal = (amountIn * 13) / 10;
             uint256 minVal = (amountIn * 7) / 10;

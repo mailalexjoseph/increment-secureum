@@ -118,7 +118,7 @@ export const funding = deployments.createFixture(async () => {
 /// @notice: Main deployment function
 export const setup = deployments.createFixture(async (): Promise<TestEnv> => {
   // get contracts
-  await deployments.fixture('Perpetual');
+  await deployments.fixture(['ClearingHouseViewer', 'Perpetual']);
 
   await logDeployments();
   const {deployer, bob, alice, user, trader, traderTwo, lp, lpTwo} =
