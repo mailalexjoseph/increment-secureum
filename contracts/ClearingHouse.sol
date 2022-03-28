@@ -4,8 +4,8 @@ pragma solidity 0.8.4;
 // contracts
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
@@ -24,7 +24,7 @@ import {LibReserve} from "./lib/LibReserve.sol";
 import "hardhat/console.sol";
 
 /// @notice Entry point for users to vault and perpetual markets
-contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
+contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuard {
     using LibMath for int256;
     using LibMath for uint256;
     using SafeERC20 for IERC20;
@@ -203,7 +203,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) public override whenNotPaused {
+    ) public override nonReentrant whenNotPaused {
         require(vault.deposit(idx, msg.sender, amount, token, true) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
     }
@@ -217,7 +217,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         // unlike `amount` which is 18 decimal-based, `withdrawAmount` is based on the number of decimals of `token`
         uint256 withdrawAmount = vault.withdraw(idx, msg.sender, amount, token, true);
 
@@ -240,7 +240,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) public override whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
+    ) public override nonReentrant whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
         /*
             if direction = Long
 
@@ -296,7 +296,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
 
         uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, true);
@@ -313,7 +313,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
-    ) public override whenNotPaused {
+    ) public override nonReentrant whenNotPaused {
         require(proposedAmount > 0, "The proposed amount can't be null");
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
@@ -333,40 +333,6 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     /*  Liquidation flow  */
     /* ****************** */
 
-    /// @notice Determines whether or not a position is valid for a given margin ratio
-    /// @param idx Index of the perpetual market
-    /// @param account Account of the position to get the margin ratio from
-    /// @param ratio Proposed ratio to compare the position against
-    /// @return True if the position exceeds margin ratio, false otherwise
-    function marginIsValid(
-        uint256 idx,
-        address account,
-        int256 ratio
-    ) public view override returns (bool) {
-        return marginRatio(idx, account) >= ratio;
-    }
-
-    /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
-    /// @param idx Index of the perpetual market
-    /// @param account Account of the position to get the margin ratio from
-    /// @return Margin ratio of the position. 18 decimals
-    function marginRatio(uint256 idx, address account) public view override returns (int256) {
-        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
-        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
-        int256 openNotional = _getTraderPosition(idx, account).openNotional;
-
-        // when no position open, margin ratio is 100%
-        if (openNotional == 0) {
-            return 1e18;
-        }
-
-        int256 collateral = _getTraderReserveValue(idx, account);
-        int256 fundingPayments = _getFundingPayments(idx, account);
-        int256 unrealizedPositionPnl = _getUnrealizedPnL(idx, account);
-
-        return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
-    }
-
     /// @notice Submit the address of a trader whose position is worth liquidating for a reward
     /// @param idx Index of the perpetual market
     /// @param liquidatee Address of the trader to liquidate
@@ -375,13 +341,13 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 idx,
         address liquidatee,
         uint256 proposedAmount
-    ) external override whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         address liquidator = msg.sender;
 
         // update funding rate, so that the marginRatio is correct
         perpetuals[idx].updateTwapAndFundingRate();
 
-        uint256 positiveOpenNotional = _getTraderPosition(idx, liquidatee).openNotional.abs().toUint256();
+        uint256 positiveOpenNotional = uint256(_getTraderPosition(idx, liquidatee).openNotional.abs());
 
         require(positiveOpenNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
@@ -423,7 +389,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256 amount,
         uint256 minLpAmount,
         IERC20 token
-    ) external override whenNotPaused returns (uint256 wadAmount, uint256 baseAmount) {
+    ) external override nonReentrant whenNotPaused returns (uint256 wadAmount, uint256 baseAmount) {
         require(amount != 0, "Zero amount");
 
         // split liquidity between long and short
@@ -458,7 +424,7 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
         uint256[2] calldata minVTokenAmounts,
         uint256 minAmount,
         IERC20 token
-    ) external override whenNotPaused {
+    ) public override nonReentrant nonReentrant whenNotPaused {
         (int256 vQuoteProceeds, int256 vBaseAmount, int256 profit) = perpetuals[idx].removeLiquidity(
             msg.sender,
             liquidityAmountToRemove,
@@ -560,7 +526,45 @@ contract ClearingHouse is IClearingHouse, Context, IncreOwnable, Pausable {
     }
 
     /* ****************** */
-    /*   User getter      */
+    /*   User viewer      */
+    /* ****************** */
+
+    /// @notice Determines whether or not a position is valid for a given margin ratio
+    /// @param idx Index of the perpetual market
+    /// @param account Account of the position to get the margin ratio from
+    /// @param ratio Proposed ratio to compare the position against
+    /// @return True if the position exceeds margin ratio, false otherwise
+    function marginIsValid(
+        uint256 idx,
+        address account,
+        int256 ratio
+    ) public view override returns (bool) {
+        return marginRatio(idx, account) >= ratio;
+    }
+
+    /// @notice Get the margin ratio of a trading position (given that, for now, 1 trading position = 1 address)
+    /// @param idx Index of the perpetual market
+    /// @param account Account of the position to get the margin ratio from
+    /// @return Margin ratio of the position (in 1e18)
+    function marginRatio(uint256 idx, address account) public view override returns (int256) {
+        // margin ratio = (collateral + unrealizedPositionPnl + fundingPayments) / trader.openNotional
+        // all amounts must be expressed in vQuote (e.g. USD), otherwise the end result doesn't make sense
+        int256 openNotional = _getTraderPosition(idx, account).openNotional;
+
+        // when no position open, margin ratio is 100%
+        if (openNotional == 0) {
+            return 1e18;
+        }
+
+        int256 collateral = _getTraderReserveValue(idx, account);
+        int256 fundingPayments = _getFundingPayments(idx, account);
+        int256 unrealizedPositionPnl = _getUnrealizedPnL(idx, account);
+
+        return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
+    }
+
+    /* ****************** */
+    /*   internal getter  */
     /* ****************** */
 
     function _getFundingPayments(uint256 idx, address account) internal view returns (int256 upcomingFundingPayment) {

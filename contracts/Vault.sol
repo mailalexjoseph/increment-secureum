@@ -4,7 +4,6 @@ pragma solidity 0.8.4;
 // contracts
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {PRBMathSD59x18} from "prb-math/contracts/PRBMathSD59x18.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
@@ -22,7 +21,7 @@ import "hardhat/console.sol";
 
 /// @notice Keeps track of all token reserves for all market
 /// @dev Vault must be called right after Perpetual is deployed to set Perpetual as the owner of the contract
-contract Vault is IVault, Context, IncreOwnable {
+contract Vault is IVault, IncreOwnable {
     using SafeERC20 for IERC20;
     using LibMath for uint256;
     using LibMath for int256;

@@ -3,7 +3,6 @@ pragma solidity 0.8.4;
 
 // contracts
 import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
-import {Context} from "@openzeppelin/contracts/utils/Context.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 // interfaces
@@ -20,7 +19,7 @@ import {LibPerpetual} from "./lib/LibPerpetual.sol";
 import "hardhat/console.sol";
 
 /// @notice Handles all the trading logic. Interact with the CryptoSwap pool
-contract Perpetual is IPerpetual, Context {
+contract Perpetual is IPerpetual {
     using LibMath for int256;
     using LibMath for uint256;
 
