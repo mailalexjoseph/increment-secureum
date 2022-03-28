@@ -35,9 +35,6 @@ describe('Increment Protocol: Deployment', function () {
     expect(await deployer.clearingHouse.perpetuals(0)).to.be.equal(
       deployer.perpetual.address
     );
-    expect(await deployer.clearingHouse.insurance()).to.be.equal(
-      deployer.insurance.address
-    );
     expect(await deployer.clearingHouse.vault()).to.be.equal(
       deployer.vault.address
     );

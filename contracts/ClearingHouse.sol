@@ -14,7 +14,6 @@ import {IPerpetual} from "./interfaces/IPerpetual.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVault} from "./interfaces/IVault.sol";
 import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
-import {IInsurance} from "./interfaces/IInsurance.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -61,9 +60,6 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
 
     /// @notice Vault contract
     IVault public override vault;
-
-    /// @notice Insurance contract
-    IInsurance public override insurance;
 
     /// @notice Allowlisted Perpetual contracts
     IPerpetual[] public override perpetuals;
@@ -164,11 +160,9 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
     /// @param amount Amount of insurance reserves withdrawn. 18 decimals
     event InsuranceRemoved(uint256 amount);
 
-    constructor(IVault _vault, IInsurance _insurance) {
+    constructor(IVault _vault) {
         require(address(_vault) != address(0), "Vault address cannot be 0");
-        require(address(_insurance) != address(0), "Insurance address cannot be 0");
         vault = _vault;
-        insurance = _insurance;
     }
 
     /* ****************** */

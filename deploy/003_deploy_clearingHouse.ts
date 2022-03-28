@@ -8,14 +8,9 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
 
   const vault = await ethers.getContract(getVaultVersionToUse(hre), deployer);
 
-  const clearingHouseConstructorArgs = [
-    vault.address,
-    (await ethers.getContract('Insurance', deployer)).address,
-  ];
-
   await hre.deployments.deploy('ClearingHouse', {
     from: deployer,
-    args: clearingHouseConstructorArgs,
+    args: [vault.address],
     log: true,
   });
 

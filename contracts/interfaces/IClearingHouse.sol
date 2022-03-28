@@ -7,7 +7,6 @@ import {IPerpetual} from "./IPerpetual.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IVault} from "./IVault.sol";
 import {ICryptoSwap} from "./ICryptoSwap.sol";
-import {IInsurance} from "./IInsurance.sol";
 
 // libraries
 import {LibPerpetual} from "../lib/LibPerpetual.sol";
@@ -18,8 +17,6 @@ interface IClearingHouse {
     /* ****************** */
 
     function vault() external view returns (IVault);
-
-    function insurance() external view returns (IInsurance);
 
     function perpetuals(uint256 idx) external view returns (IPerpetual);
 
