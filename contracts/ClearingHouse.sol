@@ -190,7 +190,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         LibPerpetual.Side direction,
         uint256 minAmount
     ) external override whenNotPaused returns (int256, int256) {
-        deposit(idx, collateralAmount, token);
+        _deposit(idx, collateralAmount, token);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
 
@@ -204,8 +204,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 amount,
         IERC20 token
     ) public override nonReentrant whenNotPaused {
-        require(vault.deposit(idx, msg.sender, amount, token, true) > 0);
-        emit Deposit(idx, msg.sender, address(token), amount);
+        _deposit(idx, amount, token);
     }
 
     /// @notice Withdraw tokens from the vault
@@ -241,6 +240,15 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         LibPerpetual.Side direction,
         uint256 minAmount
     ) public override nonReentrant whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
+        (addedOpenNotional, addedPositionSize) = _extendPosition(idx, amount, direction, minAmount);
+    }
+
+    function _extendPosition(
+        uint256 idx,
+        uint256 amount,
+        LibPerpetual.Side direction,
+        uint256 minAmount
+    ) internal returns (int256 addedOpenNotional, int256 addedPositionSize) {
         /*
             if direction = Long
 
@@ -297,7 +305,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 minAmount,
         IERC20 token
     ) external override nonReentrant whenNotPaused {
-        reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
+        _reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
 
         uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, true);
         emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
@@ -313,20 +321,8 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
-    ) public override nonReentrant whenNotPaused {
-        require(proposedAmount > 0, "The proposed amount can't be null");
-
-        (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
-            msg.sender,
-            reductionRatio,
-            proposedAmount,
-            minAmount
-        );
-
-        // apply changes to collateral
-        vault.settleProfit(idx, msg.sender, profit, true);
-
-        emit ReducePosition(idx, msg.sender, reducedOpenNotional, reducedPositionSize);
+    ) external override nonReentrant whenNotPaused {
+        _reducePosition(idx, reductionRatio, proposedAmount, minAmount);
     }
 
     /* ****************** */
@@ -424,7 +420,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256[2] calldata minVTokenAmounts,
         uint256 minAmount,
         IERC20 token
-    ) public override nonReentrant nonReentrant whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         (int256 vQuoteProceeds, int256 vBaseAmount, int256 profit) = perpetuals[idx].removeLiquidity(
             msg.sender,
             liquidityAmountToRemove,
@@ -561,6 +557,42 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         int256 unrealizedPositionPnl = _getUnrealizedPnL(idx, account);
 
         return _marginRatio(collateral, unrealizedPositionPnl, fundingPayments, openNotional);
+    }
+
+    /* ****************** */
+    /*   internal user    */
+    /* ****************** */
+
+    /// @dev sub-function of deposit()
+    function _deposit(
+        uint256 idx,
+        uint256 amount,
+        IERC20 token
+    ) internal {
+        require(vault.deposit(idx, msg.sender, amount, token, true) > 0);
+        emit Deposit(idx, msg.sender, address(token), amount);
+    }
+
+    /// @dev sub-function of reducePosition()
+    function _reducePosition(
+        uint256 idx,
+        uint256 reductionRatio,
+        uint256 proposedAmount,
+        uint256 minAmount
+    ) internal {
+        require(proposedAmount > 0, "The proposed amount can't be null");
+
+        (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
+            msg.sender,
+            reductionRatio,
+            proposedAmount,
+            minAmount
+        );
+
+        // apply changes to collateral
+        vault.settleProfit(idx, msg.sender, profit, true);
+
+        emit ReducePosition(idx, msg.sender, reducedOpenNotional, reducedPositionSize);
     }
 
     /* ****************** */
