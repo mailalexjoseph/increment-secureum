@@ -226,6 +226,7 @@ contract Perpetual is IPerpetual {
     )
         external
         override
+        onlyClearingHouse
         returns (
             int256 vQuoteProceeds,
             int256 vBaseAmount,
@@ -500,7 +501,6 @@ contract Perpetual is IPerpetual {
     /// @notice Get the missed funding payments for a trader
     /// @param account Trader
     /// @return upcomingFundingPayment Funding payment. 18 decimals
-
     function getFundingPayments(address account) external view override returns (int256 upcomingFundingPayment) {
         LibPerpetual.UserPosition memory user = traderPosition[account];
         LibPerpetual.GlobalPosition memory global = globalPosition;
