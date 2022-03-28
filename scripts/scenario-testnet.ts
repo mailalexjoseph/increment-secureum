@@ -2,7 +2,7 @@ import {ethers, getNamedAccounts} from 'hardhat';
 
 import {Side} from '../test/helpers/utils/types';
 import {setupUsers} from '../helpers/misc-utils';
-import {tokenToWad} from '../helpers/contracts-helpers';
+import {tokenToWad, wadToToken} from '../helpers/contracts-helpers';
 import {
   extendPositionWithCollateral,
   closePosition,
@@ -65,7 +65,7 @@ async function fundAccounts(
   if ((await usdcMock.owner()) !== user.address) {
     throw 'User can not mint tokens';
   }
-  const tokenAmount = await tokenToWad(await user.usdc.decimals(), amount);
+  const tokenAmount = await wadToToken(await user.usdc.decimals(), amount);
 
   for (const account of accounts) {
     await (await usdcMock.mint(account, tokenAmount)).wait();
@@ -131,17 +131,17 @@ const main = async function () {
     console.log('Fund accounts');
     const usdcMock = <USDCmock>deployer.usdc;
     if ((await usdcMock.owner()) === deployer.address) {
-      await fundAccounts(deployer, asBigNumber('100000'), [
-        deployer.address,
+      await fundAccounts(deployer, asBigNumber('10000'), [
         user.address,
         liquidator.address,
         frontend.address,
         backend.address,
         tester.address,
       ]);
+      await fundAccounts(deployer, asBigNumber('1000000'), [deployer.address]);
     }
     console.log('Provide initial liquidity');
-    await provideLiquidity(deployer, deployer.usdc, asBigNumber('100000'));
+    await provideLiquidity(deployer, deployer.usdc, asBigNumber('500000'));
   }
 
   /* open short position */
