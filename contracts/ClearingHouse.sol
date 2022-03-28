@@ -197,7 +197,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 idx,
         uint256 amount,
         IERC20 token
-    ) public override nonReentrant whenNotPaused {
+    ) external override nonReentrant whenNotPaused {
         _deposit(idx, amount, token);
     }
 

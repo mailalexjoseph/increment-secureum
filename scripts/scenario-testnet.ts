@@ -2,7 +2,7 @@ import {ethers, getNamedAccounts} from 'hardhat';
 
 import {Side} from '../test/helpers/utils/types';
 import {setupUsers} from '../helpers/misc-utils';
-import {tokenToWad, wadToToken} from '../helpers/contracts-helpers';
+import {wadToToken} from '../helpers/contracts-helpers';
 import {
   extendPositionWithCollateral,
   closePosition,

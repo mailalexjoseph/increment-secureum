@@ -41,6 +41,7 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     /// @param idx Index of the perpetual market
     /// @param vQuoteAmountToSpend Amount of vQuote to be exchanged against some vBase. 18 decimals
     function getExpectedVBaseAmount(uint256 idx, uint256 vQuoteAmountToSpend) public view override returns (uint256) {
+        // slither-disable-next-line calls-loop
         return clearingHouse.perpetuals(idx).market().get_dy(VQUOTE_INDEX, VBASE_INDEX, vQuoteAmountToSpend);
     }
 

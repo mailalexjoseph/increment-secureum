@@ -869,6 +869,7 @@ contract Perpetual is IPerpetual {
     }
 
     function _getPositionDirection(LibPerpetual.UserPosition memory user) internal view returns (bool _isLong) {
+        // slither-disable-next-line incorrect-equality
         if (user.liquidityBalance == 0) {
             // trader position
             return user.positionSize > 0;

@@ -4,7 +4,7 @@ import env, {ethers} from 'hardhat';
 
 // helpers
 import {setup, funding, User} from '../helpers/setup';
-import {tokenToWad, wadToToken} from '../../helpers/contracts-helpers';
+import {tokenToWad} from '../../helpers/contracts-helpers';
 import {
   impersonateAccountsHardhat,
   fundAccountsHardhat,
