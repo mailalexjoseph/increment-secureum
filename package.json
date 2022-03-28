@@ -71,7 +71,7 @@
     "execute": "node ./_scripts.js run",
     "deploy": "node ./_scripts.js deploy",
     "export": "node ./_scripts.js export",
-    "deployment:kovan": "yarn deploy kovan && yarn hardhat run scripts/scenario-testnet.ts --network kovan && yarn hardhat etherscan-verify --network kovan",
+    "deployment:kovan": "yarn deploy kovan && yarn hardhat etherscan-verify --network kovan  && yarn hardhat run scripts/scenario-testnet.ts --network kovan",
     "contract:size": "echo 'maximum contract size is 24KB' && yarn run hardhat size-contracts",
     "compile:vyper": "rm ./typechain -r & yarn hardhat clean && yarn hardhat compile-vyper --directory contracts-vyper",
     "prerun:scenario": "mkdir deployments/mainnet || cp -r deployments/localhost/* deployments/mainnet",
