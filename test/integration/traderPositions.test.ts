@@ -825,7 +825,7 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should correctly calculate the price impact', async () => {
     // init
-    const MAX_PRICE_DEVIATION = asBigNumber('0.02');
+    const MAX_PRICE_DEVIATION = asBigNumber('0.05');
     const startPrice = asBigNumber('1');
 
     const largePriceInvalid = startPrice.add(

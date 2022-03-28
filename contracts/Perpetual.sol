@@ -28,7 +28,7 @@ contract Perpetual is IPerpetual {
     uint256 internal constant VBASE_INDEX = 1;
     uint256 internal constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
     int256 internal constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
-    int256 internal constant MAX_PRICE_DEVIATION = 2e16; // max price change per block
+    int256 internal constant MAX_PRICE_DEVIATION = 5e16; // max price change per block
 
     // dependencies
 
