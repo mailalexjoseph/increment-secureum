@@ -369,6 +369,8 @@ contract Perpetual is IPerpetual {
         // lower balances
         lp.liquidityBalance -= liquidityAmountToRemove;
 
+        profit = _settleLpFundingRate(lp, global);
+
         // remove liquidity from curve pool
         uint256 baseAmount;
         uint256 quoteAmount;
@@ -396,8 +398,9 @@ contract Perpetual is IPerpetual {
         lp.openNotional += quoteAmount.toInt256();
         lp.positionSize += baseAmount.toInt256();
 
+        int256 pnl;
         // profit = pnl + fundingPayments
-        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(lp, reductionRatio, proposedAmount, minAmount);
+        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(lp, reductionRatio, proposedAmount, minAmount);
 
         // check max deviation
         require(
@@ -405,8 +408,21 @@ contract Perpetual is IPerpetual {
             "Price impact too large"
         );
 
+        //console.log("pnl is");
+        //console.logInt(pnl);
+
+        //console.log("funding is");
+        //console.logInt(profit);
+
         // adjust lp position
-        profit += _settleFundingRate(lp, global);
+        profit += pnl;
+
+        //console.log(" lp.positionSize ");
+        //console.logInt(lp.positionSize);
+
+        //console.log("vBaseAmount");
+        //console.logInt(vBaseAmount);
+
         lp.openNotional += vQuoteProceeds;
         lp.positionSize += vBaseAmount;
 
@@ -578,20 +594,38 @@ contract Perpetual is IPerpetual {
     {
         bool isLong = _getPositionDirection(user);
         int256 positionSizeToReduce = user.positionSize.wadMul(reductionRatio.toInt256());
-        int256 openNotionalToReduce = user.openNotional.wadMul(reductionRatio.toInt256());
 
         require(
             _checkProposedAmount(isLong, positionSizeToReduce, proposedAmount),
             "Amount submitted too far from the market price of the position or exceeds the position size"
         );
 
+        //console.log("proposedAmount");
+        //console.log(proposedAmount);
+
+        //console.log("reductionRatio");
+        //console.log(reductionRatio);
+
         // PnL of the position
-        (vBaseAmount, vQuoteProceeds) = _reducePositionOnMarket(
+        uint256 realizedReductionRatio;
+        (vBaseAmount, vQuoteProceeds, realizedReductionRatio) = _reducePositionOnMarket(
             isLong,
             positionSizeToReduce,
             proposedAmount,
             minAmount
         );
+
+        //console.log("realizedReductionRatio");
+        //console.log(realizedReductionRatio);
+
+        // take the realized reduction ratio when calculating the pnl
+        int256 openNotionalToReduce = user.openNotional.wadMul(realizedReductionRatio.toInt256());
+
+        //console.log("vQuoteProceeds");
+        //console.logInt(vQuoteProceeds);
+
+        //console.log("openNotionalToReduce");
+        //console.logInt(openNotionalToReduce);
 
         pnl = vQuoteProceeds + openNotionalToReduce;
     }
@@ -602,14 +636,29 @@ contract Perpetual is IPerpetual {
         int256 positionSize,
         uint256 proposedAmount,
         uint256 minAmount
-    ) internal returns (int256 vBaseAmount, int256 vQuoteProceeds) {
+    )
+        internal
+        returns (
+            int256 vBaseAmount,
+            int256 vQuoteProceeds,
+            uint256 realizedReductionRatio
+        )
+    {
         if (isLong) {
             uint256 amount = _baseForQuote(proposedAmount, minAmount);
             vQuoteProceeds = amount.toInt256();
             vBaseAmount = -(proposedAmount.toInt256());
+
+            //console.log("isLong");
+            realizedReductionRatio = proposedAmount.wadDiv(positionSize.abs().toUint256()); //  abs() in case of partial removing liquidity
         } else {
+            //console.log("isShort");
+
             uint256 positivePositionSize = (-positionSize).toUint256();
             uint256 vBaseProceeds = _quoteForBase(proposedAmount, minAmount);
+
+            //console.log("positivePositionSize", positivePositionSize);
+            //console.log("vBaseProceeds", vBaseProceeds);
 
             /*
             Question: Why do we make up to two swap when closing a short position?
@@ -658,6 +707,7 @@ contract Perpetual is IPerpetual {
             vQuoteProceeds = -proposedAmount.toInt256() + additionalProceeds.toInt256();
             // baseRemaining will be 0 if proposedAmount not more than what's needed to fully buy back short position
             vBaseAmount = (vBaseProceeds - baseRemaining).toInt256();
+            realizedReductionRatio = vBaseAmount.toUint256().wadDiv(positivePositionSize);
         }
     }
 
@@ -680,22 +730,40 @@ contract Perpetual is IPerpetual {
         traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
     }
 
-    function _settleFundingRate(LibPerpetual.UserPosition storage trader, LibPerpetual.GlobalPosition storage global)
+    function _settleFundingRate(LibPerpetual.UserPosition storage user, LibPerpetual.GlobalPosition storage global)
         internal
         returns (int256 fundingPayments)
     {
         // apply funding rate on existing positionSize
-        bool isLong = _getPositionDirection(trader);
         fundingPayments = 0;
-        if (trader.positionSize != 0) {
+        if (user.positionSize != 0) {
+            // settle trader funding rate
             fundingPayments = _getFundingPayments(
-                isLong,
-                trader.cumFundingRate,
+                user.positionSize > 0,
+                user.cumFundingRate,
                 global.cumFundingRate,
-                trader.positionSize.abs()
+                user.positionSize.abs()
             );
         }
-        trader.cumFundingRate = global.cumFundingRate;
+
+        user.cumFundingRate = global.cumFundingRate;
+
+        return fundingPayments;
+    }
+
+    function _settleLpFundingRate(LibPerpetual.UserPosition storage lp, LibPerpetual.GlobalPosition storage global)
+        internal
+        returns (int256 fundingPayments)
+    {
+        // settle lp funding rate
+        int256 virtualPositionSize = _getVBasePositionAfterVirtualWithdrawal(lp);
+        fundingPayments = _getFundingPayments(
+            virtualPositionSize > 0,
+            lp.cumFundingRate,
+            global.cumFundingRate,
+            virtualPositionSize.abs()
+        );
+        lp.cumFundingRate = global.cumFundingRate;
 
         return fundingPayments;
     }
@@ -866,12 +934,20 @@ contract Perpetual is IPerpetual {
             // trader position
             return user.positionSize > 0;
         } else {
-            // LP position
-            // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
-            int256 vBasePositionAfterVirtualWithdrawal = user.positionSize +
-                ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided() - 1).toInt256();
-
-            return vBasePositionAfterVirtualWithdrawal > 0;
+            return _getVBasePositionAfterVirtualWithdrawal(user) > 0;
         }
+    }
+
+    function _getVBasePositionAfterVirtualWithdrawal(LibPerpetual.UserPosition memory user)
+        internal
+        view
+        returns (int256 vBasePositionAfterVirtualWithdrawal)
+    {
+        // LP position
+        // determine if current position looks like a LONG or a SHORT by simulating a sell-off of the position
+        vBasePositionAfterVirtualWithdrawal =
+            user.positionSize +
+            ((market.balances(VBASE_INDEX) * user.liquidityBalance) / getTotalLiquidityProvided()).toInt256() -
+            1;
     }
 }

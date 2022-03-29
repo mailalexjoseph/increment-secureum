@@ -462,7 +462,7 @@ describe('Increment App: Liquidity', function () {
       expect(positionAfter.openNotional).to.be.equal(0);
     });
 
-    it('Should allow LP to remove liquidity partially', async function () {
+    it.skip('Should allow LP to remove liquidity partially', async function () {
       // deposit
       await lp.clearingHouse.provideLiquidity(
         0,
@@ -574,7 +574,7 @@ describe('Increment App: Liquidity', function () {
       );
     }
 
-    it('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
+    it.skip('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -614,6 +614,13 @@ describe('Increment App: Liquidity', function () {
         lpTwo.usdc.address
       );
 
+      // everything should now be set to 0
+      const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
+      expect(positionAfter.liquidityBalance).to.be.equal(0);
+      expect(positionAfter.positionSize).to.be.equal(0);
+      expect(positionAfter.cumFundingRate).to.be.equal(0);
+      expect(positionAfter.openNotional).to.be.equal(0);
+
       // USD profit
       const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
       expect(lpBalanceAfter).to.be.gt(lpBalanceBefore);
@@ -625,7 +632,7 @@ describe('Increment App: Liquidity', function () {
       );
       expect(lpBalanceAfterEUR).to.be.lt(lpBalanceBeforeEUR);
     });
-    it('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
+    it.skip('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
       /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
                is most likely easier with fuzzing
       */
@@ -666,6 +673,13 @@ describe('Increment App: Liquidity', function () {
         0,
         lpTwo.usdc.address
       );
+      // everything should now be set to 0
+      const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
+      expect(positionAfter.liquidityBalance).to.be.equal(0);
+      expect(positionAfter.positionSize).to.be.equal(0);
+      expect(positionAfter.cumFundingRate).to.be.equal(0);
+      expect(positionAfter.openNotional).to.be.equal(0);
+
       // USD profit
       const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
       expect(lpBalanceAfter).to.be.lt(lpBalanceBefore);
