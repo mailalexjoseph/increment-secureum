@@ -191,21 +191,10 @@ contract Perpetual is IPerpetual {
             "Price impact too large"
         );
 
-        // apply funding rate on existing positionSize
-        fundingPayments = 0;
-        if (trader.positionSize != 0) {
-            fundingPayments = _getFundingPayments(
-                isLong,
-                trader.cumFundingRate,
-                global.cumFundingRate,
-                trader.positionSize.abs()
-            );
-        }
-
         // update position
+        fundingPayments = _settleFundingRate(trader, global);
         trader.openNotional += openNotional;
         trader.positionSize += positionSize;
-        trader.cumFundingRate = global.cumFundingRate;
 
         return (openNotional, positionSize, fundingPayments);
     }
@@ -266,13 +255,8 @@ contract Perpetual is IPerpetual {
         // update state
         updateTwapAndFundingRate();
 
-        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(
-            trader,
-            global,
-            reductionRatio,
-            proposedAmount,
-            minAmount
-        );
+        int256 pnl;
+        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(trader, reductionRatio, proposedAmount, minAmount);
 
         // check max deviation
         require(
@@ -281,6 +265,7 @@ contract Perpetual is IPerpetual {
         );
 
         // adjust trader position
+        profit = pnl + _settleFundingRate(trader, global); // pnl + fundingPayments
         trader.openNotional += vQuoteProceeds;
         trader.positionSize += vBaseAmount;
 
@@ -374,6 +359,7 @@ contract Perpetual is IPerpetual {
         )
     {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
 
         updateTwapAndFundingRate();
 
@@ -411,13 +397,7 @@ contract Perpetual is IPerpetual {
         lp.positionSize += baseAmount.toInt256();
 
         // profit = pnl + fundingPayments
-        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(
-            lp,
-            globalPosition,
-            reductionRatio,
-            proposedAmount,
-            minAmount
-        );
+        (vBaseAmount, vQuoteProceeds, profit) = _reducePosition(lp, reductionRatio, proposedAmount, minAmount);
 
         // check max deviation
         require(
@@ -426,6 +406,7 @@ contract Perpetual is IPerpetual {
         );
 
         // adjust lp position
+        profit += _settleFundingRate(lp, global);
         lp.openNotional += vQuoteProceeds;
         lp.positionSize += vBaseAmount;
 
@@ -584,7 +565,6 @@ contract Perpetual is IPerpetual {
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function _reducePosition(
         LibPerpetual.UserPosition memory user,
-        LibPerpetual.GlobalPosition memory global,
         uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
@@ -593,7 +573,7 @@ contract Perpetual is IPerpetual {
         returns (
             int256 vBaseAmount,
             int256 vQuoteProceeds,
-            int256 profit
+            int256 pnl
         )
     {
         bool isLong = _getPositionDirection(user);
@@ -613,15 +593,7 @@ contract Perpetual is IPerpetual {
             minAmount
         );
 
-        // update profit using funding payment info in the `global` struct
-        int256 fundingPayment = _getFundingPayments(
-            isLong,
-            user.cumFundingRate,
-            global.cumFundingRate,
-            positionSizeToReduce.abs()
-        );
-
-        profit = vQuoteProceeds + fundingPayment + openNotionalToReduce;
+        pnl = vQuoteProceeds + openNotionalToReduce;
     }
 
     /// @notice Returns vBaseAmount and vQuoteProceeds to reflect how much the position has been reduced
@@ -706,6 +678,26 @@ contract Perpetual is IPerpetual {
     // @notice Donate base tokens ("dust") to governance
     function _donate(uint256 baseAmount) internal {
         traderPosition[address(clearingHouse)].positionSize += baseAmount.toInt256();
+    }
+
+    function _settleFundingRate(LibPerpetual.UserPosition storage trader, LibPerpetual.GlobalPosition storage global)
+        internal
+        returns (int256 fundingPayments)
+    {
+        // apply funding rate on existing positionSize
+        bool isLong = _getPositionDirection(trader);
+        fundingPayments = 0;
+        if (trader.positionSize != 0) {
+            fundingPayments = _getFundingPayments(
+                isLong,
+                trader.cumFundingRate,
+                global.cumFundingRate,
+                trader.positionSize.abs()
+            );
+        }
+        trader.cumFundingRate = global.cumFundingRate;
+
+        return fundingPayments;
     }
 
     /**************** TWAP ****************/
