@@ -189,12 +189,7 @@ describe('Increment: open/close long/short trading positions', () => {
       await alice.perpetual.getTraderPosition(alice.address)
     ).positionSize;
 
-    await alice.clearingHouse.reducePosition(
-      0,
-      FULL_REDUCTION_RATIO,
-      alicePositionSize,
-      0
-    );
+    await alice.clearingHouse.reducePosition(0, alicePositionSize, 0);
 
     // expected values
     await expect(
@@ -379,7 +374,6 @@ describe('Increment: open/close long/short trading positions', () => {
     if (direction === Side.Long) {
       await alice.clearingHouse.reducePosition(
         0,
-        FULL_REDUCTION_RATIO,
         traderPositionAfterSecondTrade.positionSize,
         0
       );
@@ -399,7 +393,6 @@ describe('Increment: open/close long/short trading positions', () => {
 
       await alice.clearingHouse.reducePosition(
         0,
-        FULL_REDUCTION_RATIO,
         vQuoteAmountToBuyBackVBasePosition,
         0
       );
@@ -505,18 +498,13 @@ describe('Increment: open/close long/short trading positions', () => {
 
   it('Should fail to close position if callee has no opened position at the moment', async () => {
     await expect(
-      alice.clearingHouse.reducePosition(
-        0,
-        FULL_REDUCTION_RATIO,
-        ethers.utils.parseEther('1'),
-        0
-      )
+      alice.clearingHouse.reducePosition(0, ethers.utils.parseEther('1'), 0)
     ).to.be.revertedWith('No position currently opened in this market');
   });
 
   it('Should fail to close position if proposedAmount is null', async () => {
     await expect(
-      alice.clearingHouse.reducePosition(0, FULL_REDUCTION_RATIO, 0, 0)
+      alice.clearingHouse.reducePosition(0, 0, 0)
     ).to.be.revertedWith("The proposed amount can't be null");
   });
 
@@ -557,7 +545,6 @@ describe('Increment: open/close long/short trading positions', () => {
     // TODO: check 'ReducePosition' is getting emitted
     await alice.clearingHouse.reducePosition(
       0,
-      FULL_REDUCTION_RATIO,
       alicePositionBeforeClosingPosition.positionSize,
       0
     );
@@ -638,7 +625,6 @@ describe('Increment: open/close long/short trading positions', () => {
     );
     await alice.clearingHouse.reducePosition(
       0,
-      FULL_REDUCTION_RATIO,
       vQuoteAmountToBuyBackVBasePosition,
       0
     );
@@ -715,7 +701,6 @@ describe('Increment: open/close long/short trading positions', () => {
       // reduce position by half
       await alice.clearingHouse.reducePosition(
         0,
-        FULL_REDUCTION_RATIO.div(reductionRatio),
         traderPositionAfterFirstTrade.positionSize.div(reductionRatio),
         0
       );
@@ -728,12 +713,7 @@ describe('Increment: open/close long/short trading positions', () => {
           traderPositionAfterFirstTrade.openNotional.div(reductionRatio).div(4)
         );
 
-      await alice.clearingHouse.reducePosition(
-        0,
-        FULL_REDUCTION_RATIO.div(reductionRatio),
-        vQuoteAmountToRemove,
-        0
-      );
+      await alice.clearingHouse.reducePosition(0, vQuoteAmountToRemove, 0);
     }
 
     // CHECK TRADER POSITION
@@ -760,7 +740,6 @@ describe('Increment: open/close long/short trading positions', () => {
     if (direction === Side.Long) {
       await alice.clearingHouse.reducePosition(
         0,
-        FULL_REDUCTION_RATIO,
         traderPositionAfterSecondTrade.positionSize,
         0
       );
@@ -771,10 +750,8 @@ describe('Increment: open/close long/short trading positions', () => {
         traderPositionAfterSecondTrade.openNotional.add(
           traderPositionAfterSecondTrade.openNotional.div(4)
         );
-
       await alice.clearingHouse.reducePosition(
         0,
-        FULL_REDUCTION_RATIO,
         vQuoteAmountToBuyBackVBasePosition,
         0
       );

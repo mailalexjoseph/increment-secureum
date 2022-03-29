@@ -472,7 +472,6 @@ describe('Increment App: Liquidity', function () {
 
       await lp.clearingHouse.settleLiquidityProvider(
         0,
-        FULL_REDUCTION_RATIO,
         proposedAmount,
         0,
         lp.usdc.address
@@ -744,14 +743,9 @@ describe('Increment App: Liquidity', function () {
         traderPosition,
         trader.market
       );
-      const fullReductionRatio = ethers.utils.parseEther('1');
+
       await expect(
-        trader.clearingHouse.reducePosition(
-          0,
-          fullReductionRatio,
-          closeProposedAmount,
-          0
-        )
+        trader.clearingHouse.reducePosition(0, closeProposedAmount, 0)
       )
         .to.emit(trader.perpetual, 'DustGenerated')
         .withArgs(eBaseDust);

@@ -41,12 +41,7 @@ describe('Increment App: ClearingHouseViewer', function () {
         5
       );
 
-      await trader.clearingHouse.reducePosition(
-        0,
-        FULL_REDUCTION_RATIO,
-        proposedAmount.amountIn,
-        0
-      );
+      await trader.clearingHouse.reducePosition(0, proposedAmount.amountIn, 0);
 
       expect(
         (await trader.perpetual.getTraderPosition(trader.address)).positionSize
@@ -68,12 +63,7 @@ describe('Increment App: ClearingHouseViewer', function () {
         5
       );
 
-      await trader.clearingHouse.reducePosition(
-        0,
-        FULL_REDUCTION_RATIO,
-        proposedAmount.amountIn,
-        0
-      );
+      await trader.clearingHouse.reducePosition(0, proposedAmount.amountIn, 0);
 
       expect(
         (await trader.perpetual.getTraderPosition(trader.address)).positionSize

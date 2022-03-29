@@ -28,9 +28,6 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
     using LibMath for uint256;
     using SafeERC20 for IERC20;
 
-    // constants
-    uint256 internal constant FULL_REDUCTION_RATIO = 1e18; // reduce position by 100%
-
     // parameterization
 
     /// @notice minimum maintenance margin
@@ -297,24 +294,26 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 minAmount,
         IERC20 token
     ) external override nonReentrant whenNotPaused {
-        _reducePosition(idx, FULL_REDUCTION_RATIO, proposedAmount, minAmount);
+        _reducePosition(idx, proposedAmount, minAmount);
+
+        LibPerpetual.UserPosition memory trader = _getTraderPosition(idx, msg.sender);
+        require(trader.openNotional == 0 && trader.positionSize == 0, "Has open position");
 
         uint256 withdrawAmount = vault.withdrawAll(idx, msg.sender, token, true);
+
         emit Withdraw(idx, msg.sender, address(token), withdrawAmount);
     }
 
     /// @notice Reduces, or closes in full, a position from an account holder
     /// @param idx Index of the perpetual market
-    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function reducePosition(
         uint256 idx,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     ) external override nonReentrant whenNotPaused {
-        _reducePosition(idx, reductionRatio, proposedAmount, minAmount);
+        _reducePosition(idx, proposedAmount, minAmount);
     }
 
     /* ****************** */
@@ -340,11 +339,12 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         require(positiveOpenNotional != 0, "No position currently opened");
         require(!marginIsValid(idx, liquidatee, MIN_MARGIN), "Margin is valid");
 
-        (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, FULL_REDUCTION_RATIO, proposedAmount, 0);
+        (, , int256 profit) = perpetuals[idx].reducePosition(liquidatee, proposedAmount, 0);
 
         // traders are allowed to reduce their positions partially, but liquidators have to close positions in full
+        LibPerpetual.UserPosition memory trader = _getTraderPosition(idx, liquidatee);
         require(
-            _getTraderPosition(idx, liquidatee).openNotional == 0,
+            trader.openNotional == 0 && trader.positionSize == 0,
             "Proposed amount insufficient to liquidate the position in its entirety"
         );
 
@@ -418,12 +418,10 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
 
     /// @notice Settle liquidity of a liquidity provider
     /// @param idx Index of the perpetual market
-    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount at which to get the LP position (in vBase if LONG, in vQuote if SHORT). 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function settleLiquidityProvider(
         uint256 idx,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
@@ -431,13 +429,12 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         require(proposedAmount > 0, "The proposed amount can't be null");
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx]
-            .settleLiquidityProvider(msg.sender, reductionRatio, proposedAmount, minAmount);
+            .settleLiquidityProvider(msg.sender, proposedAmount, minAmount);
 
         // apply changes to collateral
         vault.settleProfit(idx, msg.sender, profit, true);
 
         LibPerpetual.UserPosition memory lp = _getLpPosition(idx, msg.sender);
-
         if (lp.openNotional == 0 && lp.positionSize == 0 && lp.liquidityBalance == 0) {
             // remove the part of the reserve
             require(vault.withdrawAll(idx, msg.sender, token, false) > 0, "Insufficient funds");
@@ -478,12 +475,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 minAmount,
         IERC20 token
     ) external override onlyOwner {
-        (, , int256 profit) = perpetuals[idx].reducePosition(
-            address(this),
-            FULL_REDUCTION_RATIO,
-            proposedAmount,
-            minAmount
-        );
+        (, , int256 profit) = perpetuals[idx].reducePosition(address(this), proposedAmount, minAmount);
 
         // apply changes to collateral
         vault.settleProfit(1, address(this), profit, true);
@@ -576,7 +568,6 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
     /// @dev sub-function of reducePosition()
     function _reducePosition(
         uint256 idx,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     ) internal {
@@ -584,7 +575,6 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
 
         (int256 reducedOpenNotional, int256 reducedPositionSize, int256 profit) = perpetuals[idx].reducePosition(
             msg.sender,
-            reductionRatio,
             proposedAmount,
             minAmount
         );

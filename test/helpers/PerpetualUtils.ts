@@ -31,20 +31,15 @@ export async function liquidityProviderProposedAmount(
   position: UserPositionStructOutput,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
-  return removeLiquidityProposedAmount(position, FULL_REDUCTION_RATIO, market);
+  return removeLiquidityProposedAmount(position, market);
 }
 
 // Returns a proposed amount precise enough to reduce a LP position
 // whether it looks like a LONG or a SHORT
 export async function removeLiquidityProposedAmount(
   position: UserPositionStructOutput,
-  reductionRatio: BigNumber,
   market: CurveCryptoSwap2ETH
 ): Promise<BigNumber> {
-  if (reductionRatio.gt(FULL_REDUCTION_RATIO) || reductionRatio.lt(0)) {
-    throw new Error('reductionRatio must be between 0 and 1');
-  }
-
   // total supply of lp tokens
   const lpTotalSupply = await (<ERC20>(
     await ethers.getContractAt('ERC20', await market.token())
@@ -56,8 +51,8 @@ export async function removeLiquidityProposedAmount(
   https://github.com/Increment-Finance/increment-protocol/blob/c405099de6fddd6b0eeae56be674c00ee4015fc5/contracts-vyper/contracts/CurveCryptoSwap2ETH.vy#L1013
   */
 
-  const lpTokenToWithdraw = rMul(position.liquidityBalance, reductionRatio);
-  const positionSizeToReduce = rMul(position.positionSize, reductionRatio);
+  const lpTokenToWithdraw = position.liquidityBalance;
+  const positionSizeToReduce = position.positionSize;
 
   const withdrawnBaseTokens = (await market.balances(1))
     .mul(lpTokenToWithdraw)
@@ -107,7 +102,7 @@ export async function withdrawLiquidityAndSettle(
 
   await user.clearingHouse.settleLiquidityProvider(
     0,
-    FULL_REDUCTION_RATIO,
+
     proposedAmount,
     0,
     token.address
@@ -202,14 +197,7 @@ export async function closePosition(
     );
   }
 
-  await (
-    await user.clearingHouse.reducePosition(
-      0,
-      FULL_REDUCTION_RATIO,
-      proposedAmount,
-      0
-    )
-  ).wait();
+  await (await user.clearingHouse.reducePosition(0, proposedAmount, 0)).wait();
 
   await withdrawCollateral(user, token);
 }

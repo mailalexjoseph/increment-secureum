@@ -201,7 +201,6 @@ contract Perpetual is IPerpetual {
 
     /// @notice Closes position from account holder
     /// @param account Trader account to close position for.
-    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     /// @return vQuoteProceeds Realized quote proceeds from closing the position
@@ -209,11 +208,10 @@ contract Perpetual is IPerpetual {
     /// @return profit Profit realized
     function reducePosition(
         address account,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
-        public
+        external
         override
         onlyClearingHouse
         returns (
@@ -256,7 +254,7 @@ contract Perpetual is IPerpetual {
         updateTwapAndFundingRate();
 
         int256 pnl;
-        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(trader, reductionRatio, proposedAmount, minAmount);
+        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(trader, proposedAmount, minAmount);
 
         // check max deviation
         require(
@@ -399,7 +397,6 @@ contract Perpetual is IPerpetual {
 
     function settleLiquidityProvider(
         address account,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -419,7 +416,7 @@ contract Perpetual is IPerpetual {
         updateTwapAndFundingRate();
 
         int256 pnl;
-        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(lp, reductionRatio, proposedAmount, minAmount);
+        (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(lp, proposedAmount, minAmount);
 
         // check max deviation
         require(
@@ -581,12 +578,10 @@ contract Perpetual is IPerpetual {
 
     /// @dev Used both by traders closing their own positions and liquidators liquidating other people's positions
     /// @notice Profit is the sum of funding payments and the position PnL
-    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
     /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
     function _reducePosition(
         LibPerpetual.UserPosition memory user,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     )
@@ -598,24 +593,17 @@ contract Perpetual is IPerpetual {
         )
     {
         bool isLong = _getPositionDirection(user);
-        int256 positionSizeToReduce = user.positionSize.wadMul(reductionRatio.toInt256());
 
         require(
-            _checkProposedAmount(isLong, positionSizeToReduce, proposedAmount),
+            _checkProposedAmount(isLong, user.positionSize, proposedAmount),
             "Amount submitted too far from the market price of the position or exceeds the position size"
         );
-
-        //console.log("proposedAmount");
-        //console.log(proposedAmount);
-
-        //console.log("reductionRatio");
-        //console.log(reductionRatio);
 
         // PnL of the position
         uint256 realizedReductionRatio;
         (vBaseAmount, vQuoteProceeds, realizedReductionRatio) = _reducePositionOnMarket(
             isLong,
-            positionSizeToReduce,
+            user.positionSize,
             proposedAmount,
             minAmount
         );
@@ -875,14 +863,10 @@ contract Perpetual is IPerpetual {
 
             // USD_amount = EUR_USD * EUR_amount
             int256 positivePositionSize = -positionSize;
-            int256 reasonableVQuoteAmount = marketTwap.wadMul(positivePositionSize);
+            int256 maxVQuoteAmount = (marketTwap + marketTwap / 2).wadMul(positivePositionSize); // 50% above the TWAP
 
-            int256 deviation = (proposedAmount.toInt256() - reasonableVQuoteAmount).abs().wadDiv(
-                reasonableVQuoteAmount
-            );
-
-            // Allow for a 50% deviation from the market vQuote TWAP price to close this position
-            return deviation < 5e17;
+            // Allow for a 50% deviation premium from the market vQuote TWAP price to close this position
+            return proposedAmount.toInt256() <= maxVQuoteAmount;
         }
     }
 

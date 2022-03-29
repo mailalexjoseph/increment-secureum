@@ -86,7 +86,6 @@ interface IClearingHouse {
 
     function reducePosition(
         uint256 idx,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount
     ) external;
@@ -112,7 +111,6 @@ interface IClearingHouse {
 
     function settleLiquidityProvider(
         uint256 idx,
-        uint256 reductionRatio,
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token

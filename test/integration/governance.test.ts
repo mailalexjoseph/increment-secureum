@@ -106,7 +106,7 @@ describe('Increment Protocol: Governance', function () {
         )
       ).to.be.revertedWith('Pausable: paused');
       await expect(
-        user.clearingHouse.reducePosition(0, 1, 1, 1)
+        user.clearingHouse.reducePosition(0, 1, 1)
       ).to.be.revertedWith('Pausable: paused');
 
       await expect(
