@@ -32,10 +32,16 @@ Increment utilizes pooled virtual assets and Curve V2’s AMM trading engine to 
 - LibPerpetual
 - LibReserve
 
+## External dependencies
+
+### contracts-vyper/
+
+Compilation with Hardhat Vyper takes a very long time. Also, no changes are made to the original curve contracts.
+That is why in this folder you will find both written contracts and created objects.
+
 ## Documentation
 
 - documentation (link here)
-- developer docs (link here)
 
 ## Setup
 
