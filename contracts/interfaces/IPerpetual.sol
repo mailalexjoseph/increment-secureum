@@ -85,9 +85,19 @@ interface IPerpetual {
     function removeLiquidity(
         address account,
         uint256 liquidityAmountToRemove,
+        uint256[2] calldata minVTokenAmounts
+    )
+        external
+        returns (
+            uint256 quoteAmount,
+            uint256 baseAmount,
+            int256 fundingPayments
+        );
+
+    function settleLiquidityProvider(
+        address account,
         uint256 reductionRatio,
         uint256 proposedAmount,
-        uint256[2] calldata minVTokenAmounts,
         uint256 minAmount
     )
         external

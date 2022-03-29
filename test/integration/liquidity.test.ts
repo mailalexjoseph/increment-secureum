@@ -22,6 +22,8 @@ import {
   provideLiquidity,
   deriveCloseProposedAmount,
   liquidityProviderProposedAmount,
+  withdrawLiquidityAndSettle,
+  deriveReduceProposedAmount,
 } from '../helpers/PerpetualUtils';
 
 describe('Increment App: Liquidity', function () {
@@ -293,15 +295,7 @@ describe('Increment App: Liquidity', function () {
   describe('Can withdraw liquidity from the curve pool', async function () {
     it('Should not allow to withdraw liquidity when non provided', async function () {
       await expect(
-        lp.clearingHouse.removeLiquidity(
-          0,
-          asBigNumber('1'),
-          FULL_REDUCTION_RATIO,
-          0,
-          [0, 0],
-          0,
-          lp.usdc.address
-        )
+        lp.clearingHouse.removeLiquidity(0, asBigNumber('1'), [0, 0])
       ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
     });
 
@@ -322,11 +316,7 @@ describe('Increment App: Liquidity', function () {
         lp.clearingHouse.removeLiquidity(
           0,
           providedLiquidity.add(BigNumber.from('1')),
-          FULL_REDUCTION_RATIO,
-          0,
-          [0, 0],
-          0,
-          lp.usdc.address
+          [0, 0]
         )
       ).to.be.revertedWith('Cannot remove more liquidity than LP provided');
     });
@@ -360,12 +350,10 @@ describe('Increment App: Liquidity', function () {
       await expect(
         lp.clearingHouse.removeLiquidity(
           0,
-          liquidityAmountUSDC,
-          FULL_REDUCTION_RATIO,
-          0,
-          [0, 0],
-          0,
-          lp.usdc.address
+          (
+            await lp.perpetual.getLpPosition(lp.address)
+          ).liquidityBalance,
+          [0, 0]
         )
       ).to.be.revertedWith('');
     });
@@ -395,18 +383,10 @@ describe('Increment App: Liquidity', function () {
         lpTwo.perpetual.address
       );
 
-      const proposedAmount = await liquidityProviderProposedAmount(
-        lpBalance,
-        lp.market
-      );
       await lpTwo.clearingHouse.removeLiquidity(
         0,
         lpBalance.liquidityBalance,
-        FULL_REDUCTION_RATIO,
-        proposedAmount,
-        [0, 0],
-        0,
-        lp.usdc.address
+        [0, 0]
       );
 
       const perpetualVQuoteAmountAfterWithdraw = await lpTwo.vQuote.balanceOf(
@@ -437,22 +417,7 @@ describe('Increment App: Liquidity', function () {
       );
 
       // withdraw
-      const lpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
-
-      const proposedAmount = await liquidityProviderProposedAmount(
-        lpPosition,
-        trader.market
-      );
-
-      await lp.clearingHouse.removeLiquidity(
-        0,
-        lpPosition.liquidityBalance,
-        FULL_REDUCTION_RATIO,
-        proposedAmount,
-        [0, 0],
-        0,
-        lp.usdc.address
-      );
+      await withdrawLiquidityAndSettle(lp, lp.usdc);
 
       const positionAfter = await lp.perpetual.getLpPosition(lp.address);
       // everything should be set to 0
@@ -462,7 +427,7 @@ describe('Increment App: Liquidity', function () {
       expect(positionAfter.openNotional).to.be.equal(0);
     });
 
-    it.skip('Should allow LP to remove liquidity partially', async function () {
+    it('Should allow LP to remove liquidity partially', async function () {
       // deposit
       await lp.clearingHouse.provideLiquidity(
         0,
@@ -483,32 +448,32 @@ describe('Increment App: Liquidity', function () {
       // first partial withdraw
       const initialLpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
 
-      const firstProposedAmountToClosePosition =
-        await liquidityProviderProposedAmount(initialLpPosition, trader.market);
-
       await lp.clearingHouse.removeLiquidity(
         0,
         initialLpPosition.liquidityBalance.div(2),
-        FULL_REDUCTION_RATIO.div(2),
-        firstProposedAmountToClosePosition.div(2),
-        [0, 0],
-        0,
-        lp.usdc.address
+        [0, 0]
       );
 
       // second withdraw, full withdraw this time
 
       const secondLpPosition = await lpTwo.perpetual.getLpPosition(lp.address);
-
-      const secondProposedAmountToClosePosition =
-        await liquidityProviderProposedAmount(secondLpPosition, trader.market);
-
       await lp.clearingHouse.removeLiquidity(
         0,
         secondLpPosition.liquidityBalance,
+        [0, 0]
+      );
+
+      const userLpPositionAfter = await lp.perpetual.getLpPosition(lp.address);
+
+      const proposedAmount = await deriveReduceProposedAmount(
+        userLpPositionAfter.positionSize,
+        lp.market
+      );
+
+      await lp.clearingHouse.settleLiquidityProvider(
+        0,
         FULL_REDUCTION_RATIO,
-        secondProposedAmountToClosePosition,
-        [0, 0],
+        proposedAmount,
         0,
         lp.usdc.address
       );
@@ -574,123 +539,95 @@ describe('Increment App: Liquidity', function () {
       );
     }
 
-    it.skip('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
-      /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
-               is most likely easier with fuzzing
-      */
-      // init
-      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
-      await provideLiquidity(lp, lp.usdc, liquidityAmount);
-      await provideLiquidity(trader, trader.usdc, liquidityAmount);
+    // it('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
+    //   /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
+    //            is most likely easier with fuzzing
+    //   */
+    //   // init
+    //   const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+    //   await provideLiquidity(lp, lp.usdc, liquidityAmount);
+    //   await provideLiquidity(trader, trader.usdc, liquidityAmount);
 
-      // deposit initial liquidity
-      const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
-      const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
-      const lpBalanceBeforeEUR = rDiv(
-        lpBalanceBefore,
-        await lp.perpetual.marketPrice()
-      );
+    //   // deposit initial liquidity
+    //   const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
+    //   const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
+    //   const lpBalanceBeforeEUR = rDiv(
+    //     lpBalanceBefore,
+    //     await lp.perpetual.marketPrice()
+    //   );
 
-      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
+    //   await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
 
-      // change market prices
-      await driveUpMarketPrice(lpTwo);
+    //   // change market prices
+    //   await driveUpMarketPrice(lpTwo);
 
-      // withdraw liquidity
-      const lpTwoPosition = await lpTwo.perpetual.getLpPosition(lpTwo.address);
-      await lpTwo.clearingHouse.removeLiquidity(
-        0,
-        rMul(FULL_REDUCTION_RATIO, lpTwoPosition.liquidityBalance),
-        FULL_REDUCTION_RATIO,
-        (
-          await removeLiquidityProposedAmount(
-            lpTwoPosition,
-            FULL_REDUCTION_RATIO,
-            lpTwo.market
-          )
-        ).sub(1), // since prbMath subtracts one wei
-        [0, 0],
-        0,
-        lpTwo.usdc.address
-      );
+    //   // withdraw liquidity
+    //   await withdrawLiquidityAndSettle(lpTwo, lpTwo.usdc);
 
-      // everything should now be set to 0
-      const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
-      expect(positionAfter.liquidityBalance).to.be.equal(0);
-      expect(positionAfter.positionSize).to.be.equal(0);
-      expect(positionAfter.cumFundingRate).to.be.equal(0);
-      expect(positionAfter.openNotional).to.be.equal(0);
+    //   // everything should now be set to 0
+    //   const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
+    //   expect(positionAfter.liquidityBalance).to.be.equal(0);
+    //   expect(positionAfter.positionSize).to.be.equal(0);
+    //   expect(positionAfter.cumFundingRate).to.be.equal(0);
+    //   expect(positionAfter.openNotional).to.be.equal(0);
 
-      // USD profit
-      const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
-      expect(lpBalanceAfter).to.be.gt(lpBalanceBefore);
+    //   // USD profit
+    //   const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
+    //   expect(lpBalanceAfter).to.be.gt(lpBalanceBefore);
 
-      // EUR loss
-      const lpBalanceAfterEUR = rDiv(
-        lpBalanceAfter,
-        await lp.perpetual.marketPrice()
-      );
-      expect(lpBalanceAfterEUR).to.be.lt(lpBalanceBeforeEUR);
-    });
-    it.skip('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
-      /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
-               is most likely easier with fuzzing
-      */
-      // init
+    //   // EUR loss
+    //   const lpBalanceAfterEUR = rDiv(
+    //     lpBalanceAfter,
+    //     await lp.perpetual.marketPrice()
+    //   );
+    //   expect(lpBalanceAfterEUR).to.be.lt(lpBalanceBeforeEUR);
+    // });
+    // it('Liquidity provider can generate a loss (in USD) when EUR/USD goes down', async function () {
+    //   /* TODO: find out if the loss can exceed the collateral (under realistic conditions)
+    //            is most likely easier with fuzzing
+    //   */
+    //   // init
 
-      const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
-      await provideLiquidity(lp, lp.usdc, liquidityAmount);
-      await provideLiquidity(trader, trader.usdc, liquidityAmount);
+    //   const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
+    //   await provideLiquidity(lp, lp.usdc, liquidityAmount);
+    //   await provideLiquidity(trader, trader.usdc, liquidityAmount);
 
-      // deposit initial liquidity
-      const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
-      const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
+    //   // deposit initial liquidity
+    //   const liquidityAmountTwo = liquidityAmount.div(1000); // small amount to avoid trade restrictions
+    //   const lpBalanceBefore = await lpTwo.usdc.balanceOf(lpTwo.address);
 
-      const lpBalanceBeforeEUR = rDiv(
-        lpBalanceBefore,
-        await lp.perpetual.marketPrice()
-      );
+    //   const lpBalanceBeforeEUR = rDiv(
+    //     lpBalanceBefore,
+    //     await lp.perpetual.marketPrice()
+    //   );
 
-      await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
+    //   await provideLiquidity(lpTwo, lp.usdc, liquidityAmountTwo);
 
-      // change market prices
-      await driveDownMarketPrice(lpTwo);
+    //   // change market prices
+    //   await driveDownMarketPrice(lpTwo);
 
-      // withdraw liquidity
-      const lpTwoPosition = await lpTwo.perpetual.getLpPosition(lpTwo.address);
-      await lpTwo.clearingHouse.removeLiquidity(
-        0,
-        rMul(FULL_REDUCTION_RATIO, lpTwoPosition.liquidityBalance),
-        FULL_REDUCTION_RATIO,
-        (
-          await removeLiquidityProposedAmount(
-            lpTwoPosition,
-            FULL_REDUCTION_RATIO,
-            lpTwo.market
-          )
-        ).sub(1), // since prbMath subtracts one wei
-        [0, 0],
-        0,
-        lpTwo.usdc.address
-      );
-      // everything should now be set to 0
-      const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
-      expect(positionAfter.liquidityBalance).to.be.equal(0);
-      expect(positionAfter.positionSize).to.be.equal(0);
-      expect(positionAfter.cumFundingRate).to.be.equal(0);
-      expect(positionAfter.openNotional).to.be.equal(0);
+    //   // withdraw liquidity
+    //   await withdrawLiquidityAndSettle(lpTwo, lpTwo.usdc);
 
-      // USD profit
-      const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
-      expect(lpBalanceAfter).to.be.lt(lpBalanceBefore);
+    //   // everything should now be set to 0
+    //   const positionAfter = await lpTwo.perpetual.getLpPosition(lpTwo.address);
+    //   expect(positionAfter.liquidityBalance).to.be.equal(0);
+    //   expect(positionAfter.positionSize).to.be.equal(0);
+    //   expect(positionAfter.cumFundingRate).to.be.equal(0);
+    //   expect(positionAfter.openNotional).to.be.equal(0);
 
-      // EUR loss
-      const lpBalanceAfterEUR = rDiv(
-        lpBalanceAfter,
-        await lp.perpetual.marketPrice()
-      );
-      expect(lpBalanceAfterEUR).to.be.gt(lpBalanceBeforeEUR);
-    });
+    //   // USD profit
+    //   const lpBalanceAfter = await lpTwo.usdc.balanceOf(lpTwo.address);
+    //   expect(lpBalanceAfter).to.be.lt(lpBalanceBefore);
+
+    //   // EUR loss
+    //   const lpBalanceAfterEUR = rDiv(
+    //     lpBalanceAfter,
+    //     await lp.perpetual.marketPrice()
+    //   );
+    //   expect(lpBalanceAfterEUR).to.be.gt(lpBalanceBeforeEUR);
+    // });
+
     it('Should revert when not enough liquidity tokens are minted', async function () {
       // init
       const liquidityAmount = await tokenToWad(6, liquidityAmountUSDC);
@@ -739,33 +676,18 @@ describe('Increment App: Liquidity', function () {
         .div(await lp.perpetual.getTotalLiquidityProvided())
         .sub(1);
 
-      const proposedAmount = await liquidityProviderProposedAmount(
-        lpPosition,
-        lp.market
-      );
-
       await expect(
-        lp.clearingHouse.removeLiquidity(
-          0,
-          lpPosition.liquidityBalance,
-          FULL_REDUCTION_RATIO,
-          proposedAmount,
-          [eWithdrawnQuoteTokens.add(1), eWithdrawnBaseTokens.add(1)],
-          0,
-          lp.usdc.address
-        )
+        lp.clearingHouse.removeLiquidity(0, lpPosition.liquidityBalance, [
+          eWithdrawnQuoteTokens.add(1),
+          eWithdrawnBaseTokens.add(1),
+        ])
       ).to.be.revertedWith('');
 
       await expect(
-        lp.clearingHouse.removeLiquidity(
-          0,
-          lpPosition.liquidityBalance,
-          FULL_REDUCTION_RATIO,
-          proposedAmount,
-          [eWithdrawnQuoteTokens, eWithdrawnBaseTokens],
-          0,
-          lp.usdc.address
-        )
+        lp.clearingHouse.removeLiquidity(0, lpPosition.liquidityBalance, [
+          eWithdrawnQuoteTokens,
+          eWithdrawnBaseTokens,
+        ])
       ).to.not.be.reverted;
     });
   });

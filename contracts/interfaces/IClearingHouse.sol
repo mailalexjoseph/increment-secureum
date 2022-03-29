@@ -107,9 +107,13 @@ interface IClearingHouse {
     function removeLiquidity(
         uint256 idx,
         uint256 liquidityAmountToRemove,
+        uint256[2] calldata minVTokenAmounts
+    ) external;
+
+    function settleLiquidityProvider(
+        uint256 idx,
         uint256 reductionRatio,
         uint256 proposedAmount,
-        uint256[2] calldata minVTokenAmounts,
         uint256 minAmount,
         IERC20 token
     ) external;

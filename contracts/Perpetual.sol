@@ -213,7 +213,7 @@ contract Perpetual is IPerpetual {
         uint256 proposedAmount,
         uint256 minAmount
     )
-        external
+        public
         override
         onlyClearingHouse
         returns (
@@ -334,28 +334,22 @@ contract Perpetual is IPerpetual {
     /// @notice Remove liquidity from the pool
     /// @param account Account of the LP to remove liquidity from
     /// @param liquidityAmountToRemove Amount of liquidity to be removed from the pool. 18 decimals
-    /// @param reductionRatio Percentage of the position that the user wishes to close. Min: 0. Max: 1e18
-    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
     /// @param minVTokenAmounts Minimum amount of virtual tokens [vQuote, vBase] withdrawn from the curve pool. 18 decimals
-    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
-    /// @return vQuoteProceeds Realized quote proceeds from removing liquidity
-    /// @return vBaseAmount Removed base amount
-    /// @return profit Profit realized
+    /// @return quoteAmount Quote tokens withdrawn
+    /// @return baseAmount Base tokens withdrawn
+    /// @return fundingPayments Funding realized
     function removeLiquidity(
         address account,
         uint256 liquidityAmountToRemove,
-        uint256 reductionRatio,
-        uint256 proposedAmount,
-        uint256[2] calldata minVTokenAmounts,
-        uint256 minAmount
+        uint256[2] calldata minVTokenAmounts
     )
         external
         override
         onlyClearingHouse
         returns (
-            int256 vQuoteProceeds,
-            int256 vBaseAmount,
-            int256 profit
+            uint256 quoteAmount,
+            uint256 baseAmount,
+            int256 fundingPayments
         )
     {
         LibPerpetual.UserPosition storage lp = lpPosition[account];
@@ -366,14 +360,12 @@ contract Perpetual is IPerpetual {
         // slither-disable-next-line incorrect-equality
         require(liquidityAmountToRemove <= lp.liquidityBalance, "Cannot remove more liquidity than LP provided");
 
+        fundingPayments = _settleLpFundingRate(lp, global);
+
         // lower balances
         lp.liquidityBalance -= liquidityAmountToRemove;
 
-        profit = _settleLpFundingRate(lp, global);
-
         // remove liquidity from curve pool
-        uint256 baseAmount;
-        uint256 quoteAmount;
         {
             // to avoid stack too deep errors
             uint256 vQuoteBalanceBefore = vQuote.balanceOf(address(this)); // can we just assume 0 here? NO!
@@ -398,8 +390,35 @@ contract Perpetual is IPerpetual {
         lp.openNotional += quoteAmount.toInt256();
         lp.positionSize += baseAmount.toInt256();
 
+        // if position has been closed entirely, delete it from the state
+        // slither-disable-next-line incorrect-equality
+        if (lp.positionSize == 0 && lp.liquidityBalance == 0 && lp.openNotional == 0) {
+            delete lpPosition[account];
+        }
+    }
+
+    function settleLiquidityProvider(
+        address account,
+        uint256 reductionRatio,
+        uint256 proposedAmount,
+        uint256 minAmount
+    )
+        external
+        override
+        onlyClearingHouse
+        returns (
+            int256 vQuoteProceeds,
+            int256 vBaseAmount,
+            int256 profit
+        )
+    {
+        LibPerpetual.UserPosition storage lp = lpPosition[account];
+        LibPerpetual.GlobalPosition storage global = globalPosition;
+
+        // update state
+        updateTwapAndFundingRate();
+
         int256 pnl;
-        // profit = pnl + fundingPayments
         (vBaseAmount, vQuoteProceeds, pnl) = _reducePosition(lp, reductionRatio, proposedAmount, minAmount);
 
         // check max deviation
@@ -408,27 +427,13 @@ contract Perpetual is IPerpetual {
             "Price impact too large"
         );
 
-        //console.log("pnl is");
-        //console.logInt(pnl);
-
-        //console.log("funding is");
-        //console.logInt(profit);
-
-        // adjust lp position
-        profit += pnl;
-
-        //console.log(" lp.positionSize ");
-        //console.logInt(lp.positionSize);
-
-        //console.log("vBaseAmount");
-        //console.logInt(vBaseAmount);
-
+        // adjust trader position
+        profit = pnl + _settleFundingRate(lp, global); // pnl + fundingPayments
         lp.openNotional += vQuoteProceeds;
         lp.positionSize += vBaseAmount;
 
         // if position has been closed entirely, delete it from the state
-        // slither-disable-next-line incorrect-equality
-        if (lp.positionSize == 0 && lp.liquidityBalance == 0) {
+        if (lp.positionSize == 0) {
             delete lpPosition[account];
         }
 

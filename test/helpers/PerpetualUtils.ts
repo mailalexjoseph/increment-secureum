@@ -90,26 +90,40 @@ export async function withdrawLiquidityAndSettle(
   user: User,
   token: IERC20Metadata
 ): Promise<void> {
-  const userLpPosition = await user.perpetual.getLpPosition(user.address);
-
-  const proposedAmount = await liquidityProviderProposedAmount(
-    userLpPosition,
-    user.market
-  );
+  const userLpPositionBefore = await user.perpetual.getLpPosition(user.address);
 
   await user.clearingHouse.removeLiquidity(
     0,
-    userLpPosition.liquidityBalance,
+    userLpPositionBefore.liquidityBalance,
+    [0, 0]
+  );
+
+  const userLpPositionAfter = await user.perpetual.getLpPosition(user.address);
+
+  const proposedAmount = await deriveReduceProposedAmount(
+    userLpPositionAfter.positionSize,
+    user.market
+  );
+
+  await user.clearingHouse.settleLiquidityProvider(
+    0,
     FULL_REDUCTION_RATIO,
     proposedAmount,
-    [0, 0],
     0,
     token.address
   );
-  const positionAfter = await user.perpetual.getLpPosition(user.address);
 
-  if (positionAfter.liquidityBalance.gt(0)) {
+  const positionEnd = await user.perpetual.getLpPosition(user.address);
+
+  if (positionEnd.liquidityBalance.gt(0)) {
     throw 'Liquidity not withdrawn';
+  }
+
+  if (
+    !positionEnd.openNotional.isZero() ||
+    !positionEnd.positionSize.isZero()
+  ) {
+    throw 'Liquidity not settled';
   }
 }
 
