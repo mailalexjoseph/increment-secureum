@@ -2,13 +2,16 @@ import {User} from './setup';
 import {ethers} from 'hardhat';
 
 import {UserPositionStructOutput} from '../../typechain/Perpetual';
-import {CurveCryptoSwap2ETH} from '../../contracts-vyper/typechain';
+import {
+  CurveCryptoSwap2ETH,
+  CurveCryptoSwap2ETH__factory,
+} from '../../contracts-vyper/typechain';
 import {ERC20, IERC20Metadata} from '../../typechain';
 
 import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
 
-import {BigNumber} from 'ethers';
+import {BigNumber, BigNumberish} from 'ethers';
 import {Side} from './utils/types';
 
 /* ********************************* */
@@ -66,7 +69,8 @@ export async function removeLiquidityProposedAmount(
 export async function provideLiquidity(
   user: User,
   token: IERC20Metadata,
-  liquidityAmount: BigNumber
+  liquidityAmount: BigNumber,
+  marketIdx: BigNumberish = 0
 ): Promise<void> {
   // get liquidity amount in USD
   const tokenAmount = await wadToToken(await token.decimals(), liquidityAmount);
@@ -74,39 +78,60 @@ export async function provideLiquidity(
 
   await (await token.approve(user.vault.address, tokenAmount)).wait();
   await (
-    await user.clearingHouse.provideLiquidity(0, tokenAmount, 0, token.address)
+    await user.clearingHouse.provideLiquidity(
+      marketIdx,
+      tokenAmount,
+      0,
+      token.address
+    )
   ).wait();
 }
 
 // withdraw liquidity
 export async function withdrawLiquidityAndSettle(
   user: User,
-  token: IERC20Metadata
+  token: IERC20Metadata,
+  marketIdx: BigNumberish = 0
 ): Promise<void> {
-  const userLpPositionBefore = await user.perpetual.getLpPosition(user.address);
+  const userLpPositionBefore = await user.clearingHouseViewer.getLpPosition(
+    marketIdx,
+    user.address
+  );
 
   await user.clearingHouse.removeLiquidity(
-    0,
+    marketIdx,
     userLpPositionBefore.liquidityBalance,
     [0, 0]
   );
 
-  const userLpPositionAfter = await user.perpetual.getLpPosition(user.address);
+  const userLpPositionAfter = await user.clearingHouseViewer.getLpPosition(
+    marketIdx,
+    user.address
+  );
+
+  const market = <CurveCryptoSwap2ETH>(
+    await ethers.getContractAt(
+      CurveCryptoSwap2ETH__factory.abi,
+      await user.clearingHouseViewer.getMarket(marketIdx)
+    )
+  );
 
   const proposedAmount = await deriveReduceProposedAmount(
     userLpPositionAfter.positionSize,
-    user.market
+    market
   );
 
   await user.clearingHouse.settleLiquidityProvider(
-    0,
-
+    marketIdx,
     proposedAmount,
     0,
     token.address
   );
 
-  const positionEnd = await user.perpetual.getLpPosition(user.address);
+  const positionEnd = await user.clearingHouseViewer.getLpPosition(
+    marketIdx,
+    user.address
+  );
 
   if (positionEnd.liquidityBalance.gt(0)) {
     throw 'Liquidity not withdrawn';
@@ -143,11 +168,15 @@ export async function deposit(
 
 export async function withdrawCollateral(
   user: User,
-  token: IERC20Metadata
+  token: IERC20Metadata,
+  marketIdx: BigNumberish
 ): Promise<void> {
-  const userDeposits = await user.vault.getTraderReserveValue(0, user.address);
+  const userDeposits = await user.vault.getTraderReserveValue(
+    marketIdx,
+    user.address
+  );
   await (
-    await user.clearingHouse.withdraw(0, userDeposits, token.address)
+    await user.clearingHouse.withdraw(marketIdx, userDeposits, token.address)
   ).wait();
 }
 
@@ -157,7 +186,8 @@ export async function extendPositionWithCollateral(
   token: IERC20Metadata,
   depositAmount: BigNumber,
   positionAmount: BigNumber,
-  direction: Side
+  direction: Side,
+  marketIdx: BigNumberish = 0
 ): Promise<void> {
   // get liquidity amount in USD
   const tokenAmount = await wadToToken(await token.decimals(), depositAmount);
@@ -167,7 +197,7 @@ export async function extendPositionWithCollateral(
 
   await (
     await user.clearingHouse.extendPositionWithCollateral(
-      0,
+      marketIdx,
       tokenAmount,
       token.address,
       positionAmount,
@@ -180,24 +210,34 @@ export async function extendPositionWithCollateral(
 // close a position
 export async function closePosition(
   user: User,
-  token: IERC20Metadata
+  token: IERC20Metadata,
+  marketIdx: BigNumberish = 0
 ): Promise<void> {
-  const traderPosition = await user.perpetual.getTraderPosition(user.address);
+  const traderPosition = await user.clearingHouseViewer.getTraderPosition(
+    marketIdx,
+    user.address
+  );
+
+  const market = <CurveCryptoSwap2ETH>(
+    await ethers.getContractAt(
+      CurveCryptoSwap2ETH__factory.abi,
+      await user.clearingHouseViewer.getMarket(marketIdx)
+    )
+  );
 
   const direction = traderPosition.positionSize.gt(0) ? Side.Long : Side.Short;
   let proposedAmount;
   if (direction === Side.Long) {
     proposedAmount = traderPosition.positionSize;
   } else {
-    proposedAmount = await deriveCloseProposedAmount(
-      traderPosition,
-      user.market
-    );
+    proposedAmount = await deriveCloseProposedAmount(traderPosition, market);
   }
 
-  await (await user.clearingHouse.reducePosition(0, proposedAmount, 0)).wait();
+  await (
+    await user.clearingHouse.reducePosition(marketIdx, proposedAmount, 0)
+  ).wait();
 
-  await withdrawCollateral(user, token);
+  await withdrawCollateral(user, token, marketIdx);
 }
 
 /* ********************************* */

@@ -66,16 +66,25 @@ export interface TestEnv {
 export const getContracts = async (deployAccount: string): Promise<any> => {
   const usdcAddress = getReserveAddress('USDC', env);
 
+  const vBase = <VirtualToken>await ethers.getContract('VBase', deployAccount);
+  const vQuote = <VirtualToken>(
+    await ethers.getContract('VQuote', deployAccount)
+  );
+
   const factory = await getCryptoSwapFactory(env);
-  const cryptoswap = await getCryptoSwap(factory);
+  const cryptoswap = await getCryptoSwap(
+    factory,
+    vQuote.address,
+    vBase.address
+  );
 
   return {
     factory: <Factory>factory,
     market: <CurveCryptoSwap2ETH>cryptoswap,
     curveToken: <CurveTokenV5>await getCurveToken(cryptoswap),
 
-    vBase: <VirtualToken>await ethers.getContract('VBase', deployAccount),
-    vQuote: <VirtualToken>await ethers.getContract('VQuote', deployAccount),
+    vBase,
+    vQuote,
     vault: <TestVault>await ethers.getContract('TestVault', deployAccount),
     perpetual: <TestPerpetual>(
       await ethers.getContract('TestPerpetual', deployAccount)

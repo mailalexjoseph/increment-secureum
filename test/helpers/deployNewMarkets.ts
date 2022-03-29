@@ -63,8 +63,6 @@ export async function deployJPYUSDMarket(): Promise<TestPerpetual> {
   );
 
   const cryptoSwapFactory = await getCryptoSwapFactory(env);
-  console.log('Found CryptoSwapFactory at: ', cryptoSwapFactory.address);
-
   await cryptoSwapFactory.deploy_pool(
     args._name,
     args._symbol,
@@ -81,7 +79,11 @@ export async function deployJPYUSDMarket(): Promise<TestPerpetual> {
     args.initial_price
   );
 
-  const pool = await getCryptoSwap(cryptoSwapFactory);
+  const pool = await getCryptoSwap(
+    cryptoSwapFactory,
+    vUSD.address,
+    vJPY.address
+  );
 
   // 3. Deploy JPY/USD Perpetual
   const TestPerpetual = await ethers.getContractFactory(

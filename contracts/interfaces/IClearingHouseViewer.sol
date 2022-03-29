@@ -26,6 +26,8 @@ interface IClearingHouseViewer {
 
     function getBaseDust(uint256 idx) external view returns (uint256);
 
+    function getMarket(uint256 idx) external view returns (ICryptoSwap);
+
     // user getter
     function getTraderPosition(uint256 idx, address account) external view returns (LibPerpetual.UserPosition memory);
 

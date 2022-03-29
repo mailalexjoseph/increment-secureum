@@ -67,14 +67,13 @@ export async function getCryptoSwapFactory(
 }
 
 export async function getCryptoSwap(
-  factory: Factory
+  factory: Factory,
+  vQuoteAddress: string,
+  vBaseAddress: string
 ): Promise<CurveCryptoSwap2ETH> {
-  const vQuote = await ethers.getContract('VBase');
-  const vBase = await ethers.getContract('VQuote');
-
   const cryptoSwapAddress = await factory[
     'find_pool_for_coins(address,address)'
-  ](vQuote.address, vBase.address);
+  ](vQuoteAddress, vBaseAddress);
 
   return <CurveCryptoSwap2ETH>(
     await ethers.getContractAt(

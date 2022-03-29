@@ -9,6 +9,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {IClearingHouse} from "./interfaces/IClearingHouse.sol";
 import {IClearingHouseViewer} from "./interfaces/IClearingHouseViewer.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICryptoSwap} from "./interfaces/ICryptoSwap.sol";
 
 // libraries
 import {LibMath} from "./lib/LibMath.sol";
@@ -69,6 +70,11 @@ contract ClearingHouseViewer is IClearingHouseViewer {
     /// @param idx Index of the perpetual market
     function getGlobalPosition(uint256 idx) external view override returns (LibPerpetual.GlobalPosition memory) {
         return clearingHouse.perpetuals(idx).getGlobalPosition();
+    }
+
+    /// @param idx Index of the perpetual market
+    function getMarket(uint256 idx) external view override returns (ICryptoSwap) {
+        return clearingHouse.perpetuals(idx).market();
     }
 
     /* ****************** */

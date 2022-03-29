@@ -1,11 +1,10 @@
 import {expect} from 'chai';
 import {ethers} from 'hardhat';
-import {setup, funding, User} from '../helpers/setup';
-
 import {BigNumber} from 'ethers';
+
+import {setup, funding, User} from '../helpers/setup';
 import {Side} from '../helpers/utils/types';
 import {tokenToWad} from '../../helpers/contracts-helpers';
-
 import {
   extendPositionWithCollateral,
   closePosition,
@@ -13,9 +12,13 @@ import {
   withdrawLiquidityAndSettle,
 } from '../helpers/PerpetualUtils';
 import {changeChainlinkOraclePrice} from '../helpers/ChainlinkUtils';
+import {deployJPYUSDMarket} from '../helpers/deployNewMarkets';
 
 // https://docs.chain.link/docs/ethereum-addresses/
 const parsePrice = (num: string) => ethers.utils.parseUnits(num, 8);
+
+const EURUSDMarketIdx = 0;
+const JPYUSDMarketIdx = 1;
 
 describe('Increment App: Scenario', function () {
   let deployer: User, trader: User, lp: User;
@@ -47,7 +50,7 @@ describe('Increment App: Scenario', function () {
     );
   }
 
-  describe('One LP & one Trader', async function () {
+  describe('One LP & one Trader (in one market)', async function () {
     describe('1. Should remain solvent with no oracle price change', async function () {
       it('1.1. LP provides liquidity, trader opens long position and closes position, LP withdraws liquidity', async function () {
         await provideLiquidity(lp, lp.usdc, liquidityAmount);
@@ -486,6 +489,168 @@ describe('Increment App: Scenario', function () {
         // await logUserBalance(trader, 'trader');
         // await logVaultBalance(lp);
       });
+    });
+  });
+
+  describe('LPs & Traders (in multiple markets)', async function () {
+    it('Adding a new market (trading pair) succeeds', async function () {
+      // EUR_USD (from deploy)
+      expect(await deployer.clearingHouse.getNumMarkets()).to.eq(1);
+
+      await deployJPYUSDMarket();
+
+      // EUR_USD + JPY_USD
+      expect(await deployer.clearingHouse.getNumMarkets()).to.eq(2);
+    });
+
+    it('LP actions in market A do not affect vault balance in market B', async function () {
+      // set-up
+      await deployJPYUSDMarket();
+      await provideLiquidity(
+        trader,
+        trader.usdc,
+        liquidityAmount,
+        JPYUSDMarketIdx
+      );
+
+      // 1. LP provides liquidity to JYP_USD
+      await provideLiquidity(
+        lp,
+        lp.usdc,
+        liquidityAmount.div(2),
+        JPYUSDMarketIdx
+      );
+
+      // JPY_USD liquidity balance is liquidityAmount/2
+      expect(await lp.vault.getLpBalance(JPYUSDMarketIdx, lp.address)).to.eq(
+        liquidityAmount.div(2)
+      );
+      // but EUR_USD balance isn't affected
+      expect(await lp.vault.getLpBalance(EURUSDMarketIdx, lp.address)).to.eq(0);
+
+      // 2. LP provides liquidity to JYP_USD pool for a 2nd time
+      await provideLiquidity(
+        lp,
+        lp.usdc,
+        liquidityAmount.div(2),
+        JPYUSDMarketIdx
+      );
+
+      // JPY_USD liquidity balance is liquidityAmount
+      expect(await lp.vault.getLpBalance(JPYUSDMarketIdx, lp.address)).to.eq(
+        liquidityAmount
+      );
+      // but EUR_USD balance is still not affected
+      expect(await lp.vault.getLpBalance(EURUSDMarketIdx, lp.address)).to.eq(0);
+
+      // 3. LP removes liquidity from JYP_USD
+      await withdrawLiquidityAndSettle(lp, lp.usdc, JPYUSDMarketIdx);
+
+      // JPY_USD liquidity balance is now 0
+      expect(await lp.vault.getLpBalance(JPYUSDMarketIdx, lp.address)).to.eq(0);
+      // but EUR_USD balance is still 0
+      expect(await lp.vault.getLpBalance(EURUSDMarketIdx, lp.address)).to.eq(0);
+    });
+
+    it('Trader actions in market A do not affect vault balance in market B', async function () {
+      // set-up
+      await deployJPYUSDMarket();
+      await provideLiquidity(lp, lp.usdc, liquidityAmount, JPYUSDMarketIdx);
+
+      // 1. Trader opens position in JYP_USD market with collateral
+      await extendPositionWithCollateral(
+        trader,
+        trader.usdc,
+        tradeAmount.div(2), // to avoid price impact error
+        tradeAmount.div(2),
+        Side.Long,
+        JPYUSDMarketIdx
+      );
+
+      // trader vault balance in JPY_USD is positive
+      expect(
+        await trader.vault.getTraderBalance(JPYUSDMarketIdx, trader.address)
+      ).to.gt(0);
+      // but his EUR_USD vault balance isn't affected
+      expect(
+        await trader.vault.getTraderBalance(EURUSDMarketIdx, trader.address)
+      ).to.eq(0);
+
+      // 2. Trader extends position in JYP_USD market with new collateral
+      await extendPositionWithCollateral(
+        trader,
+        trader.usdc,
+        tradeAmount.div(2), // to avoid price impact error
+        tradeAmount.div(2),
+        Side.Long,
+        JPYUSDMarketIdx
+      );
+
+      // trader vault balance in JPY_USD is still positive
+      expect(
+        await trader.vault.getTraderBalance(JPYUSDMarketIdx, trader.address)
+      ).to.gt(0);
+      // but his EUR_USD vault balance is still not affected
+      expect(
+        await trader.vault.getTraderBalance(EURUSDMarketIdx, trader.address)
+      ).to.eq(0);
+
+      // 3. Trader closes position
+      await closePosition(trader, trader.usdc, JPYUSDMarketIdx);
+
+      // trader vault balance in JPY_USD is now 0
+      expect(
+        await trader.vault.getTraderBalance(JPYUSDMarketIdx, trader.address)
+      ).to.eq(0);
+      // but his EUR_USD vault balance is still 0
+      expect(
+        await trader.vault.getTraderBalance(EURUSDMarketIdx, trader.address)
+      ).to.eq(0);
+    });
+
+    it('Extending position on any market increases the insurance fee in the same way', async function () {
+      // set-up
+      await deployJPYUSDMarket();
+      await provideLiquidity(lp, lp.usdc, liquidityAmount, JPYUSDMarketIdx);
+
+      // initial insurance fee
+      expect(
+        await trader.vault.getTraderBalance(0, deployer.clearingHouse.address)
+      ).to.eq(0);
+
+      // 1. Trader opens position in JYP_USD market with collateral
+      await extendPositionWithCollateral(
+        trader,
+        trader.usdc,
+        tradeAmount.div(2),
+        tradeAmount.div(2),
+        Side.Long,
+        JPYUSDMarketIdx
+      );
+
+      // insurance fee after trade of tradeAmount volume in JYP_USD
+      const insuranceFeeAfterJPYUSDTrade = await trader.vault.getTraderBalance(
+        0,
+        deployer.clearingHouse.address
+      );
+
+      await extendPositionWithCollateral(
+        trader,
+        trader.usdc,
+        tradeAmount.div(2),
+        tradeAmount.div(2),
+        Side.Long,
+        EURUSDMarketIdx
+      );
+
+      const insuranceFeeAfterEURUSDTrade = await trader.vault.getTraderBalance(
+        0,
+        deployer.clearingHouse.address
+      );
+
+      expect(insuranceFeeAfterEURUSDTrade).to.eq(
+        insuranceFeeAfterJPYUSDTrade.mul(2)
+      );
     });
   });
 });

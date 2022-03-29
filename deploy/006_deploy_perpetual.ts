@@ -20,7 +20,7 @@ const func: DeployFunction = async function (hre: HardhatRuntimeEnvironment) {
     cryptoswap = await ethers.getContract('CurveCryptoSwapTest', deployer);
   } else {
     const factory = await getCryptoSwapFactory(hre);
-    cryptoswap = await getCryptoSwap(factory);
+    cryptoswap = await getCryptoSwap(factory, vUSD.address, vEUR.address);
   }
 
   // deploy perpetual contract
