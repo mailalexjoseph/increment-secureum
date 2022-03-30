@@ -3,6 +3,7 @@ pragma solidity 0.8.4;
 
 // contracts
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IncreOwnable} from "./utils/IncreOwnable.sol";
 
 // interfaces
@@ -11,7 +12,7 @@ import {IVault} from "./interfaces/IVault.sol";
 import {IInsurance} from "./interfaces/IInsurance.sol";
 
 /// @notice Pays out Vault in case of default
-contract Insurance is IInsurance, IncreOwnable {
+contract Insurance is IInsurance, IncreOwnable, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /// @notice Insurance token
@@ -45,7 +46,7 @@ contract Insurance is IInsurance, IncreOwnable {
 
     /// @notice Remain remaining balance of the contract
     /// @dev Only be called by the owner of the contract
-    function withdrawRemainder() external override onlyOwner {
+    function withdrawRemainder() external override onlyOwner nonReentrant {
         uint256 remainingBalance = IERC20(token).balanceOf(address(this));
         IERC20(token).safeTransfer(msg.sender, remainingBalance);
 

@@ -178,7 +178,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 positionAmount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) external override whenNotPaused returns (int256, int256) {
+    ) external override nonReentrant whenNotPaused returns (int256, int256) {
         _deposit(idx, collateralAmount, token);
         return extendPosition(idx, positionAmount, direction, minAmount);
     }
@@ -230,56 +230,6 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 minAmount
     ) public override nonReentrant whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
         (addedOpenNotional, addedPositionSize) = _extendPosition(idx, amount, direction, minAmount);
-    }
-
-    function _extendPosition(
-        uint256 idx,
-        uint256 amount,
-        LibPerpetual.Side direction,
-        uint256 minAmount
-    ) internal returns (int256 addedOpenNotional, int256 addedPositionSize) {
-        /*
-            if direction = Long
-
-                trader goes long EUR
-                trader accrues openNotional debt
-                trader receives positionSize assets
-
-                openNotional = vQuote traded   to market   ( < 0)
-                positionSize = vBase  received from market ( > 0)
-
-            else direction = Short
-
-                trader goes short EUR
-                trader receives openNotional assets
-                trader accrues positionSize debt
-
-                openNotional = vQuote received from market ( > 0)
-                positionSize = vBase  traded   to market   ( < 0)
-
-        */
-        require(amount > 0, "The amount can't be null");
-
-        int256 fundingPayments = 0;
-        (addedOpenNotional, addedPositionSize, fundingPayments) = perpetuals[idx].extendPosition(
-            msg.sender,
-            amount,
-            direction,
-            minAmount
-        );
-
-        // pay insurance fee
-        int256 insuranceFee = addedOpenNotional.abs().wadMul(INSURANCE_FEE);
-        vault.settleProfit(0, address(this), insuranceFee, true); // always deposit insurance fees into the 0 vault
-
-        int256 traderVaultDiff = fundingPayments - insuranceFee;
-        vault.settleProfit(idx, msg.sender, traderVaultDiff, true);
-
-        require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
-
-        emit ExtendPosition(idx, msg.sender, direction, addedOpenNotional, addedPositionSize);
-
-        return (addedOpenNotional, addedPositionSize);
     }
 
     /// @notice Single close position function, groups close position and withdraw collateral
@@ -474,7 +424,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 proposedAmount,
         uint256 minAmount,
         IERC20 token
-    ) external override onlyOwner {
+    ) external override onlyOwner nonReentrant {
         (, , int256 profit) = perpetuals[idx].reducePosition(address(this), proposedAmount, minAmount);
 
         // apply changes to collateral
@@ -490,7 +440,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
     /// @notice Remove insurance fees exceeding 10% of the TVL from the vault
     /// @param amount Token withdrawn. 18 decimals
     /// @param token Token to be withdrawn from the vault
-    function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner {
+    function removeInsurance(uint256 amount, IERC20 token) external override onlyOwner nonReentrant {
         uint256 tvl = vault.getTotalReserveToken();
 
         require(vault.withdraw(0, address(this), amount, token, true) > 0, "Unsuccessful withdrawal");
@@ -563,6 +513,57 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
     ) internal {
         require(vault.deposit(idx, msg.sender, amount, token, true) > 0);
         emit Deposit(idx, msg.sender, address(token), amount);
+    }
+
+    /// @dev sub-function of extendPosition()
+    function _extendPosition(
+        uint256 idx,
+        uint256 amount,
+        LibPerpetual.Side direction,
+        uint256 minAmount
+    ) internal returns (int256 addedOpenNotional, int256 addedPositionSize) {
+        /*
+            if direction = Long
+
+                trader goes long EUR
+                trader accrues openNotional debt
+                trader receives positionSize assets
+
+                openNotional = vQuote traded   to market   ( < 0)
+                positionSize = vBase  received from market ( > 0)
+
+            else direction = Short
+
+                trader goes short EUR
+                trader receives openNotional assets
+                trader accrues positionSize debt
+
+                openNotional = vQuote received from market ( > 0)
+                positionSize = vBase  traded   to market   ( < 0)
+
+        */
+        require(amount > 0, "The amount can't be null");
+
+        int256 fundingPayments = 0;
+        (addedOpenNotional, addedPositionSize, fundingPayments) = perpetuals[idx].extendPosition(
+            msg.sender,
+            amount,
+            direction,
+            minAmount
+        );
+
+        // pay insurance fee
+        int256 insuranceFee = addedOpenNotional.abs().wadMul(INSURANCE_FEE);
+        vault.settleProfit(0, address(this), insuranceFee, true); // always deposit insurance fees into the 0 vault
+
+        int256 traderVaultDiff = fundingPayments - insuranceFee;
+        vault.settleProfit(idx, msg.sender, traderVaultDiff, true);
+
+        require(marginIsValid(idx, msg.sender, MIN_MARGIN_AT_CREATION), "Not enough margin");
+
+        emit ExtendPosition(idx, msg.sender, direction, addedOpenNotional, addedPositionSize);
+
+        return (addedOpenNotional, addedPositionSize);
     }
 
     /// @dev sub-function of reducePosition()
