@@ -24,9 +24,9 @@ contract Perpetual is IPerpetual {
     using LibMath for uint256;
 
     // parameterization
-    uint256 internal constant VQUOTE_INDEX = 0;
-    uint256 internal constant VBASE_INDEX = 1;
-    uint256 internal constant TWAP_FREQUENCY = 15 minutes; // time after which funding rate CAN be calculated
+    uint256 internal constant VQUOTE_INDEX = 0; // index of quote asset in curve pool
+    uint256 internal constant VBASE_INDEX = 1; // index of base asset in curve pool
+    uint256 internal constant TWAP_FREQUENCY = 15 minutes; // period over which twap is calculated
     int256 internal constant SENSITIVITY = 1e18; // funding rate sensitivity to price deviations
     int256 internal constant MAX_PRICE_DEVIATION = 5e16; // max price change per block
 
@@ -123,8 +123,6 @@ contract Perpetual is IPerpetual {
     /// @return openNotional Additional quote asset / liabilities accrued
     /// @return positionSize Additional base asset / liabilities accrued
     /// @return fundingPayments Settled funding payments
-    /// @dev No number for the leverage is given but the amount in the vault must be bigger than MIN_MARGIN_AT_CREATION
-    /// @dev No checks are done if bought amount exceeds allowance
     function extendPosition(
         address account,
         uint256 amount,
@@ -147,7 +145,7 @@ contract Perpetual is IPerpetual {
                 trader accrues openNotional debt
                 trader receives positionSize assets
 
-                openNotional = vQuote traded   to market   ( < 0)
+                openNotional = vQuote traded to market    ( < 0)
                 positionSize = vBase received from market ( > 0)
 
             else direction = SHORT
@@ -157,7 +155,7 @@ contract Perpetual is IPerpetual {
                 trader accrues positionSize debt
 
                 openNotional = vQuote received from market ( > 0)
-                positionSize = vBase traded   to market   ( < 0)
+                positionSize = vBase traded to market      ( < 0)
 
         */
         LibPerpetual.UserPosition storage trader = traderPosition[account];
@@ -233,17 +231,17 @@ contract Perpetual is IPerpetual {
         to close the position:
 
             trader has long position:
-                @proposedAmount := amount of vBase used to reduce the position (an arbitrary amount, must be below user.positionSize)
+                @proposedAmount := amount of vBase used to reduce the position (must be below user.positionSize)
                 => User trades the vBase tokens with the curve pool for vQuote tokens
 
             trader has short position:
-                @proposedAmount := amount of vQuote required to repay the vBase debt (an arbitrary amount)
+                @proposedAmount := amount of vQuote required to repay the vBase debt (must be below 1.5 x market value of user.positionSize)
                 => User incurred vBase debt when opening a position and must now trade enough
-                  vQuote with the curve pool to repay his vQuote debt in full.
+                  vQuote with the curve pool to repay his vBase debt in full.
                 => Remaining balances can be traded with the market for vQuote.
 
                 @audit Note that this mechanism can be exploited by inserting a large value here, since traders
-                will have to pay transaction fees anyways (on the curve pool).
+                will have to pay transaction fees anyways (on the curve pool). We set a limit of 1.5 x market value in _checkProposedAmount()
         */
         LibPerpetual.UserPosition storage trader = traderPosition[account];
         LibPerpetual.GlobalPosition storage global = globalPosition;
@@ -281,8 +279,8 @@ contract Perpetual is IPerpetual {
 
     /// @notice Provide liquidity to the pool
     /// @param account Liquidity provider
-    /// @param  wadAmount Amount of vQuote provided. 18 decimals
-    /// @param  minLpAmount Minimum amount of Lp tokens minted. 18 decimals
+    /// @param wadAmount Amount of vQuote provided. 18 decimals
+    /// @param minLpAmount Minimum amount of Lp tokens minted. 18 decimals
     /// @return baseAmount Amount of vBase provided. 18 decimals
     /// @return fundingPayments Settled funding payments
     function provideLiquidity(
@@ -395,6 +393,13 @@ contract Perpetual is IPerpetual {
         }
     }
 
+    /// @notice Settle liquidity provider
+    /// @param account Account of the LP to settle
+    /// @param proposedAmount Amount of tokens to be sold, in vBase if LONG, in vQuote if SHORT. 18 decimals
+    /// @param minAmount Minimum amount that the user is willing to accept, in vQuote if LONG, in vBase if SHORT. 18 decimals
+    /// @return vQuoteProceeds Realized quote proceeds from closing the position
+    /// @return vBaseAmount Position size reduction
+    /// @return profit Profit realized
     function settleLiquidityProvider(
         address account,
         uint256 proposedAmount,
@@ -439,6 +444,7 @@ contract Perpetual is IPerpetual {
 
     ///// COMMON OPERATIONS \\\\\
 
+    /// @notice Update Twap, Funding Rate and last traded price
     function updateTwapAndFundingRate() public override {
         LibPerpetual.GlobalPosition storage global = globalPosition;
         uint256 currentTime = block.timestamp;
