@@ -180,7 +180,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 minAmount
     ) external override nonReentrant whenNotPaused returns (int256, int256) {
         _deposit(idx, collateralAmount, token);
-        return extendPosition(idx, positionAmount, direction, minAmount);
+        return _extendPosition(idx, positionAmount, direction, minAmount);
     }
 
     /// @notice Deposit tokens into the vault
@@ -228,7 +228,7 @@ contract ClearingHouse is IClearingHouse, IncreOwnable, Pausable, ReentrancyGuar
         uint256 amount,
         LibPerpetual.Side direction,
         uint256 minAmount
-    ) public override nonReentrant whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
+    ) external override nonReentrant whenNotPaused returns (int256 addedOpenNotional, int256 addedPositionSize) {
         (addedOpenNotional, addedPositionSize) = _extendPosition(idx, amount, direction, minAmount);
     }
 
