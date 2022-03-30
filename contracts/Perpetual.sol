@@ -318,7 +318,7 @@ contract Perpetual is IPerpetual {
         // supply liquidity to curve pool
         vQuote.mint(wadAmount);
         vBase.mint(baseAmount);
-        //uint256 min_mint_amount = 0; // set to zero for now
+
         uint256 liquidity = market.add_liquidity([wadAmount, baseAmount], minLpAmount); //  first token in curve pool is vQuote & second token is vBase
 
         lp.openNotional -= wadAmount.toInt256();
@@ -608,17 +608,8 @@ contract Perpetual is IPerpetual {
             minAmount
         );
 
-        //console.log("realizedReductionRatio");
-        //console.log(realizedReductionRatio);
-
         // take the realized reduction ratio when calculating the pnl
         int256 openNotionalToReduce = user.openNotional.wadMul(realizedReductionRatio.toInt256());
-
-        //console.log("vQuoteProceeds");
-        //console.logInt(vQuoteProceeds);
-
-        //console.log("openNotionalToReduce");
-        //console.logInt(openNotionalToReduce);
 
         pnl = vQuoteProceeds + openNotionalToReduce;
     }
@@ -642,16 +633,10 @@ contract Perpetual is IPerpetual {
             vQuoteProceeds = amount.toInt256();
             vBaseAmount = -(proposedAmount.toInt256());
 
-            //console.log("isLong");
             realizedReductionRatio = proposedAmount.wadDiv(positionSize.abs().toUint256()); //  abs() in case of partial removing liquidity
         } else {
-            //console.log("isShort");
-
             uint256 positivePositionSize = (-positionSize).toUint256();
             uint256 vBaseProceeds = _quoteForBase(proposedAmount, minAmount);
-
-            //console.log("positivePositionSize", positivePositionSize);
-            //console.log("vBaseProceeds", vBaseProceeds);
 
             /*
             Question: Why do we make up to two swap when closing a short position?
@@ -907,11 +892,11 @@ contract Perpetual is IPerpetual {
     }
 
     function _checkPriceDeviation(int256 currentPrice, int256 startBlockPrice) internal pure returns (bool) {
-        // check if market price has changed more than by 2% in this block
+        // check if market price has changed more than by 5% in this block
 
-        // price deviations of a given block does not exceed 2%
-        // <=> 2% > (currentPrice - startBlockPrice) / currentPrice
-        // 2 * currentPrice > (currentPrice - startBlockPrice) * 100
+        // price deviations of a given block does not exceed 5%
+        // <=> 5% > (currentPrice - startBlockPrice) / currentPrice
+        // 5 * currentPrice > (currentPrice - startBlockPrice) * 100
 
         // slither-disable-next-line incorrect-equality
         return (MAX_PRICE_DEVIATION * currentPrice > (currentPrice - startBlockPrice).abs() * 1e18);
