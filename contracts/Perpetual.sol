@@ -99,7 +99,7 @@ contract Perpetual is IPerpetual {
         clearingHouse = _clearingHouse;
 
         // approve all future transfers between Perpetual and market (curve pool)
-        require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL. TODO: PLZ CHANGE THIS TO DURING CALL");
+        require(vBase.approve(address(market), type(uint256).max), "NO APPROVAL");
         require(vQuote.approve(address(market), type(uint256).max), "NO APPROVAL");
 
         // initialize global state

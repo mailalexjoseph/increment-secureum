@@ -488,55 +488,55 @@ describe('Increment App: Liquidity', function () {
       expect(positionAfterSecondWithdrawal.openNotional).to.be.equal(0);
     });
 
-    async function setPrice(user: User, price: BigNumber) {
-      await (
-        await user.perpetual.__TestPerpetual_setBlockStartPrice(price)
-      ).wait();
-      await (
-        await user.perpetual.__TestPerpetual_setTWAP(
-          price,
-          await user.perpetual.getOracleTwap()
-        )
-      ).wait();
-    }
+    // async function setPrice(user: User, price: BigNumber) {
+    //   await (
+    //     await user.perpetual.__TestPerpetual_setBlockStartPrice(price)
+    //   ).wait();
+    //   await (
+    //     await user.perpetual.__TestPerpetual_setTWAP(
+    //       price,
+    //       await user.perpetual.getOracleTwap()
+    //     )
+    //   ).wait();
+    // }
 
-    async function driveDownMarketPrice(user: User) {
-      // drive down market price (to change ratios in the pool)
-      await user.perpetual.__TestPerpetual_manipulate_market(
-        1,
-        0,
-        asBigNumber('11000')
-      );
+    // async function driveDownMarketPrice(user: User) {
+    //   // drive down market price (to change ratios in the pool)
+    //   await user.perpetual.__TestPerpetual_manipulate_market(
+    //     1,
+    //     0,
+    //     asBigNumber('11000')
+    //   );
 
-      // important: set new blockLastPrice / twap to circumvent trade restrictions
-      await setPrice(user, await user.perpetual.marketPrice());
+    //   // important: set new blockLastPrice / twap to circumvent trade restrictions
+    //   await setPrice(user, await user.perpetual.marketPrice());
 
-      // make a small trade (TODO: not sure why that has to be done)
-      await user.perpetual.__TestPerpetual_manipulate_market(
-        1,
-        0,
-        asBigNumber('1')
-      );
-    }
+    //   // make a small trade (TODO: not sure why that has to be done)
+    //   await user.perpetual.__TestPerpetual_manipulate_market(
+    //     1,
+    //     0,
+    //     asBigNumber('1')
+    //   );
+    // }
 
-    async function driveUpMarketPrice(user: User) {
-      // drive up market price (to change ratios in the pool)
-      await user.perpetual.__TestPerpetual_manipulate_market(
-        0,
-        1,
-        asBigNumber('11000')
-      );
+    // async function driveUpMarketPrice(user: User) {
+    //   // drive up market price (to change ratios in the pool)
+    //   await user.perpetual.__TestPerpetual_manipulate_market(
+    //     0,
+    //     1,
+    //     asBigNumber('11000')
+    //   );
 
-      // important: set new blockLastPrice / twap to circumvent trade restrictions
-      await setPrice(user, await user.perpetual.marketPrice());
+    //   // important: set new blockLastPrice / twap to circumvent trade restrictions
+    //   await setPrice(user, await user.perpetual.marketPrice());
 
-      // make a small trade (TODO: not sure why that has to be done)
-      await user.perpetual.__TestPerpetual_manipulate_market(
-        0,
-        1,
-        asBigNumber('1')
-      );
-    }
+    //   // make a small trade (TODO: not sure why that has to be done)
+    //   await user.perpetual.__TestPerpetual_manipulate_market(
+    //     0,
+    //     1,
+    //     asBigNumber('1')
+    //   );
+    // }
 
     // it('Liquidity provider generate profit (loss) in USD (EUR) when EUR/USD goes up', async function () {
     //   /* TODO: find out if the loss can exceed the collateral (under realistic conditions)

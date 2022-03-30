@@ -217,7 +217,6 @@ contract Vault is IVault, IncreOwnable {
     /*     Governance     */
     /* ****************** */
 
-    // TODO: Only set once
     function setClearingHouse(IClearingHouse newClearingHouse) external onlyOwner {
         require(address(newClearingHouse) != address(0), "ClearingHouse can not be zero address");
         clearingHouse = newClearingHouse;
