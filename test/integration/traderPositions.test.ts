@@ -8,7 +8,6 @@ import {setUpPoolLiquidity} from '../helpers/PerpetualUtils';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {getLatestTimestamp} from '../../helpers/misc-utils';
 import {Side} from '../helpers/utils/types';
-import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
 import {VQUOTE_INDEX} from '../../helpers/constants';
 
 describe('Increment: open/close long/short trading positions', () => {

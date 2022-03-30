@@ -1,6 +1,5 @@
 import {expect} from 'chai';
 import {BigNumber} from 'ethers';
-import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
 import {tokenToWad} from '../../helpers/contracts-helpers';
 import {
   extendPositionWithCollateral,

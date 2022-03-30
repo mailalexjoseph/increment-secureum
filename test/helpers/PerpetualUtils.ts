@@ -7,11 +7,9 @@ import {ERC20, IERC20Metadata} from '../../typechain';
 
 import {wadToToken} from '../../helpers/contracts-helpers';
 import {TEST_get_exactOutputSwap} from './CurveUtils';
-import {rMul} from './utils/calculations';
 
 import {BigNumber} from 'ethers';
 import {Side} from './utils/types';
-import {FULL_REDUCTION_RATIO} from '../../helpers/constants';
 
 /* ********************************* */
 /*   liquidity provider operations   */

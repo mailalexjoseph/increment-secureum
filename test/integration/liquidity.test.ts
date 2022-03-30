@@ -1,6 +1,6 @@
 import {expect} from 'chai';
 import {BigNumber} from 'ethers';
-import env, {ethers} from 'hardhat';
+import env from 'hardhat';
 
 // helpers
 import {setup, funding, User} from '../helpers/setup';
@@ -12,16 +12,14 @@ import {
   getLatestTimestamp,
 } from '../../helpers/misc-utils';
 import {getChainlinkPrice} from '../../helpers/contracts-getters';
-import {asBigNumber, rDiv, rMul} from '../helpers/utils/calculations';
-import {DEAD_ADDRESS, FULL_REDUCTION_RATIO} from '../../helpers/constants';
+import {asBigNumber, rDiv} from '../helpers/utils/calculations';
+import {DEAD_ADDRESS} from '../../helpers/constants';
 import {Side} from '../helpers/utils/types';
 
 import {
-  removeLiquidityProposedAmount,
   extendPositionWithCollateral,
   provideLiquidity,
   deriveCloseProposedAmount,
-  liquidityProviderProposedAmount,
   withdrawLiquidityAndSettle,
   deriveReduceProposedAmount,
 } from '../helpers/PerpetualUtils';
