@@ -37,7 +37,7 @@ Increment utilizes pooled virtual assets and Curve V2’s AMM trading engine to 
 ### contracts-vyper/
 
 Compilation with Hardhat Vyper takes a very long time. Also, no changes are made to the original curve contracts.
-That is why in this folder you will find both contracts and and created objects in this folder.
+That is why you will find both contracts and and created objects in this folder.
 
 ## Documentation
 
